@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Engine Pro - Interview Learning Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00d9ff;
+            --secondary: #0099ff;
+            --success: #00cc00;
+            --danger: #ff3232;
+            --warning: #ffaa00;
+            --dark-bg: #0a0a14;
+            --card-bg: #1a1a2e;
+            --text: #e0e0e0;
+            --text-light: #a0a0a0;
+            --border: #2a2a3e;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #0f0f1a 100%);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid var(--primary);
+            padding: 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .tab-button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab-button.active {
+            background: var(--primary);
+            color: var(--dark-bg);
+            border-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .section h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h3 {
+            color: var(--secondary);
+            font-size: 1.3rem;
+            margin: 1.5rem 0 0.75rem 0;
+        }
+
+        .section h4 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin: 1rem 0 0.5rem 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(0, 217, 255, 0.05);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .bug-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        .bug-table th {
+            background: rgba(0, 217, 255, 0.1);
+            color: var(--primary);
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--primary);
+            font-weight: 600;
+        }
+
+        .bug-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .bug-table tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .severity-critical {
+            background: rgba(255, 50, 50, 0.2);
+            color: #ff6b6b;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .severity-high {
+            background: rgba(255, 170, 0, 0.2);
+            color: #ffaa00;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .severity-medium {
+            background: rgba(255, 170, 0, 0.15);
+            color: #ffcc44;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .bug-link {
+            color: var(--secondary);
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .bug-link:hover {
+            color: var(--primary);
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--primary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--primary);
+            color: var(--dark-bg);
+        }
+
+        .modal h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #00ff88;
+            line-height: 1.4;
+        }
+
+        .code-label {
+            color: var(--text-light);
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .qa-section {
+            background: rgba(0, 217, 255, 0.05);
+            border-left: 4px solid var(--secondary);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 6px;
+        }
+
+        .qa-section strong {
+            color: var(--secondary);
+        }
+
+        .qa-section .question {
+            color: var(--secondary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .qa-section .answer {
+            color: var(--text);
+            margin-left: 1rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--secondary);
+        }
+
+        .lesson-list {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .lesson-list li {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: rgba(0, 217, 255, 0.05);
+            border-left: 3px solid var(--primary);
+            border-radius: 4px;
+        }
+
+        .lesson-list li strong {
+            color: var(--primary);
+        }
+
+        .button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: var(--dark-bg);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin: 0.5rem 0;
+        }
+
+        .button:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 0.75rem;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .filter-input::placeholder {
+            color: var(--text-light);
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--primary);
+            color: var(--dark-bg);
+        }
+
+        .breadcrumb {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .breadcrumb a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--primary);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.95rem;
+        }
+
+        .comparison-table th {
+            background: rgba(0, 217, 255, 0.1);
+            color: var(--primary);
+            padding: 1rem;
+            text-align: left;
+            border: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .footer {
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 2px solid var(--primary);
+            padding: 2rem;
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .metric-bar {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+            gap: 1rem;
+        }
+
+        .metric-label {
+            min-width: 150px;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .metric-fill {
+            flex: 1;
+            height: 24px;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .metric-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), var(--primary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--dark-bg);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .tabs {
+                justify-content: flex-start;
+                overflow-x: auto;
+                padding-bottom: 1rem;
+            }
+
+            .tab-button {
+                white-space: nowrap;
+                font-size: 0.85rem;
+                padding: 0.6rem 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 1.5rem;
+            }
+
+            .bug-table {
+                font-size: 0.85rem;
+            }
+
+            .bug-table th, .bug-table td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>📚 Resume Engine Pro - Interview Learning Hub</h1>
+            <p>Complete journey from MVP concept to working prototype with bugs, resolutions, and role-based perspectives</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-button active" data-tab="overview" onclick="window.switchTab('overview')">📊 Overview</button>
+            <button class="tab-button" data-tab="bugs" onclick="window.switchTab('bugs')">🐛 Bug Tracking</button>
+            <button class="tab-button" data-tab="sre" onclick="window.switchTab('sre')">🚀 SRE</button>
+            <button class="tab-button" data-tab="devops" onclick="window.switchTab('devops')">⚙️ DevOps</button>
+            <button class="tab-button" data-tab="build" onclick="window.switchTab('build')">🔨 Build Engineer</button>
+            <button class="tab-button" data-tab="test" onclick="window.switchTab('test')">✅ Test Engineer</button>
+            <button class="tab-button" data-tab="release" onclick="window.switchTab('release')">📦 Release Mgmt</button>
+        </div>
+
+        <!-- OVERVIEW TAB (placeholder - full content too large for initial load) -->
+        <div id="overview" class="tab-content active">
+            <div class="section">
+                <h2>📊 Learning Hub Loaded Successfully ✅</h2>
+                <p>Click "Bug Tracking" tab to view all 8 bugs with detailed analysis. Click role tabs (SRE, DevOps, Build Engineer, Test Engineer, Release Manager) for perspective-specific content.</p>
+                <p><strong>Status:</strong> v0.1.0 MVP Complete - 7/8 bugs fixed (88% completion rate)</p>
+            </div>
+        </div>
+
+        <!-- BUG TRACKING TAB -->
+        <div id="bugs" class="tab-content">
+            <div class="section">
+                <h2>🐛 Bug Tracking & Analysis</h2>
+                
+                <div class="filter-section">
+                    <input type="text" id="bugSearch" class="filter-input" placeholder="Search bugs by ID or title..." onkeyup="window.filterBugs()">
+                    <button class="filter-btn" onclick="window.filterBySeverity('all')" id="filter-all">All Bugs</button>
+                    <button class="filter-btn" onclick="window.filterBySeverity('critical')" id="filter-critical">Critical</button>
+                    <button class="filter-btn" onclick="window.filterBySeverity('high')" id="filter-high">High</button>
+                    <button class="filter-btn" onclick="window.filterBySeverity('medium')" id="filter-medium">Medium</button>
+                </div>
+
+                <table class="bug-table" id="bugTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Role</th>
+                            <th>Fix Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bugTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Other tabs would go here - SRE, DevOps, Build, Test, Release Manager -->
+        <!-- For now, simplified version -->
+        <div id="sre" class="tab-content">
+            <div class="section">
+                <h2>🚀 SRE Perspective - Coming Soon</h2>
+                <p>Full SRE perspective content including incident response, observability, and reliability engineering principles.</p>
+            </div>
+        </div>
+
+        <div id="devops" class="tab-content">
+            <div class="section">
+                <h2>⚙️ DevOps Perspective - Coming Soon</h2>
+                <p>Full DevOps perspective content including CI/CD pipelines, infrastructure, and deployment automation.</p>
+            </div>
+        </div>
+
+        <div id="build" class="tab-content">
+            <div class="section">
+                <h2>🔨 Build Engineer Perspective - Coming Soon</h2>
+                <p>Full Build Engineer perspective content including optimization, bundling, and performance.</p>
+            </div>
+        </div>
+
+        <div id="test" class="tab-content">
+            <div class="section">
+                <h2>✅ Test Engineer Perspective - Coming Soon</h2>
+                <p>Full Test Engineer perspective content including testing strategy and defect management.</p>
+            </div>
+        </div>
+
+        <div id="release" class="tab-content">
+            <div class="section">
+                <h2>📦 Release Manager Perspective - Coming Soon</h2>
+                <p>Full Release Manager perspective content including versioning and deployment planning.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong>Resume Engine Pro - Interview Learning Hub</strong></p>
+        <p>📚 30,000+ words of documentation | 🐛 8 bugs documented | ✅ 7 bugs fixed | 🎓 5 role perspectives</p>
+        <p>Updated: 2026-06-21 | Status: MVP Complete (v0.1.0) | License: MIT</p>
+    </div>
+
+    <div id="bugModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="window.closeModal()">✕</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- External script files for tab navigation and bugs data -->
+    <script src="bugs-data.js"></script>
+    <script src="tabs-handler.js"></script>
+</body>
+</html>
