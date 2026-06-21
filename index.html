@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Engine Pro - Advanced Resume & Portfolio Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- External Libraries -->
+    <!-- Octokit for GitHub API -->
+    <script src="https://cdn.jsdelivr.net/npm/octokit@latest/dist/umd/octokit.min.js"></script>
+    
+    <!-- PDF.js for PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
+    <!-- JSZip for DOCX parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- docx.js for DOCX generation -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@latest"></script>
+    
+    <!-- PDF-Kit for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfkit/0.13.0/pdfkit.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfkit/0.13.0/blob-stream.min.js"></script>
+    
+    <!-- Core Modules -->
+    <script src="core/storage-manager.js"></script>
+    <script src="core/github-manager.js"></script>
+    <script src="core/profile-manager.js"></script>
+    <script src="core/resume-parser.js"></script>
+    <script src="core/ai-integration.js"></script>
+    <script src="core/cost-calculator.js"></script>
+    <script src="core/portfolio-templates.js"></script>
+    <script src="core/portfolio-templates-50plus.js"></script>
+    <script src="core/resume-templates.js"></script>
+    <script src="core/job-tracker-manager.js"></script>
+    <script src="core/tracker-functions.js"></script>
+    <script src="core/generator.js"></script>
+    
+    <!-- Main Application -->
+    <script src="script.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">Resume Engine Pro</h1>
+            <div class="nav-right">
+                <span id="userDisplay" class="user-display"></span>
+                <button id="settingsBtn" class="btn btn-icon" onclick="openSettings()" title="Settings">⚙️</button>
+                <button id="loginBtn" class="btn btn-primary" onclick="initiateGitHubLogin()">Login</button>
+                <button id="logoutBtn" class="btn btn-secondary" onclick="logout()" style="display:none;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Login Page -->
+        <section id="loginPage" class="page active">
+            <div class="login-container">
+                <div class="login-box">
+                    <h2>Resume Engine Pro</h2>
+                    <p>The Ultimate AI-Powered Resume & Portfolio Generator</p>
+                    <div class="login-features">
+                        <div class="feature">✓ Upload your existing resume</div>
+                        <div class="feature">✓ AI tailors to any JD</div>
+                        <div class="feature">✓ Generate bulk resumes instantly</div>
+                        <div class="feature">✓ Multiple portfolio templates</div>
+                        <div class="feature">✓ GitHub storage (no external costs)</div>
+                        <div class="feature">✓ Multi-AI support (OpenAI, Claude, Gemini, Mistral)</div>
+                    </div>
+                    <button class="btn btn-primary large" onclick="initiateGitHubLogin()">
+                        Sign in with GitHub
+                    </button>
+                    <p class="privacy-note">We use GitHub OAuth. Data stored privately in your GitHub account.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main App -->
+        <section id="appPage" class="page">
+            <!-- Main Navigation Tabs -->
+            <div class="main-tabs">
+                <button class="main-tab-btn active" onclick="switchMainTab('dashboard')">📊 Dashboard</button>
+                <button class="main-tab-btn" onclick="switchMainTab('profiles')">👤 My Profiles</button>
+                <button class="main-tab-btn" onclick="switchMainTab('generator')">🚀 Generate</button>
+                <button class="main-tab-btn" onclick="switchMainTab('applications')">📋 Applications</button>
+                <button class="main-tab-btn" onclick="switchMainTab('history')">📁 History</button>
+                <button class="main-tab-btn" onclick="switchMainTab('settings')">⚙️ Settings</button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="main-tab-content active">
+                <h2>Dashboard</h2>
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>📊 Statistics</h3>
+                        <div class="stat-item">
+                            <span>Total Resumes Generated:</span>
+                            <span id="totalGenerated" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>Profiles Created:</span>
+                            <span id="totalProfiles" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>GitHub Data Repo:</span>
+                            <span id="githubRepo" class="stat-value">Not set</span>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>🤖 AI Status</h3>
+                        <div id="aiStatus" class="ai-status-list">
+                            <div class="ai-status-item">
+                                <span>Loading AI providers...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>💰 Credits & Usage</h3>
+                        <div id="creditsDisplay" class="credits-display">
+                            <p>No AI providers configured yet.</p>
+                            <button class="btn btn-secondary" onclick="switchMainTab('settings')">Set Up AI</button>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>🚀 Quick Actions</h3>
+                        <button class="btn btn-primary" onclick="switchMainTab('profiles')">Add Profile</button>
+                        <button class="btn btn-primary" onclick="switchMainTab('generator')">Generate Resume</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profiles Tab -->
+            <div id="profiles" class="main-tab-content">
+                <h2>My Profiles</h2>
+                
+                <div class="section-header">
+                    <p>Create reusable profiles by uploading your resume or entering details manually.</p>
+                    <button class="btn btn-success" onclick="openProfileCreation()">+ New Profile</button>
+                </div>
+
+                <!-- Profile Upload Section -->
+                <div id="profileCreation" class="collapsible-section" style="display:none;">
+                    <h3>Create New Profile</h3>
+                    
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchProfileTab('upload')">Upload Resume</button>
+                        <button class="tab-btn" onclick="switchProfileTab('manual')">Manual Entry</button>
+                    </div>
+
+                    <!-- Upload Method -->
+                    <div id="uploadMethod" class="profile-method active">
+                        <div class="form-group">
+                            <label>Upload Resume (PDF, DOCX, or TXT):</label>
+                            <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" onchange="handleResumeUpload(event)" />
+                            <small>We'll auto-extract your experience, skills, and education</small>
+                        </div>
+                        <div id="parseProgress" style="display:none;">
+                            <p>⏳ Parsing resume...</p>
+                            <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Entry Method -->
+                    <div id="manualMethod" class="profile-method" style="display:none;">
+                        <div class="profile-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Full Name:</label>
+                                    <input type="text" id="profileName" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Email:</label>
+                                    <input type="email" id="profileEmail" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Phone:</label>
+                                    <input type="tel" id="profilePhone" />
+                                </div>
+                                <div class="form-group">
+                                    <label>LinkedIn:</label>
+                                    <input type="url" id="profileLinkedIn" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Years of Experience:</label>
+                                    <input type="number" id="profileYears" min="0" max="50" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Location:</label>
+                                    <input type="text" id="profileLocation" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Professional Summary:</label>
+                                <textarea id="profileSummary" rows="4"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Core Skills (comma-separated):</label>
+                                <textarea id="profileSkills" placeholder="e.g., Azure, Kubernetes, DevOps, Python" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Profile Name (for your reference):</label>
+                        <input type="text" id="profileDisplayName" placeholder="e.g., Rajesh - SRE Focus" />
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="closeProfileCreation()">Cancel</button>
+                        <button class="btn btn-success" onclick="saveProfile()">Save Profile</button>
+                    </div>
+                </div>
+
+                <!-- Profiles List -->
+                <div id="profilesList" class="profiles-grid">
+                    <p style="grid-column: 1/-1; text-align: center; color: #999;">No profiles yet. Create one above!</p>
+                </div>
+            </div>
+
+            <!-- Generator Tab -->
+            <div id="generator" class="main-tab-content">
+                <h2>Generate Resumes</h2>
+
+                <div class="generator-section">
+                    <div class="section-header">
+                        <h3>Select Mode</h3>
+                    </div>
+
+                    <div class="mode-selector">
+                        <button class="mode-btn active" onclick="switchGeneratorMode('single')">
+                            <span class="mode-icon">📄</span>
+                            <span class="mode-name">Single Resume</span>
+                            <span class="mode-desc">Tailor one resume to a job</span>
+                        </button>
+                        <button class="mode-btn" onclick="switchGeneratorMode('bulk')">
+                            <span class="mode-icon">📦</span>
+                            <span class="mode-name">Bulk Generation</span>
+                            <span class="mode-desc">Generate 5+ resumes at once</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Single Resume Mode -->
+                <div id="singleMode" class="generator-mode active">
+                    <div class="generator-grid">
+                        <!-- Step 1: Select Profile -->
+                        <div class="generator-step">
+                            <h3>Step 1: Select Profile</h3>
+                            <select id="selectProfile" onchange="loadProfileData()">
+                                <option value="">-- Select a profile --</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="switchMainTab('profiles')">Create New Profile</button>
+                        </div>
+
+                        <!-- Step 2: Job Description -->
+                        <div class="generator-step">
+                            <h3>Step 2: Job Description</h3>
+                            <div class="input-tabs">
+                                <button class="input-tab active" onclick="switchJDInput('paste')">Paste Text</button>
+                                <button class="input-tab" onclick="switchJDInput('url')">Provide URL</button>
+                            </div>
+                            <div id="pasteJD" class="jd-input active">
+                                <textarea id="jdText" placeholder="Paste the job description here..." rows="8"></textarea>
+                            </div>
+                            <div id="urlJD" class="jd-input" style="display:none;">
+                                <input type="url" id="jdUrl" placeholder="https://careers.company.com/job/..." />
+                                <button class="btn btn-secondary" onclick="fetchJDFromURL()">Fetch JD</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: AI Configuration -->
+                        <div class="generator-step">
+                            <h3>Step 3: AI Configuration</h3>
+                            <div class="form-group">
+                                <label>AI Provider:</label>
+                                <select id="aiProvider" onchange="updateAICost()">
+                                    <option value="">-- Select AI Provider --</option>
+                                    <option value="openai">OpenAI (GPT-4) - $0.03</option>
+                                    <option value="claude">Claude (Anthropic) - $0.005</option>
+                                    <option value="gemini">Google Gemini - $0.0075</option>
+                                    <option value="mistral">Mistral AI - $0.002</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Generation Mode:</label>
+                                <select id="generationMode" onchange="updateAICost()">
+                                    <option value="fast">Fast (Quick keyword matching) - $0.001</option>
+                                    <option value="smart" selected>Smart (Full tailoring) - $0.03</option>
+                                    <option value="ultra">Ultra (Full + Portfolio content) - $0.06</option>
+                                </select>
+                            </div>
+
+                            <div id="costEstimate" class="cost-box">
+                                <p>Cost will be shown here...</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Output Options -->
+                        <div class="generator-step">
+                            <h3>Step 4: What to Generate</h3>
+                            <div class="checkbox-group">
+                                <label class="checkbox">
+                                    <input type="checkbox" id="genResume" checked /> Resume (DOCX + PDF)
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" id="genCoverLetter" checked /> Cover Letter (DOCX)
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" id="genPortfolio" checked /> Portfolio (HTML)
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" id="genJobDetails" checked /> Job Details (Markdown)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Portfolio Template:</label>
+                                <select id="portfolioTemplate">
+                                    <option value="minimalist">Minimalist (Teal + Dark)</option>
+                                    <option value="executive">Executive (Navy + Gold)</option>
+                                    <option value="creative">Creative (Purple + Magenta)</option>
+                                    <option value="tech">Tech (Cyan + Black)</option>
+                                    <option value="startup">Startup (Rose + White)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>GitHub Data Repo Name:</label>
+                                <input type="text" id="githubDataRepo" placeholder="resume-engine-data (auto-created if blank)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="generateSingle()" id="generateBtn">
+                            💰 Generate Now
+                        </button>
+                    </div>
+
+                    <div id="generationStatus" class="status-box" style="display:none;">
+                        <div id="statusContent"></div>
+                        <div id="downloadLinks" class="download-section" style="display:none; margin-top: 20px;"></div>
+                    </div>
+                </div>
+
+                <!-- Bulk Mode -->
+                <div id="bulkMode" class="generator-mode" style="display:none;">
+                    <div class="form-group">
+                        <label>Select Profile:</label>
+                        <select id="bulkProfile" onchange="loadProfileData()">
+                            <option value="">-- Select a profile --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Paste Job Descriptions (one per line, or comma-separated URLs):</label>
+                        <textarea id="bulkJDs" placeholder="Paste multiple JDs or URLs..." rows="8"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>AI Provider:</label>
+                        <select id="bulkAiProvider" onchange="updateBulkCost()">
+                            <option value="">-- Select --</option>
+                            <option value="openai">OpenAI - $0.03 each</option>
+                            <option value="claude">Claude - $0.005 each</option>
+                            <option value="gemini">Gemini - $0.0075 each</option>
+                            <option value="mistral">Mistral - $0.002 each</option>
+                        </select>
+                    </div>
+
+                    <div id="bulkCostEstimate" class="cost-box">
+                        Enter JDs to see cost estimate...
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="generateBulk()">🚀 Generate All</button>
+                    </div>
+
+                    <div id="bulkStatus" class="status-box" style="display:none;">
+                        <div id="bulkStatusContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Applications Tab (Job Tracker) -->
+            <div id="applications" class="main-tab-content">
+                <div class="tracker-container">
+                    <div class="tracker-header">
+                        <h2>📋 Job Application Tracker</h2>
+                        <div class="tracker-controls">
+                            <span id="trackerLastUpdated" class="last-updated"></span>
+                            <button class="btn btn-icon" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
+                            <button class="btn btn-secondary" onclick="exportTrackerData()">⬇️ Export</button>
+                            <button class="btn btn-secondary" onclick="importTrackerData()">⬆️ Import</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="tracker-tabs">
+                        <button class="tracker-tab-btn active" onclick="switchTrackerTab('apps')">Applications</button>
+                        <button class="tracker-tab-btn" onclick="switchTrackerTab('contacts')">Networking Contacts</button>
+                        <button class="tracker-tab-btn" onclick="switchTrackerTab('portfolios')">Portfolio Guide</button>
+                    </div>
+
+                    <!-- Applications Tab -->
+                    <div id="trackerApps" class="tracker-tab-content active">
+                        <div class="tracker-toolbar">
+                            <input type="text" id="appSearch" placeholder="Search applications..." onkeyup="filterTrackerApplications()" class="search-input">
+                            <select id="statusFilter" onchange="filterTrackerApplications()" class="filter-select">
+                                <option value="">All Status</option>
+                                <option value="Applied">Applied</option>
+                                <option value="Interviewing">Interviewing</option>
+                                <option value="Offered">Offered</option>
+                                <option value="Rejected">Rejected/Denied</option>
+                            </select>
+                            <button class="btn btn-success" onclick="openApplicationModal()">+ Add Application</button>
+                        </div>
+
+                        <div id="appStats" class="app-stats"></div>
+
+                        <div id="applicationsList" class="applications-table-wrapper"></div>
+                    </div>
+
+                    <!-- Contacts Tab -->
+                    <div id="trackerContacts" class="tracker-tab-content">
+                        <div class="tracker-toolbar">
+                            <input type="text" id="contactSearch" placeholder="Search contacts..." onkeyup="filterTrackerContacts()" class="search-input">
+                            <button class="btn btn-success" onclick="openContactModal()">+ Add Contact</button>
+                        </div>
+                        <div id="contactsList" class="contacts-grid"></div>
+                    </div>
+
+                    <!-- Portfolio Guide Tab -->
+                    <div id="trackerPortfolios" class="tracker-tab-content">
+                        <div id="portfolioGuide" class="portfolio-guide-section"></div>
+                    </div>
+                </div>
+
+                <!-- Application Modal -->
+                <div id="applicationModal" class="modal" style="display:none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="appModalTitle">Add Application</h3>
+                            <button onclick="closeApplicationModal()" class="close-btn">&times;</button>
+                        </div>
+                        <form onsubmit="saveApplication(event)" class="modal-form">
+                            <div class="form-group">
+                                <label>Portfolio/Repository Name *</label>
+                                <input type="text" id="appPortfolio" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Applied Date *</label>
+                                <input type="date" id="appDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Role *</label>
+                                <input type="text" id="appRole" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Company *</label>
+                                <input type="text" id="appCompany" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Portfolio Link</label>
+                                <input type="url" id="appLink">
+                            </div>
+                            <div class="form-group">
+                                <label>Status *</label>
+                                <select id="appStatus" required>
+                                    <option value="Applied">Applied</option>
+                                    <option value="Interviewing">Interviewing</option>
+                                    <option value="Offered">Offered</option>
+                                    <option value="Rejected">Rejected/Denied</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Comments</label>
+                                <textarea id="appComments" rows="3"></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeApplicationModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Contact Modal -->
+                <div id="contactModal" class="modal" style="display:none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Add Contact</h3>
+                            <button onclick="closeContactModal()" class="close-btn">&times;</button>
+                        </div>
+                        <form onsubmit="saveContact(event)" class="modal-form">
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" id="contactName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Company</label>
+                                <input type="text" id="contactCompany">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="contactEmail">
+                            </div>
+                            <div class="form-group">
+                                <label>LinkedIn</label>
+                                <input type="text" id="contactLinkedIn" placeholder="https://linkedin.com/in/username">
+                            </div>
+                            <div class="form-group">
+                                <label>How We Met</label>
+                                <select id="contactSource">
+                                    <option value="">Select...</option>
+                                    <option value="Networking Event">Networking Event</option>
+                                    <option value="LinkedIn">LinkedIn</option>
+                                    <option value="Referral">Referral</option>
+                                    <option value="Recruiter">Recruiter</option>
+                                    <option value="Conference">Conference</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Comments/Notes</label>
+                                <textarea id="contactComments" rows="3"></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeContactModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history" class="main-tab-content">
+                <h2>Generation History</h2>
+                <div id="historyList" class="history-grid">
+                    <p style="grid-column: 1/-1; text-align: center; color: #999;">No generations yet.</p>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="main-tab-content">
+                <h2>Settings & AI Configuration</h2>
+
+                <!-- GitHub Settings -->
+                <div class="settings-section">
+                    <h3>🔧 GitHub Configuration</h3>
+                    <div class="form-group">
+                        <label>GitHub Data Repository Name:</label>
+                        <input type="text" id="dataRepoName" placeholder="resume-engine-data" />
+                        <small>This repo will store all your resumes and profiles. Leave blank to use default name.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Repository Access:</label>
+                        <label class="radio">
+                            <input type="radio" name="repoAccess" value="private" checked /> Private (only you can see)
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="repoAccess" value="public" /> Public (resumes visible to all)
+                        </label>
+                    </div>
+                    <button class="btn btn-secondary" onclick="initializeGithubRepo()">Initialize Data Repository</button>
+                </div>
+
+                <!-- AI Providers -->
+                <div class="settings-section">
+                    <h3>🤖 AI Providers</h3>
+                    <p>Connect your AI provider accounts to enable resume tailoring. Your API keys are stored securely in your browser.</p>
+
+                    <div id="aiProvidersSettings" class="ai-providers-grid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- API Key Management -->
+                <div class="settings-section">
+                    <h3>🔐 API Key Management</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="encryptKeys" checked /> Encrypt API keys with master password
+                        </label>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="exportSettings()">Export Settings</button>
+                        <button class="btn btn-secondary" onclick="importSettings()">Import Settings</button>
+                        <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeSettings()">&times;</span>
+            <h2>Quick Settings</h2>
+            <div id="quickSettings">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 Resume Engine Pro. Powered by GitHub + AI</p>
+        <p><small>Your data is private. Portfolios are shareable. All processing in your browser.</small></p>
+    </footer>
+
+    <!-- Libraries (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/octokit@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- Core Modules -->
+    <script src="core/storage-manager.js"></script>
+    <script src="core/github-manager.js"></script>
+    <script src="core/profile-manager.js"></script>
+    <script src="core/resume-parser.js"></script>
+    <script src="core/ai-integration.js"></script>
+    <script src="core/cost-calculator.js"></script>
+    <script src="core/generator.js"></script>
+    <script src="core/portfolio-templates.js"></script>
+
+    <!-- Main Script -->
+    <script src="script.js"></script>
+</body>
+</html>
