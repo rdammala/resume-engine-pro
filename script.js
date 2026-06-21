@@ -367,6 +367,24 @@ function updateStats() {
 // EVENT LISTENERS
 // ============================================================================
 
+// ============================================================================
+// SETTINGS MODAL
+// ============================================================================
+
+function openSettings() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeSettings() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================================================
+// EVENT LISTENERS
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     
@@ -376,6 +394,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const tabName = this.dataset.tab;
             switchMainTab(tabName);
         });
+    });
+    
+    // Modal close handlers (click outside modal)
+    window.addEventListener('click', (e) => {
+        const settingsModal = document.getElementById('settingsModal');
+        const appModal = document.getElementById('applicationModal');
+        const contactModal = document.getElementById('contactModal');
+        
+        if (e.target === settingsModal) closeSettings();
+        if (e.target === appModal && typeof closeApplicationModal !== 'undefined') closeApplicationModal();
+        if (e.target === contactModal && typeof closeContactModal !== 'undefined') closeContactModal();
     });
     
     // AI Provider selection

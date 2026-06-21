@@ -609,9 +609,9 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="settingsModal" class="modal" style="display:none;">
+    <div id="settingsModal" class="modal" style="display:none !important;">
         <div class="modal-content">
-            <span class="modal-close" onclick="closeSettings()">&times;</span>
+            <span class="modal-close" onclick="if(typeof closeSettings !== 'undefined') closeSettings(); else this.parentElement.parentElement.style.display='none';">&times;</span>
             <h2>Quick Settings</h2>
             <div id="quickSettings">
                 <!-- Will be populated by JavaScript -->
