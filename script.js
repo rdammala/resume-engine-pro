@@ -39,11 +39,11 @@ function switchMainTab(tabName) {
     document.querySelectorAll('.main-tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.main-tab-content').forEach(tab => tab.classList.remove('active'));
     
-    // Find and activate the clicked button
+    // Find and activate the clicked button by matching onclick content
     const buttons = document.querySelectorAll('.main-tab-btn');
     buttons.forEach(btn => {
-        if (btn.textContent.includes(tabName.charAt(0).toUpperCase() + tabName.slice(1)) || 
-            btn.onclick.toString().includes(`'${tabName}'`)) {
+        const onclickAttr = btn.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes(`'${tabName}'`)) {
             btn.classList.add('active');
         }
     });
@@ -94,6 +94,10 @@ async function handleLogin(token) {
 
 function handleLogout() {
     if (confirm('Are you sure you want to logout?')) {
+        // Close settings menu
+        const settingsMenu = document.getElementById('settingsMenu');
+        if (settingsMenu) settingsMenu.style.display = 'none';
+        
         GitHubManager.logout();
         currentUser = null;
         showPage('loginPage');
@@ -107,18 +111,18 @@ function handleLogout() {
 
 function updateUI() {
     const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
     const userDisplay = document.getElementById('userDisplay');
+    const settingsBtn = document.getElementById('settingsBtn');
     
     if (currentUser || GitHubManager.isAuthenticated()) {
         // User is logged in
         if (loginBtn) loginBtn.style.display = 'none';
-        if (logoutBtn) logoutBtn.style.display = 'block';
+        if (settingsBtn) settingsBtn.style.display = 'inline-block';
         if (userDisplay) userDisplay.textContent = `👤 ${GitHubManager.getUsername() || 'User'}`;
     } else {
         // User is logged out
         if (loginBtn) loginBtn.style.display = 'block';
-        if (logoutBtn) logoutBtn.style.display = 'none';
+        if (settingsBtn) settingsBtn.style.display = 'none';
         if (userDisplay) userDisplay.textContent = '';
     }
 }
@@ -412,9 +416,21 @@ function updateStats() {
 // SETTINGS MODAL
 // ============================================================================
 
-function openSettings() {
-    const modal = document.getElementById('settingsModal');
-    if (modal) modal.style.display = 'flex';
+function openProfileCreation() {
+    switchMainTab('profiles');
+}
+
+function generateSingleResume() {
+    const profileSelect = document.querySelector('select[id*="profile"]');
+    if (!profileSelect || profileSelect.value === '' || profileSelect.value === '-- Select a profile --') {
+        alert('Please select a profile first');
+        return;
+    }
+    alert('Resume generation started... (Feature coming soon)');
+}
+
+function generateBulkResumes() {
+    alert('Bulk generation feature coming soon');
 }
 
 function closeSettings() {
@@ -498,3 +514,49 @@ function closeModal(id) {
     const modal = document.getElementById(id);
     if (modal) modal.style.display = 'none';
 }
+
+// ============================================================================
+// PROFILE MANAGEMENT HANDLERS
+// ============================================================================
+
+function openProfileCreation() {
+    // Toggle the profile creation form
+    const profileCreation = document.getElementById('profileCreation');
+    if (profileCreation) {
+        profileCreation.style.display = profileCreation.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function switchProfileTab(tabName) {
+    // Hide all profile methods
+    document.querySelectorAll('.profile-method').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.profile-method').forEach(el => el.style.display = 'none');
+    
+    // Remove active class from tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected method
+    const method = document.getElementById(`${tabName}Method`);
+    if (method) {
+        method.classList.add('active');
+        method.style.display = 'block';
+    }
+    
+    // Mark tab button as active
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+}
+
+function handleResumeUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    console.log('File selected:', file.name);
+    alert('Resume parsing starting for: ' + file.name + ' (Implementation coming soon)');
+}
+
+// ============================================================================
+// RESUME GENERATION HANDLERS
+// ============================================================================
+
+function generateSingleResume() {\n    const profileSelect = document.querySelector('select[value]');\n    if (!profileSelect || profileSelect.value === '' || profileSelect.value === '-- Select a profile --') {\n        alert('Please select a profile first');\n        return;\n    }\n    alert('Resume generation started... (Feature coming soon)');\n}\n\nfunction generateBulkResumes() {\n    alert('Bulk generation feature coming soon');\n}\n\n// ============================================================================\n// GENERATOR MODE HANDLERS\n// ============================================================================\n\nfunction switchGeneratorMode(mode) {\n    // Hide all modes\n    document.getElementById('singleMode').style.display = 'none';\n    document.getElementById('bulkMode').style.display = 'none';\n    \n    // Remove active class from buttons\n    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));\n    \n    // Show selected mode\n    if (mode === 'single') {\n        document.getElementById('singleMode').style.display = 'block';\n        document.querySelector('.mode-btn:first-of-type').classList.add('active');\n    } else if (mode === 'bulk') {\n        document.getElementById('bulkMode').style.display = 'block';\n        document.querySelector('.mode-btn:nth-of-type(2)').classList.add('active');\n    }\n}\n\nfunction switchJDInput(type) {\n    document.getElementById('pasteJD').style.display = 'none';\n    document.getElementById('urlJD').style.display = 'none';\n    \n    document.querySelectorAll('.input-tab').forEach(btn => btn.classList.remove('active'));\n    \n    if (type === 'paste') {\n        document.getElementById('pasteJD').style.display = 'block';\n        event.target.classList.add('active');\n    } else if (type === 'url') {\n        document.getElementById('urlJD').style.display = 'block';\n        event.target.classList.add('active');\n    }\n}\n\nfunction loadProfileData() {\n    const select = document.getElementById('selectProfile');\n    if (select && select.value) {\n        console.log('Loading profile:', select.value);\n    }\n}
