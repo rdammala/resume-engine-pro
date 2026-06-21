@@ -52,8 +52,15 @@ function switchMainTab(tabName) {
 // AUTHENTICATION
 // ============================================================================
 
-async function handleLogin() {
-    const token = document.getElementById('ghToken')?.value;
+async function initiateGitHubLogin() {
+    // Show token input modal
+    const token = prompt('Enter your GitHub Personal Access Token:\n\nCreate one at: https://github.com/settings/tokens\n\nScopes needed: repo, gist, user');
+    if (!token || token.trim() === '') return;
+    
+    await handleLogin(token);
+}
+
+async function handleLogin(token) {
     if (!token) {
         alert('Please enter your GitHub Personal Access Token');
         return;
@@ -66,7 +73,7 @@ async function handleLogin() {
             showPage('dashboard');
             updateUI();
         } else {
-            alert('Authentication failed: ' + result.error);
+            alert('Authentication failed: ' + (result.error || 'Invalid token'));
         }
     } catch (error) {
         alert('Login error: ' + error.message);
