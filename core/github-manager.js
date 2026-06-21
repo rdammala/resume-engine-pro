@@ -1,10 +1,11 @@
 // ============================================================================
-// GITHUB MANAGER - Handle GitHub API operations
+// GITHUB MANAGER - Handle GitHub API operations (using direct fetch API)
 // ============================================================================
 
 const GitHubManager = {
-    octokit: null,
+    token: null,
     user: null,
+    baseUrl: 'https://api.github.com',
     
     // ========================================================================
     // AUTHENTICATION
@@ -12,21 +13,28 @@ const GitHubManager = {
     
     async authenticate(token) {
         try {
-            // Check if Octokit is loaded - try different namespaces
-            let OctokitLib = null;
-            if (typeof Octokit !== 'undefined' && Octokit.Octokit) {
-                OctokitLib = Octokit.Octokit;
-            } else if (typeof Octokit !== 'undefined') {
-                OctokitLib = Octokit;
-            } else if (typeof window.Octokit !== 'undefined') {
-                OctokitLib = window.Octokit;
-            } else {
-                console.error('Octokit library not loaded');
-                return { success: false, error: 'Octokit library not loaded. Please refresh the page.' };
+            if (!token || token.trim() === '') {
+                return { success: false, error: 'Token is empty' };
             }
             
-            this.octokit = new OctokitLib({ auth: token });
-            const { data: user } = await this.octokit.rest.users.getAuthenticated();
+            this.token = token;
+            
+            // Test token by fetching authenticated user
+            const response = await fetch(`${this.baseUrl}/user`, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    return { success: false, error: 'Invalid token. Please check your GitHub Personal Access Token.' };
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const user = await response.json();
             this.user = user;
             
             StorageManager.set('githubUser', user);
@@ -48,14 +56,22 @@ const GitHubManager = {
     },
     
     logout() {
-        this.octokit = null;
+        this.token = null;
         this.user = null;
         StorageManager.deleteAPIKey('github');
         StorageManager.remove('githubUser');
     },
     
     isAuthenticated() {
-        return !!this.octokit && !!this.user;
+        return !!this.token && !!this.user;
+    },
+    
+    getUsername() {
+        return this.user?.login || null;
+    },
+    
+    getUser() {
+        return this.user;
     },
     
     // ========================================================================
@@ -70,23 +86,42 @@ const GitHubManager = {
         try {
             // Check if repo already exists
             try {
-                await this.octokit.rest.repos.get({
-                    owner: this.user.login,
-                    repo: repoName
+                const response = await fetch(`${this.baseUrl}/repos/${this.user.login}/${repoName}`, {
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
                 });
-                return { success: true, exists: true, repoName };
+                if (response.ok) {
+                    return { success: true, exists: true, repoName };
+                }
             } catch (e) {
-                // Repo doesn't exist, create it
+                // Repo doesn't exist
             }
             
-            const { data: repo } = await this.octokit.rest.repos.createForAuthenticatedUser({
-                name: repoName,
-                description: 'Resume Engine Pro - Resume data, profiles, and generated files',
-                private: true,
-                has_wiki: false,
-                has_projects: false,
-                has_downloads: false
+            // Create new repository
+            const response = await fetch(`${this.baseUrl}/user/repos`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${this.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: repoName,
+                    description: 'Resume Engine Pro - Resume data, profiles, and generated files',
+                    private: true,
+                    has_wiki: false,
+                    has_projects: false,
+                    has_downloads: false
+                })
             });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to create repo: ${response.statusText}`);
+            }
+            
+            const repo = await response.json();
             
             StorageManager.saveGithubConfig({
                 dataRepoName: repoName,
@@ -110,34 +145,49 @@ const GitHubManager = {
         }
         
         try {
-            const encodedContent = btoa(content);
+            const encodedContent = btoa(unescape(encodeURIComponent(content)));
             
+            // Try to get existing file SHA
+            let sha = null;
             try {
-                // Try to get existing file to get its SHA
-                const { data: existing } = await this.octokit.rest.repos.getContent({
-                    owner: this.user.login,
-                    repo: repoName,
-                    path: path
-                });
+                const getResponse = await fetch(
+                    `${this.baseUrl}/repos/${this.user.login}/${repoName}/contents/${path}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${this.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
                 
-                // Update existing file
-                await this.octokit.rest.repos.createOrUpdateFileContents({
-                    owner: this.user.login,
-                    repo: repoName,
-                    path: path,
-                    message: message,
-                    content: encodedContent,
-                    sha: existing.sha
-                });
+                if (getResponse.ok) {
+                    const fileData = await getResponse.json();
+                    sha = fileData.sha;
+                }
             } catch (e) {
-                // File doesn't exist, create it
-                await this.octokit.rest.repos.createOrUpdateFileContents({
-                    owner: this.user.login,
-                    repo: repoName,
-                    path: path,
-                    message: message,
-                    content: encodedContent
-                });
+                // File doesn't exist
+            }
+            
+            // Create or update file
+            const response = await fetch(
+                `${this.baseUrl}/repos/${this.user.login}/${repoName}/contents/${path}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        content: encodedContent,
+                        ...(sha && { sha })
+                    })
+                }
+            );
+            
+            if (!response.ok) {
+                throw new Error(`Failed to push file: ${response.statusText}`);
             }
             
             return { success: true, path };
@@ -153,21 +203,45 @@ const GitHubManager = {
         }
         
         try {
-            const { data: file } = await this.octokit.rest.repos.getContent({
-                owner: this.user.login,
-                repo: repoName,
-                path: path
-            });
+            // Get file SHA
+            const getResponse = await fetch(
+                `${this.baseUrl}/repos/${this.user.login}/${repoName}/contents/${path}`,
+                {
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
             
-            await this.octokit.rest.repos.deleteFile({
-                owner: this.user.login,
-                repo: repoName,
-                path: path,
-                message: message,
-                sha: file.sha
-            });
+            if (!getResponse.ok) {
+                throw new Error(`File not found: ${path}`);
+            }
             
-            return { success: true };
+            const fileData = await getResponse.json();
+            
+            // Delete file
+            const response = await fetch(
+                `${this.baseUrl}/repos/${this.user.login}/${repoName}/contents/${path}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sha: fileData.sha
+                    })
+                }
+            );
+            
+            if (!response.ok) {
+                throw new Error(`Failed to delete file: ${response.statusText}`);
+            }
+            
+            return { success: true, path };
         } catch (error) {
             console.error('File delete error:', error);
             return { success: false, error: error.message };
@@ -185,21 +259,7 @@ const GitHubManager = {
             { path: 'portfolios/.gitkeep', content: '' },
             { 
                 path: 'README.md', 
-                content: `# Resume Engine Pro - Data Repository
-
-This repository contains your resume profiles, generated resumes, cover letters, and portfolios.
-
-## Structure
-- \`profiles/\` - Your resume profiles (JSON format)
-- \`generated/\` - Generated resumes, cover letters, and job details
-- \`portfolios/\` - Portfolio websites for GitHub Pages
-
-## Privacy
-This repository is set to PRIVATE. Only you can view your resume data.
-
-**Generated at:** ${new Date().toISOString()}
-**Generator:** Resume Engine Pro v1.0
-` 
+                content: `# Resume Engine Pro - Data Repository\n\nThis repository contains your resume profiles, generated resumes, and portfolios.\n\nGenerated: ${new Date().toISOString()}` 
             }
         ];
         
@@ -242,65 +302,82 @@ This repository is set to PRIVATE. Only you can view your resume data.
         try {
             // Check if repo exists
             try {
-                const existing = await this.octokit.rest.repos.get({
-                    owner: this.user.login,
-                    repo: portfolioName
+                const response = await fetch(`${this.baseUrl}/repos/${this.user.login}/${portfolioName}`, {
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
                 });
                 
-                // Update existing
-                await this.pushFile(portfolioName, 'index.html', htmlContent, 'Update portfolio');
-            } catch {
-                // Create new repo
-                await this.octokit.rest.repos.createForAuthenticatedUser({
+                if (response.ok) {
+                    // Update existing
+                    await this.pushFile(portfolioName, 'index.html', htmlContent, 'Update portfolio');
+                    return { success: true, created: false, repoName: portfolioName };
+                }
+            } catch (e) {
+                // Repo doesn't exist, create it
+            }
+            
+            // Create new repository
+            const createResponse = await fetch(`${this.baseUrl}/user/repos`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${this.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     name: portfolioName,
                     description: `Portfolio - ${portfolioName}`,
                     private: false,
                     has_wiki: false,
                     has_projects: false
-                });
-                
-                // Push files
-                await this.pushFile(portfolioName, 'index.html', htmlContent, 'Initial portfolio');
-                await this.pushFile(
-                    portfolioName,
-                    'README.md',
-                    `# ${portfolioName}\n\nPortfolio generated by Resume Engine Pro`
-                );
+                })
+            });
+            
+            if (!createResponse.ok) {
+                throw new Error(`Failed to create repo: ${createResponse.statusText}`);
             }
+            
+            const repo = await createResponse.json();
+            
+            // Push index.html
+            await this.pushFile(portfolioName, 'index.html', htmlContent, 'Initial portfolio');
             
             // Enable GitHub Pages
-            try {
-                await this.octokit.rest.repos.createPagesSite({
-                    owner: this.user.login,
-                    repo: portfolioName,
-                    source: { branch: 'main', path: '/' }
-                });
-            } catch (e) {
-                // GitHub Pages might already be enabled
-                console.log('Pages might already be enabled:', e.message);
-            }
+            await this.enableGitHubPages(portfolioName);
             
-            const portfolioUrl = `https://${this.user.login}.github.io/${portfolioName}/`;
-            return { success: true, url: portfolioUrl };
+            return { success: true, created: true, repo, url: `https://${this.user.login}.github.io/${portfolioName}/` };
         } catch (error) {
-            console.error('Portfolio repo creation error:', error);
+            console.error('Portfolio creation error:', error);
             return { success: false, error: error.message };
         }
     },
     
-    // ========================================================================
-    // UTILITY METHODS
-    // ========================================================================
-    
-    getUsername() {
-        return this.user?.login || null;
-    },
-    
-    getUser() {
-        return this.user || null;
+    async enableGitHubPages(repoName) {
+        try {
+            const response = await fetch(
+                `${this.baseUrl}/repos/${this.user.login}/${repoName}/pages`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${this.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        source: {
+                            branch: 'main',
+                            path: '/'
+                        }
+                    })
+                }
+            );
+            
+            return response.ok;
+        } catch (error) {
+            console.warn('GitHub Pages setup error:', error);
+            return false;
+        }
     }
 };
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GitHubManager;
-}
