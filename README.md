@@ -15,6 +15,19 @@ Resume Engine Pro is a comprehensive, browser-based resume and portfolio generat
 - ✅ Complete privacy control
 - ✅ Works offline
 
+## 📚 Learning Hub
+
+**Interactive development documentation for Resume Engine Pro**
+
+👉 **[Visit the Learning Hub](https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html)**
+
+The Learning Hub is an interactive guide documenting the design decisions, bugs, and architectural patterns behind Resume Engine Pro. Explore 7 role-specific perspectives (SRE, DevOps, Build Engineer, Test Engineer, Release Manager) and track the resolution of 8 critical bugs with complete root cause analysis and lessons learned.
+
+- **Bug Tracking:** 8 bugs documented with severity, status, and resolution details
+- **Role Perspectives:** 500+ words each on SRE, DevOps, Build, Test, and Release Management
+- **Live Link:** https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html
+- **Repository:** [learning-hub/](./learning-hub/) folder in this repository
+
 ## 📋 Architecture
 
 ### Technology Stack
