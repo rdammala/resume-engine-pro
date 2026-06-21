@@ -12,7 +12,20 @@ const GitHubManager = {
     
     async authenticate(token) {
         try {
-            this.octokit = new Octokit.Octokit({ auth: token });
+            // Check if Octokit is loaded - try different namespaces
+            let OctokitLib = null;
+            if (typeof Octokit !== 'undefined' && Octokit.Octokit) {
+                OctokitLib = Octokit.Octokit;
+            } else if (typeof Octokit !== 'undefined') {
+                OctokitLib = Octokit;
+            } else if (typeof window.Octokit !== 'undefined') {
+                OctokitLib = window.Octokit;
+            } else {
+                console.error('Octokit library not loaded');
+                return { success: false, error: 'Octokit library not loaded. Please refresh the page.' };
+            }
+            
+            this.octokit = new OctokitLib({ auth: token });
             const { data: user } = await this.octokit.rest.users.getAuthenticated();
             this.user = user;
             
