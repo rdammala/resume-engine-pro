@@ -2,24 +2,55 @@
 // MAIN APPLICATION ORCHESTRATION
 // ============================================================================
 
+console.log('=== Resume Engine Pro Script Loaded ===');
+
+// Global error handler
+window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+});
+
 let currentUser = null;
 let currentProfile = null;
 let selectedAIProvider = 'openai';
 let selectedMode = 'smart';
 let generatedResume = null;
 
+console.log('Script variables initialized');
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 
 async function initializeApp() {
+    console.log('Initializing Resume Engine Pro');
+    
+    // Verify all required modules are loaded
+    const requiredModules = ['StorageManager', 'GitHubManager', 'ResumeParser', 'ProfileManager'];
+    const missingModules = requiredModules.filter(mod => typeof window[mod] === 'undefined');
+    
+    if (missingModules.length > 0) {
+        console.error('Missing modules:', missingModules);
+        alert('ERROR: Required modules not loaded: ' + missingModules.join(', ') + '\nPlease refresh the page.');
+        return;
+    }
+    
+    console.log('All modules loaded successfully');
+    
     // Load any existing session
     const session = await GitHubManager.loadSession();
+    console.log('Session load result:', session);
+    
     if (session.success) {
+        console.log('Session found, showing app');
         showPage('appPage');
         currentUser = session.user;
         updateUI();
     } else {
+        console.log('No session, showing login');
         showPage('loginPage');
     }
 }
@@ -65,29 +96,55 @@ function switchMainTab(tabName) {
 // ============================================================================
 
 async function initiateGitHubLogin() {
-    // Show token input modal
-    const token = prompt('Enter your GitHub Personal Access Token:\n\nCreate one at: https://github.com/settings/tokens\n\nScopes needed: repo, gist, user');
-    if (!token || token.trim() === '') return;
-    
-    await handleLogin(token);
+    console.log('initiateGitHubLogin called');
+    try {
+        // Verify GitHubManager is loaded
+        if (typeof GitHubManager === 'undefined') {
+            alert('ERROR: GitHubManager not loaded. Please refresh the page.');
+            console.error('GitHubManager is undefined');
+            return;
+        }
+        
+        // Show token input modal
+        const token = prompt('Enter your GitHub Personal Access Token:\n\nCreate one at: https://github.com/settings/tokens\n\nScopes needed: repo, gist, user');
+        console.log('Token entered:', !!token);
+        if (!token || token.trim() === '') {
+            console.log('No token provided, cancelling');
+            return;
+        }
+        
+        console.log('Calling handleLogin with token');
+        await handleLogin(token);
+    } catch (error) {
+        console.error('initiateGitHubLogin error:', error);
+        alert('Login error: ' + error.message);
+    }
 }
 
 async function handleLogin(token) {
+    console.log('handleLogin called with token');
     if (!token) {
         alert('Please enter your GitHub Personal Access Token');
         return;
     }
     
     try {
+        console.log('Authenticating with GitHubManager...');
         const result = await GitHubManager.authenticate(token);
+        console.log('Authentication result:', result);
+        
         if (result.success) {
+            console.log('Authentication successful, updating UI');
             currentUser = result.user;
             showPage('appPage');
             updateUI();
+            console.log('Login complete');
         } else {
+            console.error('Authentication failed:', result.error);
             alert('Authentication failed: ' + (result.error || 'Invalid token'));
         }
     } catch (error) {
+        console.error('Login error:', error);
         alert('Login error: ' + error.message);
     }
 }
