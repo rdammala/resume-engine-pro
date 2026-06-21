@@ -361,10 +361,3 @@ Format as JSON with keys: summary, experience, skills, ats_suggestions, full_res
 };
 
 window.AIIntegration = AIIntegration;
-console.log('AIIntegration initialized');
-
-} // End of guard
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = AIIntegration;
-}

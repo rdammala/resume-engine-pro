@@ -287,7 +287,3 @@ const JobTrackerManager = {
 };
 
 window.JobTrackerManager = JobTrackerManager;
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = JobTrackerManager;
-}

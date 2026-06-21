@@ -253,9 +253,4 @@ const StorageManager = {
     }
 };
 
-// Export for use
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = StorageManager;
-}
-
 window.StorageManager = StorageManager;

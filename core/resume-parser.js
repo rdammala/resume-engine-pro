@@ -180,10 +180,4 @@ const ResumeParser = {
         
         return languages;
     }
-};
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ResumeParser;
-}
-
 window.ResumeParser = ResumeParser;

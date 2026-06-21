@@ -253,7 +253,3 @@ const ResumeTemplates = {
 };
 
 window.ResumeTemplates = ResumeTemplates;
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ResumeTemplates;
-}

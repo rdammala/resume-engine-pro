@@ -78,10 +78,4 @@ const ProfileManager = {
         }
         return edu.slice(0, 3);
     }
-};
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ProfileManager;
-}
-
 window.ProfileManager = ProfileManager;

@@ -346,7 +346,3 @@ const PortfolioTemplates50Plus = {
 };
 
 window.PortfolioTemplates50Plus = PortfolioTemplates50Plus;
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PortfolioTemplates50Plus;
-}

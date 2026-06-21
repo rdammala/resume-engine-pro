@@ -113,10 +113,3 @@ const CostCalculator = {
 };
 
 window.CostCalculator = CostCalculator;
-console.log('CostCalculator initialized');
-
-} // End of guard
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CostCalculator;
-}

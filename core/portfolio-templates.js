@@ -133,10 +133,3 @@ const PortfolioTemplates = {
 };
 
 window.PortfolioTemplates = PortfolioTemplates;
-console.log('PortfolioTemplates initialized');
-
-} // End of guard
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PortfolioTemplates;
-}
