@@ -2,10 +2,6 @@
 // RESUME TEMPLATES - 50+ Professional Resume Designs
 // ============================================================================
 
-if (typeof window.ResumeTemplates !== 'undefined') {
-    console.warn('ResumeTemplates already loaded, skipping');
-} else {
-
 const ResumeTemplates = {
     templates: [
         // Modern Templates
@@ -257,9 +253,6 @@ const ResumeTemplates = {
 };
 
 window.ResumeTemplates = ResumeTemplates;
-console.log('ResumeTemplates initialized');
-
-} // End of guard
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ResumeTemplates;

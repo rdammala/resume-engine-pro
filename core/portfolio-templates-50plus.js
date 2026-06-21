@@ -2,10 +2,6 @@
 // PORTFOLIO TEMPLATES - 50+ Professional Portfolio Styles
 // ============================================================================
 
-if (typeof window.PortfolioTemplates50Plus !== 'undefined') {
-    console.warn('PortfolioTemplates50Plus already loaded, skipping');
-} else {
-
 const PortfolioTemplates50Plus = {
     styles: [
         // MINIMALIST SERIES (5)
@@ -350,9 +346,6 @@ const PortfolioTemplates50Plus = {
 };
 
 window.PortfolioTemplates50Plus = PortfolioTemplates50Plus;
-console.log('PortfolioTemplates50Plus initialized');
-
-} // End of guard
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = PortfolioTemplates50Plus;

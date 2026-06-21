@@ -2,10 +2,6 @@
 // PORTFOLIO TEMPLATES - Pre-designed portfolio templates
 // ============================================================================
 
-if (typeof window.PortfolioTemplates !== 'undefined') {
-    console.warn('PortfolioTemplates already loaded, skipping');
-} else {
-
 const PortfolioTemplates = {
     templates: [
         {

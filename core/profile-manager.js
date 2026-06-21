@@ -2,10 +2,6 @@
 // PROFILE MANAGER - Handle user resume profiles
 // ============================================================================
 
-if (typeof window.ProfileManager !== 'undefined') {
-    console.warn('ProfileManager already loaded, skipping');
-} else {
-
 const ProfileManager = {
     async parseResume(file) {
         const text = await file.text();
@@ -89,5 +85,3 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 window.ProfileManager = ProfileManager;
-console.log('ProfileManager initialized');
-} // End of guard

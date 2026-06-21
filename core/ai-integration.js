@@ -2,10 +2,6 @@
 // AI INTEGRATION - Multi-provider support (OpenAI, Claude, Gemini, Mistral)
 // ============================================================================
 
-if (typeof window.AIIntegration !== 'undefined') {
-    console.warn('AIIntegration already loaded, skipping');
-} else {
-
 const AIIntegration = {
     providers: {
         openai: {

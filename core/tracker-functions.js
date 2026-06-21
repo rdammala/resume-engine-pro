@@ -3,12 +3,6 @@
 // JOB TRACKER FUNCTIONS
 // ============================================================================
 
-if (typeof window._trackerFunctionsLoaded !== 'undefined') {
-    console.warn('Tracker functions already loaded, skipping');
-} else {
-
-window._trackerFunctionsLoaded = true;
-
 // Tracker Initialization
 async function initializeTracker() {
     renderApplicationsList();
@@ -453,5 +447,3 @@ document.addEventListener('click', (e) => {
         closeContactModal();
     }
 });
-
-} // End of guard

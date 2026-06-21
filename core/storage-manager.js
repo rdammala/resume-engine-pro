@@ -2,10 +2,6 @@
 // STORAGE MANAGER - Handle LocalStorage, Encryption, and Syncing
 // ============================================================================
 
-if (typeof window.StorageManager !== 'undefined') {
-    console.warn('StorageManager already loaded, skipping');
-} else {
-
 const StorageManager = {
     PREFIX: 'resumeEngineProV1_',
     
@@ -263,5 +259,3 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 window.StorageManager = StorageManager;
-console.log('StorageManager initialized');
-} // End of guard

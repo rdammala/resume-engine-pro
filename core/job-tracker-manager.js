@@ -2,10 +2,6 @@
 // JOB TRACKER MANAGER - Job application & networking contact management
 // ============================================================================
 
-if (typeof window.JobTrackerManager !== 'undefined') {
-    console.warn('JobTrackerManager already loaded, skipping');
-} else {
-
 const JobTrackerManager = {
     APP_KEY: 'resumeEngineProV1_applications',
     CONTACT_KEY: 'resumeEngineProV1_contacts',
@@ -291,9 +287,6 @@ const JobTrackerManager = {
 };
 
 window.JobTrackerManager = JobTrackerManager;
-console.log('JobTrackerManager initialized');
-
-} // End of guard
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = JobTrackerManager;
