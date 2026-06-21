@@ -16,11 +16,11 @@ async function initializeApp() {
     // Load any existing session
     const session = await GitHubManager.loadSession();
     if (session.success) {
-        showPage('dashboard');
+        showPage('appPage');
         currentUser = session.user;
         updateUI();
     } else {
-        showPage('login');
+        showPage('loginPage');
     }
 }
 
@@ -70,7 +70,7 @@ async function handleLogin(token) {
         const result = await GitHubManager.authenticate(token);
         if (result.success) {
             currentUser = result.user;
-            showPage('dashboard');
+            showPage('appPage');
             updateUI();
         } else {
             alert('Authentication failed: ' + (result.error || 'Invalid token'));
@@ -84,7 +84,7 @@ function handleLogout() {
     if (confirm('Are you sure you want to logout?')) {
         GitHubManager.logout();
         currentUser = null;
-        showPage('login');
+        showPage('loginPage');
         updateUI();
     }
 }

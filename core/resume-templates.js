@@ -50,14 +50,14 @@ const ResumeTemplates = {
         { id: 'academic-formal', name: 'Academic Formal', category: 'academic', colors: ['#1a1a1a', '#666666', '#ffffff'] },
         { id: 'academic-research', name: 'Research', category: 'academic', colors: ['#003366', '#0066cc', '#f9f9f9'] },
         { id: 'academic-journal', name: 'Journal', category: 'academic', colors: ['#2c3e50', '#34495e', '#ecf0f1'] },
-        { id: 'academic-university', name: 'University', category: 'academic', colors: ['#8b0000', '#000080', '#f5f5f5') },
+        { id: 'academic-university', name: 'University', category: 'academic', colors: ['#8b0000', '#000080', '#f5f5f5'] },
         { id: 'academic-scholar', name: 'Scholar', category: 'academic', colors: ['#1a3a3a', '#2d5d5d', '#e8f0f0'] },
         
         // Industry-Specific Templates
         { id: 'finance-investment', name: 'Finance', category: 'industry', colors: ['#003366', '#ff6600', '#f0f0f0'] },
         { id: 'healthcare-medical', name: 'Healthcare', category: 'industry', colors: ['#005c99', '#00cc99', '#f0f9f9'] },
         { id: 'education-teaching', name: 'Education', category: 'industry', colors: ['#d9534f', '#5cb85c', '#f5f5f5'] },
-        { id: 'marketing-creative', name: 'Marketing', category: 'industry', colors: ['#ff6b6b', '#4ecdc4', '#fff5f5') },
+        { id: 'marketing-creative', name: 'Marketing', category: 'industry', colors: ['#ff6b6b', '#4ecdc4', '#fff5f5'] },
         { id: 'engineering-tech', name: 'Engineering', category: 'industry', colors: ['#333333', '#00aced', '#f9f9f9'] },
         
         // Color-Focused Templates
