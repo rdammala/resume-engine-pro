@@ -22,6 +22,55 @@ let generatedResume = null;
 console.log('Script variables initialized');
 
 // ============================================================================
+// HEALTH CHECK
+// ============================================================================
+
+function runHealthCheck() {
+    console.log('=== HEALTH CHECK STARTING ===');
+    
+    const requiredModules = ['StorageManager', 'GitHubManager', 'ResumeParser', 'ProfileManager', 'AIIntegration', 'CostCalculator', 'PortfolioTemplates', 'ResumeTemplates', 'JobTrackerManager', 'Generator'];
+    
+    const results = {};
+    for (const mod of requiredModules) {
+        const exists = typeof window[mod] !== 'undefined';
+        results[mod] = exists;
+        console.log(`✓ ${mod}: ${exists ? '✅ LOADED' : '❌ MISSING'}`);
+    }
+    
+    const functionChecks = {
+        'initiateGitHubLogin': typeof initiateGitHubLogin === 'function',
+        'handleLogin': typeof handleLogin === 'function',
+        'initializeApp': typeof initializeApp === 'function',
+        'showPage': typeof showPage === 'function',
+    };
+    
+    for (const [funcName, exists] of Object.entries(functionChecks)) {
+        console.log(`✓ ${funcName}(): ${exists ? '✅ AVAILABLE' : '❌ MISSING'}`);
+    }
+    
+    console.log('=== HEALTH CHECK COMPLETE ===');
+    return { modules: results, functions: functionChecks };
+}
+
+// Run health check when page loads
+window.addEventListener('load', () => {
+    console.log('PAGE LOAD EVENT FIRED');
+    runHealthCheck();
+    
+    // Also setup button event listeners as backup
+    const githubBtn = document.querySelector('button[onclick*="initiateGitHubLogin"]');
+    if (githubBtn) {
+        console.log('GitHub button found, adding event listener');
+        githubBtn.addEventListener('click', (e) => {
+            console.log('GitHub button clicked via event listener');
+            initiateGitHubLogin();
+        });
+    } else {
+        console.warn('GitHub button not found in DOM');
+    }
+});
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
 
@@ -95,28 +144,34 @@ function switchMainTab(tabName) {
 // AUTHENTICATION
 // ============================================================================
 
-async function initiateGitHubLogin() {
-    console.log('initiateGitHubLogin called');
+function initiateGitHubLogin() {
+    console.log('======== GITHUB LOGIN INITIATED ========');
+    console.log('GitHubManager available:', typeof window.GitHubManager !== 'undefined');
+    console.log('Checking window keys:', Object.keys(window).filter(k => k.includes('GitHub') || k.includes('github')).slice(0, 5));
+    
     try {
         // Verify GitHubManager is loaded
-        if (typeof GitHubManager === 'undefined') {
-            alert('ERROR: GitHubManager not loaded. Please refresh the page.');
-            console.error('GitHubManager is undefined');
+        if (typeof window.GitHubManager === 'undefined') {
+            console.error('❌ CRITICAL: GitHubManager is undefined');
+            alert('ERROR: GitHubManager module not loaded.\n\nPlease:\n1. Open DevTools (F12)\n2. Check Console for errors\n3. Hard refresh (Ctrl+Shift+R)\n\nIf errors persist, GitHub button cannot work.');
             return;
         }
         
+        console.log('✅ GitHubManager is available');
+        
         // Show token input modal
         const token = prompt('Enter your GitHub Personal Access Token:\n\nCreate one at: https://github.com/settings/tokens\n\nScopes needed: repo, gist, user');
-        console.log('Token entered:', !!token);
+        console.log('Token prompt shown, token entered:', !!token);
         if (!token || token.trim() === '') {
-            console.log('No token provided, cancelling');
+            console.log('No token provided, login cancelled');
             return;
         }
         
         console.log('Calling handleLogin with token');
-        await handleLogin(token);
+        handleLogin(token);
     } catch (error) {
-        console.error('initiateGitHubLogin error:', error);
+        console.error('❌ initiateGitHubLogin error:', error);
+        console.error('Error stack:', error.stack);
         alert('Login error: ' + error.message);
     }
 }
