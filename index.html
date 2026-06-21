@@ -8,15 +8,52 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     
+    <!-- Inline debugging script -->
+    <script>
+        window.debugLog = [];
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function(...args) {
+            window.debugLog.push('LOG: ' + args.join(' '));
+            originalConsoleLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            window.debugLog.push('ERROR: ' + args.join(' '));
+            originalConsoleError.apply(console, args);
+        };
+        
+        console.log('DEBUG: index.html loaded, starting module check');
+        
+        // Module load tracker
+        window.modulesLoaded = {
+            StorageManager: false,
+            GitHubManager: false,
+            ProfileManager: false,
+            ResumeParser: false,
+            AIIntegration: false,
+            CostCalculator: false,
+            PortfolioTemplates: false,
+            PortfolioTemplates50plus: false,
+            ResumeTemplates: false,
+            JobTrackerManager: false,
+            TrackerFunctions: false,
+            Generator: false
+        };
+    </script>
+    
     <!-- External Libraries -->
     <!-- PDF.js for PDF parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        console.log('DEBUG: pdf.js loaded');
     </script>
     
     <!-- JSZip for DOCX parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>console.log('DEBUG: jszip loaded');</script>
     
     <!-- docx.js for DOCX generation - TODO: Find compatible browser build -->
     <!-- <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script> -->
@@ -24,20 +61,44 @@
     <!-- PDF-Kit for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfkit/0.13.0/pdfkit.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfkit/0.13.0/blob-stream.min.js"></script>
+    <script>console.log('DEBUG: pdfkit loaded');</script>
     
     <!-- Core Modules -->
     <script src="core/storage-manager.js"></script>
+    <script>window.modulesLoaded.StorageManager = !!window.StorageManager; console.log('DEBUG: StorageManager loaded:', window.modulesLoaded.StorageManager);</script>
+    
     <script src="core/github-manager.js"></script>
+    <script>window.modulesLoaded.GitHubManager = !!window.GitHubManager; console.log('DEBUG: GitHubManager loaded:', window.modulesLoaded.GitHubManager);</script>
+    
     <script src="core/profile-manager.js"></script>
+    <script>window.modulesLoaded.ProfileManager = !!window.ProfileManager; console.log('DEBUG: ProfileManager loaded:', window.modulesLoaded.ProfileManager);</script>
+    
     <script src="core/resume-parser.js"></script>
+    <script>window.modulesLoaded.ResumeParser = !!window.ResumeParser; console.log('DEBUG: ResumeParser loaded:', window.modulesLoaded.ResumeParser);</script>
+    
     <script src="core/ai-integration.js"></script>
+    <script>window.modulesLoaded.AIIntegration = !!window.AIIntegration; console.log('DEBUG: AIIntegration loaded:', window.modulesLoaded.AIIntegration);</script>
+    
     <script src="core/cost-calculator.js"></script>
+    <script>window.modulesLoaded.CostCalculator = !!window.CostCalculator; console.log('DEBUG: CostCalculator loaded:', window.modulesLoaded.CostCalculator);</script>
+    
     <script src="core/portfolio-templates.js"></script>
+    <script>window.modulesLoaded.PortfolioTemplates = !!window.PortfolioTemplates; console.log('DEBUG: PortfolioTemplates loaded:', window.modulesLoaded.PortfolioTemplates);</script>
+    
     <script src="core/portfolio-templates-50plus.js"></script>
+    <script>window.modulesLoaded.PortfolioTemplates50plus = !!window.PortfolioTemplates50plus; console.log('DEBUG: PortfolioTemplates50plus loaded:', window.modulesLoaded.PortfolioTemplates50plus);</script>
+    
     <script src="core/resume-templates.js"></script>
+    <script>window.modulesLoaded.ResumeTemplates = !!window.ResumeTemplates; console.log('DEBUG: ResumeTemplates loaded:', window.modulesLoaded.ResumeTemplates);</script>
+    
     <script src="core/job-tracker-manager.js"></script>
+    <script>window.modulesLoaded.JobTrackerManager = !!window.JobTrackerManager; console.log('DEBUG: JobTrackerManager loaded:', window.modulesLoaded.JobTrackerManager);</script>
+    
     <script src="core/tracker-functions.js"></script>
+    <script>window.modulesLoaded.TrackerFunctions = !!window.TrackerFunctions; console.log('DEBUG: TrackerFunctions loaded:', window.modulesLoaded.TrackerFunctions);</script>
+    
     <script src="core/generator.js"></script>
+    <script>window.modulesLoaded.Generator = !!window.Generator; console.log('DEBUG: Generator loaded:', window.modulesLoaded.Generator);</script>
     
     <!-- Main Application -->
     <script src="script.js"></script>
@@ -78,6 +139,19 @@
                         Sign in with GitHub
                     </button>
                     <p class="privacy-note">We use GitHub OAuth. Data stored privately in your GitHub account.</p>
+                    
+                    <!-- DEBUG: Test button -->
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #444; font-size: 0.8rem; color: #888;">
+                        <button class="btn" onclick="alert('JavaScript is working!')" style="width: 100%; margin-bottom: 0.5rem; background: #333; border: 1px solid #555;">
+                            🧪 Test JavaScript
+                        </button>
+                        <button class="btn" onclick="console.table(window.modulesLoaded); alert('Check browser console (F12) for module status')" style="width: 100%; margin-bottom: 0.5rem; background: #333; border: 1px solid #555;">
+                            🔍 Check Module Status
+                        </button>
+                        <button class="btn" onclick="console.log(window.debugLog); alert('Debug log shown in console')" style="width: 100%; background: #333; border: 1px solid #555;">
+                            📋 View Debug Log
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
