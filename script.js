@@ -163,20 +163,85 @@ function initiateGitHubLogin() {
         
         console.log('✅ GitHubManager is available');
         
-        // Show token input modal
-        const token = prompt('Enter your GitHub Personal Access Token:\n\nCreate one at: https://github.com/settings/tokens\n\nScopes needed: repo, gist, user');
-        console.log('Token prompt shown, token entered:', !!token);
-        if (!token || token.trim() === '') {
-            console.log('No token provided, login cancelled');
-            return;
-        }
+        // Show token input modal (replaces prompt() for better compatibility)
+        showGitHubTokenModal();
         
-        console.log('Calling handleLogin with token');
-        handleLogin(token);
     } catch (error) {
         console.error('❌ initiateGitHubLogin error:', error);
         console.error('Error stack:', error.stack);
         alert('Login error: ' + error.message);
+    }
+}
+
+// Modal-based token input (replaces unsupported prompt() function)
+function showGitHubTokenModal() {
+    // Create modal HTML
+    const modalHTML = `
+        <div id="githubTokenModal" class="github-token-modal">
+            <div class="github-token-modal-content">
+                <button class="github-token-modal-close" onclick="closeGitHubTokenModal()">✕</button>
+                <h2>GitHub Authentication</h2>
+                <p>Enter your GitHub Personal Access Token to continue:</p>
+                
+                <div class="github-token-input-group">
+                    <label for="githubTokenInput">Personal Access Token</label>
+                    <input type="password" id="githubTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
+                           class="github-token-input"
+                           onkeypress="if(event.key==='Enter') submitGitHubToken()">
+                </div>
+                
+                <div class="github-token-help">
+                    <p><strong>How to create a token:</strong></p>
+                    <ol>
+                        <li>Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></li>
+                        <li>Click "Generate new token (classic)"</li>
+                        <li>Select scopes: <code>repo</code>, <code>gist</code>, <code>user</code></li>
+                        <li>Copy and paste the token here</li>
+                    </ol>
+                </div>
+                
+                <div class="github-token-actions">
+                    <button class="github-token-submit" onclick="submitGitHubToken()">Sign In</button>
+                    <button class="github-token-cancel" onclick="closeGitHubTokenModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Create modal and inject into DOM
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+    
+    // Show modal with animation
+    const modal = document.getElementById('githubTokenModal');
+    setTimeout(() => modal.classList.add('visible'), 10);
+    
+    // Focus input field
+    document.getElementById('githubTokenInput').focus();
+    
+    console.log('GitHub token modal displayed');
+}
+
+function submitGitHubToken() {
+    const token = document.getElementById('githubTokenInput').value;
+    console.log('Token submitted:', !!token);
+    
+    if (!token || token.trim() === '') {
+        alert('Please enter your GitHub token');
+        return;
+    }
+    
+    closeGitHubTokenModal();
+    console.log('Calling handleLogin with token');
+    handleLogin(token);
+}
+
+function closeGitHubTokenModal() {
+    const modal = document.getElementById('githubTokenModal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => modal.remove(), 300);
     }
 }
 

@@ -1207,6 +1207,206 @@ body {
     font-weight: 600;
 }
 
+/* ============================================================================
+   GITHUB TOKEN MODAL
+   ============================================================================ */
+
+.github-token-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.github-token-modal.visible {
+    opacity: 1;
+}
+
+.github-token-modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+    position: relative;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.github-token-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.github-token-modal-close:hover {
+    color: var(--primary);
+}
+
+.github-token-modal-content h2 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    font-size: 1.8rem;
+}
+
+.github-token-modal-content > p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.github-token-input-group {
+    margin-bottom: 1.5rem;
+}
+
+.github-token-input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.github-token-input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: rgba(100, 200, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.github-token-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(100, 200, 255, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 153, 255, 0.1);
+}
+
+.github-token-input::placeholder {
+    color: var(--text-muted);
+}
+
+.github-token-help {
+    background: rgba(0, 200, 255, 0.05);
+    border-left: 4px solid var(--secondary);
+    padding: 1.2rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+.github-token-help p {
+    color: var(--text-secondary);
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+}
+
+.github-token-help p:first-child {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.github-token-help ol {
+    margin-left: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.github-token-help li {
+    margin-bottom: 0.4rem;
+}
+
+.github-token-help a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.github-token-help a:hover {
+    text-decoration: underline;
+}
+
+.github-token-help code {
+    background: rgba(100, 200, 255, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    color: var(--secondary);
+}
+
+.github-token-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.github-token-submit,
+.github-token-cancel {
+    flex: 1;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.github-token-submit {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+}
+
+.github-token-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 153, 255, 0.3);
+}
+
+.github-token-submit:active {
+    transform: translateY(0);
+}
+
+.github-token-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.github-token-cancel:hover {
+    background: rgba(100, 200, 255, 0.05);
+    color: var(--text-primary);
+}
+
 .status-applied {
     background: rgba(0, 153, 255, 0.2);
     color: #00d9ff;
