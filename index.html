@@ -110,10 +110,10 @@
             <h1 class="logo">Resume Engine Pro</h1>
             <div class="nav-right">
                 <span id="userDisplay" class="user-display"></span>
-                <button id="settingsBtn" class="btn btn-icon" onclick="toggleSettingsMenu()" title="Settings">ΓÜÖ∩╕Å</button>
+                <button id="settingsBtn" class="btn btn-icon" onclick="toggleSettingsMenu()" title="Settings">⚙</button>
                 <div id="settingsMenu" class="settings-menu" style="display:none;">
-                    <a href="#" onclick="switchMainTab('settings'); toggleSettingsMenu(); return false;">ΓÜÖ∩╕Å Settings</a>
-                    <button onclick="handleLogout()" class="btn btn-logout">≡ƒÜ¬ Logout</button>
+                    <a href="#" onclick="switchMainTab('settings'); toggleSettingsMenu(); return false;">Settings</a>
+                    <button onclick="handleLogout()" class="btn btn-logout">Logout</button>
                 </div>
                 <button id="loginBtn" class="btn btn-primary" onclick="initiateGitHubLogin()" style="display:none;">Login</button>
             </div>
@@ -128,12 +128,12 @@
                     <h2>Resume Engine Pro</h2>
                     <p>The Ultimate AI-Powered Resume & Portfolio Generator</p>
                     <div class="login-features">
-                        <div class="feature">Γ£ô Upload your existing resume</div>
-                        <div class="feature">Γ£ô AI tailors to any JD</div>
-                        <div class="feature">Γ£ô Generate bulk resumes instantly</div>
-                        <div class="feature">Γ£ô Multiple portfolio templates</div>
-                        <div class="feature">Γ£ô GitHub storage (no external costs)</div>
-                        <div class="feature">Γ£ô Multi-AI support (OpenAI, Claude, Gemini, Mistral)</div>
+                        <div class="feature">✓ Upload your existing resume</div>
+                        <div class="feature">✓ AI tailors to any JD</div>
+                        <div class="feature">✓ Generate bulk resumes instantly</div>
+                        <div class="feature">✓ Multiple portfolio templates</div>
+                        <div class="feature">✓ GitHub storage (no external costs)</div>
+                        <div class="feature">✓ Multi-AI support (OpenAI, Claude, Gemini, Mistral)</div>
                     </div>
                     <button class="btn btn-primary large" onclick="initiateGitHubLogin()">
                         Sign in with GitHub
@@ -143,13 +143,13 @@
                     <!-- DEBUG: Test button -->
                     <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #444; font-size: 0.8rem; color: #888;">
                         <button class="btn" onclick="alert('JavaScript is working!')" style="width: 100%; margin-bottom: 0.5rem; background: #333; border: 1px solid #555;">
-                            ≡ƒº¬ Test JavaScript
+                            Test JavaScript
                         </button>
                         <button class="btn" onclick="console.table(window.modulesLoaded); alert('Check browser console (F12) for module status')" style="width: 100%; margin-bottom: 0.5rem; background: #333; border: 1px solid #555;">
-                            ≡ƒöì Check Module Status
+                            Check Module Status
                         </button>
                         <button class="btn" onclick="console.log(window.debugLog); alert('Debug log shown in console')" style="width: 100%; background: #333; border: 1px solid #555;">
-                            ≡ƒôï View Debug Log
+                            View Debug Log
                         </button>
                     </div>
                 </div>
@@ -160,12 +160,12 @@
         <section id="appPage" class="page">
             <!-- Main Navigation Tabs -->
             <div class="main-tabs">
-                <button class="main-tab-btn active" onclick="switchMainTab('dashboard')">≡ƒôè Dashboard</button>
-                <button class="main-tab-btn" onclick="switchMainTab('profiles')">≡ƒæñ My Profiles</button>
-                <button class="main-tab-btn" onclick="switchMainTab('generator')">≡ƒÜÇ Generate</button>
-                <button class="main-tab-btn" onclick="switchMainTab('applications')">≡ƒôï Applications</button>
-                <button class="main-tab-btn" onclick="switchMainTab('history')">≡ƒôü History</button>
-                <button class="main-tab-btn" onclick="switchMainTab('settings')">ΓÜÖ∩╕Å Settings</button>
+                <button class="main-tab-btn active" onclick="switchMainTab('dashboard')">Dashboard</button>
+                <button class="main-tab-btn" onclick="switchMainTab('profiles')">My Profiles</button>
+                <button class="main-tab-btn" onclick="switchMainTab('generator')">Generate</button>
+                <button class="main-tab-btn" onclick="switchMainTab('applications')">Applications</button>
+                <button class="main-tab-btn" onclick="switchMainTab('history')">History</button>
+                <button class="main-tab-btn" onclick="switchMainTab('settings')">Settings</button>
             </div>
 
             <!-- Dashboard Tab -->
@@ -173,7 +173,7 @@
                 <h2>Dashboard</h2>
                 <div class="dashboard-grid">
                     <div class="dashboard-card">
-                        <h3>≡ƒôè Statistics</h3>
+                        <h3>Statistics</h3>
                         <div class="stat-item">
                             <span>Total Resumes Generated:</span>
                             <span id="totalGenerated" class="stat-value">0</span>
@@ -189,7 +189,7 @@
                     </div>
 
                     <div class="dashboard-card">
-                        <h3>≡ƒñû AI Status</h3>
+                        <h3>AI Status</h3>
                         <div id="aiStatus" class="ai-status-list">
                             <div class="ai-status-item">
                                 <span>Loading AI providers...</span>
@@ -198,7 +198,7 @@
                     </div>
 
                     <div class="dashboard-card">
-                        <h3>≡ƒÆ░ Credits & Usage</h3>
+                        <h3>Credits & Usage</h3>
                         <div id="creditsDisplay" class="credits-display">
                             <p>No AI providers configured yet.</p>
                             <button class="btn btn-secondary" onclick="switchMainTab('settings')">Set Up AI</button>
@@ -206,7 +206,7 @@
                     </div>
 
                     <div class="dashboard-card">
-                        <h3>≡ƒÜÇ Quick Actions</h3>
+                        <h3>Quick Actions</h3>
                         <button class="btn btn-primary" onclick="switchMainTab('profiles')">Add Profile</button>
                         <button class="btn btn-primary" onclick="switchMainTab('generator')">Generate Resume</button>
                     </div>
@@ -239,7 +239,7 @@
                             <small>We'll auto-extract your experience, skills, and education</small>
                         </div>
                         <div id="parseProgress" style="display:none;">
-                            <p>ΓÅ│ Parsing resume...</p>
+                            <p>▶ Parsing resume...</p>
                             <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
                         </div>
                     </div>
@@ -316,12 +316,12 @@
 
                     <div class="mode-selector">
                         <button class="mode-btn active" onclick="switchGeneratorMode('single')">
-                            <span class="mode-icon">≡ƒôä</span>
+                            <span class="mode-icon">☀</span>
                             <span class="mode-name">Single Resume</span>
                             <span class="mode-desc">Tailor one resume to a job</span>
                         </button>
                         <button class="mode-btn" onclick="switchGeneratorMode('bulk')">
-                            <span class="mode-icon">≡ƒôª</span>
+                            <span class="mode-icon">🌙</span>
                             <span class="mode-name">Bulk Generation</span>
                             <span class="mode-desc">Generate 5+ resumes at once</span>
                         </button>
@@ -422,7 +422,7 @@
 
                     <div class="button-group">
                         <button class="btn btn-success" onclick="generateSingle()" id="generateBtn">
-                            ≡ƒÆ░ Generate Now
+                            Generate Now
                         </button>
                     </div>
 
@@ -462,7 +462,7 @@
                     </div>
 
                     <div class="button-group">
-                        <button class="btn btn-success" onclick="generateBulk()">≡ƒÜÇ Generate All</button>
+                        <button class="btn btn-success" onclick="generateBulk()">Generate All</button>
                     </div>
 
                     <div id="bulkStatus" class="status-box" style="display:none;">
@@ -475,12 +475,12 @@
             <div id="applications" class="main-tab-content">
                 <div class="tracker-container">
                     <div class="tracker-header">
-                        <h2>≡ƒôï Job Application Tracker</h2>
+                        <h2>Job Application Tracker</h2>
                         <div class="tracker-controls">
                             <span id="trackerLastUpdated" class="last-updated"></span>
-                            <button class="btn btn-icon" onclick="toggleTheme()" title="Toggle Theme">≡ƒîô</button>
-                            <button class="btn btn-secondary" onclick="exportTrackerData()">Γ¼ç∩╕Å Export</button>
-                            <button class="btn btn-secondary" onclick="importTrackerData()">Γ¼å∩╕Å Import</button>
+                            <button class="btn btn-icon" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+                            <button class="btn btn-secondary" onclick="exportTrackerData()">Export Export</button>
+                            <button class="btn btn-secondary" onclick="importTrackerData()">Import Import</button>
                         </div>
                     </div>
 
@@ -603,16 +603,16 @@
                             <!-- PHASE 8: Multi-Phone Fields -->
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>ΓÿÄ∩╕Å Phone (Call)</label>
+                                    <label>☎ Phone (Call)</label>
                                     <input type="tel" id="contactPhoneCall" placeholder="+1-206-555-0123">
                                 </div>
                                 <div class="form-group">
-                                    <label>≡ƒô▒ Phone (WhatsApp)</label>
+                                    <label>📱 Phone (WhatsApp)</label>
                                     <input type="tel" id="contactPhoneWhatsApp" placeholder="+1-206-555-0123">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>≡ƒöù Phone (Other)</label>
+                                <label>🔗 Phone (Other)</label>
                                 <input type="tel" id="contactPhoneOther" placeholder="Telegram, Signal, etc.">
                             </div>
                             
@@ -636,12 +636,12 @@
                             <!-- PHASE 8: Resume Shared Tracking -->
                             <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
                                 <input type="checkbox" id="contactResumeShared" style="width: auto;">
-                                <label style="margin: 0;">Γ£ô Resume Shared</label>
+                                <label style="margin: 0;">✓ Resume Shared</label>
                             </div>
                             
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" onclick="closeContactModal()">Cancel</button>
-                                <button type="button" class="btn btn-info" id="voiceNoteBtn" style="display:none;">≡ƒÄñ Record Voice Note</button>
+                                <button type="button" class="btn btn-info" id="voiceNoteBtn" style="display:none;"> Record Voice Note</button>
                                 <button type="submit" class="btn btn-primary">Save</button>
                             </div>
                         </form>
@@ -652,12 +652,12 @@
                 <div id="voiceModal" class="modal" style="display:none;">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>≡ƒÄñ Record Voice Note for <span id="voiceContactName">ΓÇö</span></h3>
+                            <h3> Record Voice Note for <span id="voiceContactName">-</span></h3>
                             <button onclick="closeVoiceModal()" class="close-btn">&times;</button>
                         </div>
                         <div class="modal-body" style="padding: 1rem;">
                             <div class="recording-controls">
-                                <button type="button" id="voiceRecordBtn" class="btn btn-danger" onclick="toggleVoiceRecording()">≡ƒö┤ Start Recording</button>
+                                <button type="button" id="voiceRecordBtn" class="btn btn-danger" onclick="toggleVoiceRecording()"> Start Recording</button>
                                 <span id="voiceTimer" style="font-size: 1.2rem; font-weight: 700; color: #00d9ff; min-width: 60px;">0:00</span>
                                 <span style="color: var(--text-muted); font-size: 0.9rem;">Max 60 seconds</span>
                             </div>
@@ -674,7 +674,7 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" onclick="closeVoiceModal()">Discard</button>
-                            <button type="button" class="btn btn-primary" onclick="saveVoiceNote()">Γ£ô Save Voice Note</button>
+                            <button type="button" class="btn btn-primary" onclick="saveVoiceNote()">✓ Save Voice Note</button>
                         </div>
                     </div>
                 </div>
@@ -694,7 +694,7 @@
 
                 <!-- GitHub Settings -->
                 <div class="settings-section">
-                    <h3>≡ƒöº GitHub Configuration</h3>
+                    <h3> GitHub Configuration</h3>
                     <div class="form-group">
                         <label>GitHub Data Repository Name:</label>
                         <input type="text" id="dataRepoName" placeholder="resume-engine-data" />
@@ -714,7 +714,7 @@
 
                 <!-- AI Providers -->
                 <div class="settings-section">
-                    <h3>≡ƒñû AI Providers</h3>
+                    <h3> AI Providers</h3>
                     <p>Connect your AI provider accounts to enable resume tailoring. Your API keys are stored securely in your browser.</p>
 
                     <div id="aiProvidersSettings" class="ai-providers-grid">
@@ -724,7 +724,7 @@
 
                 <!-- API Key Management -->
                 <div class="settings-section">
-                    <h3>≡ƒöÉ API Key Management</h3>
+                    <h3> API Key Management</h3>
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="encryptKeys" checked /> Encrypt API keys with master password
@@ -764,4 +764,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </body>
 </html>
+
 
