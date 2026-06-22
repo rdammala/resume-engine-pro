@@ -133,50 +133,73 @@ function showPage(pageName) {
 }
 
 function switchMainTab(tabName) {
-    console.log(`📌 switchMainTab called with: "${tabName}" (type: ${typeof tabName})`);
-    
-    // Remove active class from all buttons and content
-    document.querySelectorAll('.main-tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.main-tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    console.log(`🔍 Looking for content with id: "${tabName}"`);
-    const content = document.getElementById(tabName);
-    console.log(`🔍 Found content div:`, !!content, content?.id);
-    
-    // Find and activate the clicked button by matching onclick content
-    const buttons = document.querySelectorAll('.main-tab-btn');
-    console.log(`🔍 Found ${buttons.length} buttons`);
-    
-    buttons.forEach((btn, idx) => {
-        const onclickAttr = btn.getAttribute('onclick');
-        console.log(`  Button ${idx}: onclick="${onclickAttr}"`);
-        if (onclickAttr && onclickAttr.includes(`'${tabName}'`)) {
-            btn.classList.add('active');
-            console.log(`✅ Activated button ${idx} for tab: ${tabName}`);
-        }
-    });
-    
-    // Activate the content tab
-    if (content) {
-        content.classList.add('active');
-        console.log(`✅ Activated content for tab: ${tabName}`);
-    } else {
-        console.error(`❌ No content div found for tab: ${tabName}`);
-    }
-    
-    // Save to localStorage if available
     try {
-        localStorage.setItem('activeMainTab', tabName);
-        console.log(`✅ Saved tab preference: ${tabName}`);
+        if (!tabName || typeof tabName !== 'string') {
+            console.error(`❌ Invalid tab name: ${tabName}`);
+            return;
+        }
+        
+        console.log(`📌 Switching to tab: "${tabName}"`);
+        
+        // Remove active class from ALL tabs and buttons
+        const allTabs = document.querySelectorAll('.main-tab-content');
+        const allButtons = document.querySelectorAll('.main-tab-btn');
+        
+        allTabs.forEach(tab => {
+            tab.classList.remove('active');
+            // Verify removal
+            if (tab.classList.contains('active')) {
+                console.warn(`⚠️ Failed to remove active from ${tab.id}`);
+            }
+        });
+        
+        allButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Find and activate the target content div
+        const content = document.getElementById(tabName);
+        if (content) {
+            content.classList.add('active');
+            // Verify it was added
+            if (!content.classList.contains('active')) {
+                console.error(`❌ Failed to add active class to ${tabName}`);
+            } else {
+                console.log(`✅ Tab content activated: ${tabName}`);
+            }
+        } else {
+            console.error(`❌ Content div not found: id="${tabName}"`);
+            return;
+        }
+        
+        // Find and activate the button
+        let buttonFound = false;
+        allButtons.forEach(btn => {
+            const onclick = btn.getAttribute('onclick') || '';
+            if (onclick.includes(`'${tabName}'`) || onclick.includes(`"${tabName}"`)) {
+                btn.classList.add('active');
+                buttonFound = true;
+                console.log(`✅ Tab button activated: ${tabName}`);
+            }
+        });
+        
+        if (!buttonFound) {
+            console.warn(`⚠️ No button found for tab: ${tabName}`);
+        }
+        
+        // Save to localStorage
+        try {
+            localStorage.setItem('activeMainTab', tabName);
+        } catch (e) {
+            console.warn(`⚠️ localStorage blocked: ${e.message}`);
+        }
+        
+        // Initialize tracker if needed
+        if (tabName === 'applications' && window.initializeTracker) {
+            initializeTracker();
+        }
     } catch (error) {
-        console.warn(`⚠️ localStorage error: ${error.message}`);
-    }
-    
-    // Initialize tracker for applications tab
-    if (tabName === 'applications' && window.initializeTracker) {
-        initializeTracker();
+        console.error(`❌ switchMainTab error: ${error.message}`);
     }
 }
 

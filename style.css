@@ -331,12 +331,14 @@ body {
 }
 
 .main-tab-content {
-    display: none;
+    display: none !important;
     animation: fadeIn 0.3s ease;
 }
 
 .main-tab-content.active {
-    display: block;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 .main-tab-content h2 {
