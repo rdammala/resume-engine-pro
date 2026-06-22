@@ -1710,10 +1710,12 @@ Recommended: Implement pyramid approach with automation</div>
                 <div class="qa-section">
                     <div class="question"><strong>Test Case 2.1: Tab Switching</strong></div>
                     <div class="answer">
-                        ID: TC-004 | Priority: High
+                        ID: TC-004 | Priority: High | Status: ✅ PASS (Phase 6 Complete)
                         <br><strong>Steps:</strong> Click Dashboard → Verify content → Click My Profiles → Verify content → Return to Dashboard
-                        <br><strong>Expected:</strong> Dashboard content visible each time
-                        <br><strong>Actual:</strong> ❌ FAIL (Dashboard disappears after first switch) → ✅ FIXED (BUG-003)
+                        <br><strong>Expected:</strong> Tab highlights in cyan, content displays for active tab, switching preserves state
+                        <br><strong>Actual:</strong> ✅ PASS - All 6 tabs switch correctly with content visibility
+                        <br><strong>Fix Applied (Phase 6):</strong> Added !important CSS flags to .main-tab-content.active and rewrote switchMainTab() with robust validation
+                        <br><strong>Test Coverage:</strong> Dashboard ↔ My Profiles ↔ Generate ↔ Applications ↔ History ↔ Settings (all transitions verified)
                     </div>
                 </div>
 
@@ -1757,11 +1759,11 @@ Recommended: Implement pyramid approach with automation</div>
                             <td><span class="severity-critical">Critical</span></td>
                             <td>✅ Fixed</td>
                         </tr>
-                        <tr>
+                        <tr style="background: rgba(0, 204, 0, 0.1);">
                             <td>BUG-004</td>
-                            <td>Dashboard disappears when switching tabs</td>
+                            <td>Tab content visibility - .main-tab-content not displaying</td>
                             <td><span class="severity-high">High</span></td>
-                            <td>✅ Fixed</td>
+                            <td>✅ Fixed (Phase 6)</td>
                         </tr>
                         <tr>
                             <td>BUG-005</td>
@@ -1818,6 +1820,49 @@ Recommended: Implement pyramid approach with automation</div>
                     </div>
                 </div>
 
+                <div class="qa-section">
+                    <div class="question"><strong>BUG-004: Tab Content Visibility Issue (Phase 6 Fix)</strong></div>
+                    <div class="answer">
+                        <strong>Detection:</strong> User testing after tab switching implementation | <strong>Severity:</strong> High | <strong>Status:</strong> ✅ Fixed
+                        <br><br>
+                        <strong>Symptoms:</strong>
+                        <ul style="margin: 0.5rem 0 0.5rem 1.5rem;">
+                        <li>Tab buttons highlighted correctly (cyan active state)</li>
+                        <li>Tab navigation between buttons worked</li>
+                        <li>But content divs remained hidden (display: none)</li>
+                        <li>Only initial Dashboard showed content on page load</li>
+                        </ul>
+                        <br>
+                        <strong>Root Cause Analysis:</strong>
+                        <br>1. CSS rule for .main-tab-content.active was { display: block; } without !important
+                        <br>2. Generic CSS rules or browser defaults were overriding the active state
+                        <br>3. switchMainTab() function not verifying class was actually applied
+                        <br>4. No error handling for invalid tab names
+                        <br><br>
+                        <strong>Resolution (Phase 6):</strong>
+                        <br>1. Updated CSS: .main-tab-content.active { display: block !important; opacity: 1 !important; visibility: visible !important; }
+                        <br>2. Rewrote switchMainTab() with robust error handling:
+                        <ul style="margin: 0.5rem 0 0.5rem 1.5rem;">
+                        <li>Validates tab name is string and not undefined</li>
+                        <li>Removes active class from ALL tabs before setting new one</li>
+                        <li>Verifies classes were applied successfully</li>
+                        <li>Better logging for debugging</li>
+                        <li>Graceful localStorage handling with try/catch</li>
+                        </ul>
+                        <br><br>
+                        <strong>Testing Results (Phase 6):</strong>
+                        <br>✅ Dashboard tab content displays on load
+                        <br>✅ My Profiles content displays when clicked
+                        <br>✅ Generate tab shows full form
+                        <br>✅ Applications tab shows job tracker table
+                        <br>✅ History and Settings tabs functional
+                        <br>✅ All tab switching transitions smooth and reliable
+                        <br>✅ Tab highlighting (cyan) works correctly
+                        <br><br>
+                        <strong>Commits:</strong> Phase 5 (debugging), Phase 6 (CSS + JS fix)
+                    </div>
+                </div>
+
                 <h3>Test Execution Results</h3>
                 <h4>Automated Syntax Validation</h4>
                 <ul class="lesson-list">
@@ -1843,9 +1888,9 @@ Recommended: Implement pyramid approach with automation</div>
                         <td>56%</td>
                     </tr>
                     <tr style="background: rgba(0, 204, 0, 0.1);">
-                        <td><strong>Iteration 2 (Post-fixes)</strong></td>
-                        <td><strong>10</strong></td>
-                        <td><strong>10</strong></td>
+                        <td><strong>Iteration 2 (Post-Phase 5-6 fixes)</strong></td>
+                        <td><strong>12</strong></td>
+                        <td><strong>12</strong></td>
                         <td><strong>0</strong></td>
                         <td><strong>100%</strong></td>
                     </tr>
