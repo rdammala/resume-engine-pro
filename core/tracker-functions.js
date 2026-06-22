@@ -160,6 +160,7 @@ function filterTrackerApplications() {
 
 function openApplicationModal(appId = null) {
     const modal = document.getElementById('applicationModal');
+    const form = modal.querySelector('.modal-form');
     const title = document.getElementById('appModalTitle');
     
     if (appId) {
@@ -177,7 +178,7 @@ function openApplicationModal(appId = null) {
         modal.dataset.appId = appId;
     } else {
         title.textContent = 'Add Application';
-        document.getElementById('applicationModal').reset();
+        if (form) form.reset();
         document.getElementById('appDate').value = new Date().toISOString().split('T')[0];
         modal.removeAttribute('data-appId');
     }
@@ -235,11 +236,26 @@ function deleteApplication(appId) {
 function renderContactsList() {
     const contacts = JobTrackerManager.getContacts();
     
-    const html = contacts.map(contact => `
+    const html = contacts.map(contact => {
+        let phoneHtml = '';
+        if (contact.phoneCall) phoneHtml += `<div class="contact-phone">☎️ <a href="tel:${contact.phoneCall}">${contact.phoneCall}</a></div>`;
+        if (contact.phoneWhatsApp) phoneHtml += `<div class="contact-phone">📱 <a href="https://wa.me/${contact.phoneWhatsApp.replace(/\D/g, '')}">${contact.phoneWhatsApp}</a></div>`;
+        if (contact.phoneOther) phoneHtml += `<div class="contact-phone">🔗 ${contact.phoneOther}</div>`;
+        
+        const resumeBadge = contact.resumeShared ? '<span class="resume-badge">✓ Resume Shared</span>' : '';
+        const voiceBadge = contact.voiceNote ? '<span class="voice-badge">🎤 Voice Note</span>' : '';
+        
+        return `
         <div class="contact-card">
-            <h3>${contact.name}</h3>
-            <div class="contact-info">
-                <strong>${contact.company || 'N/A'}</strong>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h3>${contact.name}</h3>
+                    <div class="contact-info"><strong>${contact.company || 'N/A'}</strong></div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                    ${resumeBadge}
+                    ${voiceBadge}
+                </div>
             </div>
             <div class="contact-info">
                 📧 ${contact.email || 'N/A'}
@@ -249,20 +265,23 @@ function renderContactsList() {
                 💼 <a href="https://${contact.linkedin}" target="_blank">LinkedIn</a>
             </div>
             ` : ''}
+            ${phoneHtml ? `<div style="margin: 0.5rem 0;">${phoneHtml}</div>` : ''}
             <div class="contact-info">
                 🔗 <em>${contact.source || 'Direct contact'}</em>
             </div>
             ${contact.comments ? `
-            <div class="contact-info" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <div class="contact-info" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">
                 <small>${contact.comments}</small>
             </div>
             ` : ''}
             <div class="row-actions" style="margin-top: 1rem;">
                 <button class="action-btn" onclick="editContact(${contact.id})" title="Edit">✏️</button>
                 <button class="action-btn" onclick="deleteContact(${contact.id})" title="Delete">🗑️</button>
+                ${contact.voiceNote ? `<button class="action-btn" onclick="openVoiceModal(${contact.id})" title="Voice Note">🎤</button>` : ''}
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
     
     document.getElementById('contactsList').innerHTML = html || '<p style="grid-column: 1/-1;">No contacts yet</p>';
 }
@@ -277,11 +296,26 @@ function filterTrackerContacts() {
         (c.email || '').toLowerCase().includes(search)
     );
     
-    const html = contacts.map(contact => `
+    const html = contacts.map(contact => {
+        let phoneHtml = '';
+        if (contact.phoneCall) phoneHtml += `<div class="contact-phone">☎️ <a href="tel:${contact.phoneCall}">${contact.phoneCall}</a></div>`;
+        if (contact.phoneWhatsApp) phoneHtml += `<div class="contact-phone">📱 <a href="https://wa.me/${contact.phoneWhatsApp.replace(/\D/g, '')}">${contact.phoneWhatsApp}</a></div>`;
+        if (contact.phoneOther) phoneHtml += `<div class="contact-phone">🔗 ${contact.phoneOther}</div>`;
+        
+        const resumeBadge = contact.resumeShared ? '<span class="resume-badge">✓ Resume Shared</span>' : '';
+        const voiceBadge = contact.voiceNote ? '<span class="voice-badge">🎤 Voice Note</span>' : '';
+        
+        return `
         <div class="contact-card">
-            <h3>${contact.name}</h3>
-            <div class="contact-info">
-                <strong>${contact.company || 'N/A'}</strong>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h3>${contact.name}</h3>
+                    <div class="contact-info"><strong>${contact.company || 'N/A'}</strong></div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                    ${resumeBadge}
+                    ${voiceBadge}
+                </div>
             </div>
             <div class="contact-info">
                 📧 ${contact.email || 'N/A'}
@@ -291,18 +325,22 @@ function filterTrackerContacts() {
                 💼 <a href="https://${contact.linkedin}" target="_blank">LinkedIn</a>
             </div>
             ` : ''}
+            ${phoneHtml ? `<div style="margin: 0.5rem 0;">${phoneHtml}</div>` : ''}
             <div class="row-actions" style="margin-top: 1rem;">
                 <button class="action-btn" onclick="editContact(${contact.id})" title="Edit">✏️</button>
                 <button class="action-btn" onclick="deleteContact(${contact.id})" title="Delete">🗑️</button>
+                ${contact.voiceNote ? `<button class="action-btn" onclick="openVoiceModal(${contact.id})" title="Voice Note">🎤</button>` : ''}
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
     
     document.getElementById('contactsList').innerHTML = html || '<p style="grid-column: 1/-1;">No contacts found</p>';
 }
 
 function openContactModal(contactId = null) {
     const modal = document.getElementById('contactModal');
+    const form = modal.querySelector('.modal-form');
     
     if (contactId) {
         const contact = JobTrackerManager.getContacts().find(c => c.id === contactId);
@@ -311,12 +349,22 @@ function openContactModal(contactId = null) {
             document.getElementById('contactCompany').value = contact.company || '';
             document.getElementById('contactEmail').value = contact.email || '';
             document.getElementById('contactLinkedIn').value = contact.linkedin || '';
+            document.getElementById('contactPhoneCall').value = contact.phoneCall || '';
+            document.getElementById('contactPhoneWhatsApp').value = contact.phoneWhatsApp || '';
+            document.getElementById('contactPhoneOther').value = contact.phoneOther || '';
             document.getElementById('contactSource').value = contact.source || '';
             document.getElementById('contactComments').value = contact.comments || '';
+            document.getElementById('contactResumeShared').checked = contact.resumeShared || false;
+            document.getElementById('voiceNoteBtn').style.display = contact.voiceNote ? 'inline-block' : 'none';
         }
         modal.dataset.contactId = contactId;
     } else {
-        modal.reset();
+        if (form) form.reset();
+        document.getElementById('contactPhoneCall').value = '';
+        document.getElementById('contactPhoneWhatsApp').value = '';
+        document.getElementById('contactPhoneOther').value = '';
+        document.getElementById('contactResumeShared').checked = false;
+        document.getElementById('voiceNoteBtn').style.display = 'none';
         modal.removeAttribute('data-contactId');
     }
     
@@ -335,8 +383,13 @@ function saveContact(event) {
         company: document.getElementById('contactCompany').value,
         email: document.getElementById('contactEmail').value,
         linkedin: document.getElementById('contactLinkedIn').value,
+        phoneCall: document.getElementById('contactPhoneCall').value || '',
+        phoneWhatsApp: document.getElementById('contactPhoneWhatsApp').value || '',
+        phoneOther: document.getElementById('contactPhoneOther').value || '',
         source: document.getElementById('contactSource').value,
-        comments: document.getElementById('contactComments').value
+        comments: document.getElementById('contactComments').value,
+        resumeShared: document.getElementById('contactResumeShared').checked,
+        resumeSharedDate: document.getElementById('contactResumeShared').checked ? new Date().toISOString().split('T')[0] : null
     };
     
     const modal = document.getElementById('contactModal');
@@ -440,6 +493,159 @@ function importTrackerData() {
     input.click();
 }
 
+// ========================================================================
+// PHASE 8B: VOICE RECORDING INFRASTRUCTURE
+// ========================================================================
+
+let voiceRecorder, mediaRecorder, currentVoiceBlob, recordingStartTime, voiceTimerInterval;
+let currentVoiceContactId = null;
+
+function initVoiceRecording() {
+    if (window.webkitSpeechRecognition || window.SpeechRecognition) {
+        voiceRecorder = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        voiceRecorder.lang = 'en-US';
+        voiceRecorder.continuous = true;
+        voiceRecorder.interimResults = true;
+        
+        voiceRecorder.onstart = () => {
+            console.log('Voice recognition started');
+        };
+        
+        voiceRecorder.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                if (event.results[i].isFinal) {
+                    interim += event.results[i][0].transcript + ' ';
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            const transcriptBox = document.getElementById('voiceTranscript');
+            if (transcriptBox) {
+                transcriptBox.value = (transcriptBox.value + interim).trim();
+            }
+        };
+        
+        voiceRecorder.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+        };
+    }
+}
+
+function openVoiceModal(contactId) {
+    currentVoiceContactId = contactId;
+    const modal = document.getElementById('voiceModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('voiceTranscript').value = '';
+        document.getElementById('voiceTimer').textContent = '0:00';
+        document.getElementById('voiceRecordBtn').textContent = '🔴 Start Recording';
+        document.getElementById('voiceRecordBtn').classList.remove('recording');
+    }
+    initVoiceRecording();
+}
+
+function closeVoiceModal() {
+    stopVoiceRecording();
+    const modal = document.getElementById('voiceModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function toggleVoiceRecording() {
+    const btn = document.getElementById('voiceRecordBtn');
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        stopVoiceRecording();
+    } else {
+        startVoiceRecording();
+    }
+}
+
+async function startVoiceRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        const chunks = [];
+        
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
+            currentVoiceBlob = new Blob(chunks, { type: 'audio/webm' });
+            const audioElement = document.getElementById('voicePlayback');
+            if (audioElement) {
+                audioElement.src = URL.createObjectURL(currentVoiceBlob);
+            }
+        };
+        
+        mediaRecorder.start();
+        document.getElementById('voiceRecordBtn').textContent = '⏹ Stop Recording';
+        document.getElementById('voiceRecordBtn').classList.add('recording');
+        
+        recordingStartTime = Date.now();
+        updateVoiceTimer();
+        
+        // Start Web Speech API for transcription
+        if (voiceRecorder) {
+            voiceRecorder.start();
+        }
+    } catch (err) {
+        console.error('Recording error:', err);
+        alert('Microphone access denied. Please check permissions.');
+    }
+}
+
+function stopVoiceRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        document.getElementById('voiceRecordBtn').textContent = '🔴 Start Recording';
+        document.getElementById('voiceRecordBtn').classList.remove('recording');
+        
+        if (voiceRecorder) {
+            voiceRecorder.stop();
+        }
+    }
+    
+    if (voiceTimerInterval) {
+        clearInterval(voiceTimerInterval);
+    }
+}
+
+function updateVoiceTimer() {
+    voiceTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        document.getElementById('voiceTimer').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        
+        if (elapsed >= 60) {
+            stopVoiceRecording();
+        }
+    }, 100);
+}
+
+function saveVoiceNote() {
+    if (!currentVoiceBlob) {
+        alert('No recording available');
+        return;
+    }
+    
+    const contact = JobTrackerManager.getContacts().find(c => c.id === currentVoiceContactId);
+    if (!contact) return;
+    
+    const updatedContact = {
+        ...contact,
+        voiceNote: currentVoiceBlob,
+        voiceTranscript: document.getElementById('voiceTranscript').value.trim(),
+        voiceRecordedAt: new Date().toISOString()
+    };
+    
+    JobTrackerManager.updateContact(currentVoiceContactId, updatedContact);
+    renderContactsList();
+    updateTrackerLastUpdated();
+    closeVoiceModal();
+}
+
 // Modal close on background click
 document.addEventListener('click', (e) => {
     if (e.target.id === 'applicationModal') {
@@ -447,5 +653,8 @@ document.addEventListener('click', (e) => {
     }
     if (e.target.id === 'contactModal') {
         closeContactModal();
+    }
+    if (e.target.id === 'voiceModal') {
+        closeVoiceModal();
     }
 });

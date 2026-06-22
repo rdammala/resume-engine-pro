@@ -1381,6 +1381,105 @@ body {
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
+}
+
+/* ============================================================================
+   PHASE 8: MULTI-PHONE + VOICE RECORDING STYLES
+   ============================================================================ */
+
+.contact-phone {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.contact-phone a {
+    color: var(--secondary);
+    text-decoration: none;
+}
+
+.contact-phone a:hover {
+    text-decoration: underline;
+}
+
+.resume-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: rgba(0, 204, 0, 0.15);
+    color: var(--success);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.voice-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: rgba(0, 153, 255, 0.15);
+    color: var(--primary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.recording-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+#voiceRecordBtn.recording {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        background: #ff3232;
+        box-shadow: 0 0 0 0 rgba(255, 50, 50, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(255, 50, 50, 0);
+    }
+}
+
+#voiceTimer {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--secondary);
+    min-width: 60px;
+    font-family: 'Courier New', monospace;
+}
+
+audio {
+    border-radius: 6px;
+}
+
+.btn.btn-info {
+    background: rgba(0, 153, 255, 0.2);
+    color: var(--secondary);
+    border: 1px solid var(--secondary);
+}
+
+.btn.btn-info:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn.btn-danger {
+    background: #ff3232;
+    color: white;
+}
+
+.btn.btn-danger:hover {
+    background: #dd0000;
+    transform: translateY(-1px);
+}
+    cursor: pointer;
     transition: all 0.2s;
 }
 
@@ -1633,3 +1732,4 @@ body {
 .modal-footer .btn {
     flex: 1;
 }
+

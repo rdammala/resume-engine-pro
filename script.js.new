@@ -38,7 +38,7 @@ function runHealthCheck() {
     for (const mod of requiredModules) {
         const exists = typeof window[mod] !== 'undefined';
         results[mod] = exists;
-        console.log(`Γ£ô ${mod}: ${exists ? 'Γ£à LOADED' : 'Γ¥î MISSING'}`);
+        console.log(`✓ ${mod}: ${exists ? '✅ LOADED' : '❌ MISSING'}`);
     }
     
     const functionChecks = {
@@ -49,7 +49,7 @@ function runHealthCheck() {
     };
     
     for (const [funcName, exists] of Object.entries(functionChecks)) {
-        console.log(`Γ£ô ${funcName}(): ${exists ? 'Γ£à AVAILABLE' : 'Γ¥î MISSING'}`);
+        console.log(`✓ ${funcName}(): ${exists ? '✅ AVAILABLE' : '❌ MISSING'}`);
     }
     
     console.log('=== HEALTH CHECK COMPLETE ===');
@@ -102,17 +102,17 @@ async function initializeApp() {
         showPage('appPage');
         currentUser = session.user;
         updateUI();
-        // Γ£à RESTORE PREVIOUSLY ACTIVE TAB AFTER SESSION RELOAD
+        // ✅ RESTORE PREVIOUSLY ACTIVE TAB AFTER SESSION RELOAD
         restoreActiveTab();
         
-        // Γ£à VERIFY CONTENT IS ACTUALLY VISIBLE
+        // ✅ VERIFY CONTENT IS ACTUALLY VISIBLE
         setTimeout(() => {
             const appPage = document.getElementById('appPage');
             const content = document.querySelector('.main-tab-content.active');
             console.log('Post-init check - appPage.active:', appPage?.classList.contains('active'));
             console.log('Post-init check - active content exists:', !!content);
             if (!content) {
-                console.warn('ΓÜá∩╕Å No active content div found! Forcing dashboard tab.');
+                console.warn('⚠️ No active content div found! Forcing dashboard tab.');
                 switchMainTab('dashboard');
             }
         }, 100);
@@ -135,11 +135,11 @@ function showPage(pageName) {
 function switchMainTab(tabName) {
     try {
         if (!tabName || typeof tabName !== 'string') {
-            console.error(`Γ¥î Invalid tab name: ${tabName}`);
+            console.error(`❌ Invalid tab name: ${tabName}`);
             return;
         }
         
-        console.log(`≡ƒôî Switching to tab: "${tabName}"`);
+        console.log(`📌 Switching to tab: "${tabName}"`);
         
         // Remove active class from ALL tabs and buttons
         const allTabs = document.querySelectorAll('.main-tab-content');
@@ -149,7 +149,7 @@ function switchMainTab(tabName) {
             tab.classList.remove('active');
             // Verify removal
             if (tab.classList.contains('active')) {
-                console.warn(`ΓÜá∩╕Å Failed to remove active from ${tab.id}`);
+                console.warn(`⚠️ Failed to remove active from ${tab.id}`);
             }
         });
         
@@ -163,12 +163,12 @@ function switchMainTab(tabName) {
             content.classList.add('active');
             // Verify it was added
             if (!content.classList.contains('active')) {
-                console.error(`Γ¥î Failed to add active class to ${tabName}`);
+                console.error(`❌ Failed to add active class to ${tabName}`);
             } else {
-                console.log(`Γ£à Tab content activated: ${tabName}`);
+                console.log(`✅ Tab content activated: ${tabName}`);
             }
         } else {
-            console.error(`Γ¥î Content div not found: id="${tabName}"`);
+            console.error(`❌ Content div not found: id="${tabName}"`);
             return;
         }
         
@@ -179,19 +179,19 @@ function switchMainTab(tabName) {
             if (onclick.includes(`'${tabName}'`) || onclick.includes(`"${tabName}"`)) {
                 btn.classList.add('active');
                 buttonFound = true;
-                console.log(`Γ£à Tab button activated: ${tabName}`);
+                console.log(`✅ Tab button activated: ${tabName}`);
             }
         });
         
         if (!buttonFound) {
-            console.warn(`ΓÜá∩╕Å No button found for tab: ${tabName}`);
+            console.warn(`⚠️ No button found for tab: ${tabName}`);
         }
         
         // Save to localStorage
         try {
             localStorage.setItem('activeMainTab', tabName);
         } catch (e) {
-            console.warn(`ΓÜá∩╕Å localStorage blocked: ${e.message}`);
+            console.warn(`⚠️ localStorage blocked: ${e.message}`);
         }
         
         // Initialize tracker if needed
@@ -203,7 +203,7 @@ function switchMainTab(tabName) {
             }
         }
     } catch (error) {
-        console.error(`Γ¥î switchMainTab error: ${error.message}`);
+        console.error(`❌ switchMainTab error: ${error.message}`);
     }
 }
 
@@ -213,21 +213,21 @@ function switchMainTab(tabName) {
 
 function restoreActiveTab() {
     try {
-        // Γ£à RETRIEVE SAVED TAB FROM LOCALSTORAGE (non-blocking)
+        // ✅ RETRIEVE SAVED TAB FROM LOCALSTORAGE (non-blocking)
         let savedTab = null;
         try {
             savedTab = localStorage.getItem('activeMainTab');
-            console.log(`≡ƒöä Retrieved from localStorage: ${savedTab}`);
+            console.log(`🔄 Retrieved from localStorage: ${savedTab}`);
         } catch (storageError) {
-            console.warn(`ΓÜá∩╕Å localStorage blocked (tracking prevention?): ${storageError.message}`);
+            console.warn(`⚠️ localStorage blocked (tracking prevention?): ${storageError.message}`);
             savedTab = null;
         }
         
         const tabToActivate = savedTab || 'dashboard';
-        console.log(`≡ƒöä Restoring tab: ${tabToActivate} (savedTab was: ${savedTab})`);
+        console.log(`🔄 Restoring tab: ${tabToActivate} (savedTab was: ${savedTab})`);
         
         if (!tabToActivate || typeof tabToActivate !== 'string') {
-            console.error(`Γ¥î Invalid tab name: ${tabToActivate}, using dashboard`);
+            console.error(`❌ Invalid tab name: ${tabToActivate}, using dashboard`);
             switchMainTab('dashboard');
             return;
         }
@@ -236,7 +236,7 @@ function restoreActiveTab() {
         switchMainTab(tabToActivate);
     } catch (error) {
         // Generic fallback - just default to dashboard
-        console.error(`Γ¥î restoreActiveTab error: ${error.message}`);
+        console.error(`❌ restoreActiveTab error: ${error.message}`);
         switchMainTab('dashboard');
     }
 }
@@ -253,18 +253,18 @@ function initiateGitHubLogin() {
     try {
         // Verify GitHubManager is loaded
         if (typeof window.GitHubManager === 'undefined') {
-            console.error('Γ¥î CRITICAL: GitHubManager is undefined');
+            console.error('❌ CRITICAL: GitHubManager is undefined');
             alert('ERROR: GitHubManager module not loaded.\n\nPlease:\n1. Open DevTools (F12)\n2. Check Console for errors\n3. Hard refresh (Ctrl+Shift+R)\n\nIf errors persist, GitHub button cannot work.');
             return;
         }
         
-        console.log('Γ£à GitHubManager is available');
+        console.log('✅ GitHubManager is available');
         
         // Show token input modal (replaces prompt() for better compatibility)
         showGitHubTokenModal();
         
     } catch (error) {
-        console.error('Γ¥î initiateGitHubLogin error:', error);
+        console.error('❌ initiateGitHubLogin error:', error);
         console.error('Error stack:', error.stack);
         alert('Login error: ' + error.message);
     }
@@ -276,7 +276,7 @@ function showGitHubTokenModal() {
     const modalHTML = `
         <div id="githubTokenModal" class="github-token-modal">
             <div class="github-token-modal-content">
-                <button class="github-token-modal-close" onclick="closeGitHubTokenModal()">Γ£ò</button>
+                <button class="github-token-modal-close" onclick="closeGitHubTokenModal()">✕</button>
                 <h2>GitHub Authentication</h2>
                 <p>Enter your GitHub Personal Access Token to continue:</p>
                 
@@ -359,17 +359,17 @@ async function handleLogin(token) {
             currentUser = result.user;
             showPage('appPage');
             updateUI();
-            // Γ£à RESTORE PREVIOUSLY ACTIVE TAB
+            // ✅ RESTORE PREVIOUSLY ACTIVE TAB
             restoreActiveTab();
             
-            // Γ£à VERIFY CONTENT IS VISIBLE
+            // ✅ VERIFY CONTENT IS VISIBLE
             setTimeout(() => {
                 const appPage = document.getElementById('appPage');
                 const content = document.querySelector('.main-tab-content.active');
                 console.log('Post-login check - appPage.active:', appPage?.classList.contains('active'));
                 console.log('Post-login check - active content exists:', !!content);
                 if (!content) {
-                    console.warn('ΓÜá∩╕Å No active content div! Forcing dashboard tab.');
+                    console.warn('⚠️ No active content div! Forcing dashboard tab.');
                     switchMainTab('dashboard');
                 }
             }, 100);
@@ -410,7 +410,7 @@ function updateUI() {
         // User is logged in
         if (loginBtn) loginBtn.style.display = 'none';
         if (settingsBtn) settingsBtn.style.display = 'inline-block';
-        if (userDisplay) userDisplay.textContent = `≡ƒæñ ${GitHubManager.getUsername() || 'User'}`;
+        if (userDisplay) userDisplay.textContent = `👤 ${GitHubManager.getUsername() || 'User'}`;
     } else {
         // User is logged out
         if (loginBtn) loginBtn.style.display = 'block';
@@ -535,7 +535,7 @@ function displayGenerationResult(result) {
     const statusBox = document.getElementById('statusContent');
     if (statusBox) {
         statusBox.innerHTML = `
-            <div style="color: #00cc00;">Γ£ô Resume generated successfully!</div>
+            <div style="color: #00cc00;">✓ Resume generated successfully!</div>
             <div style="margin-top: 1rem; font-size: 0.9rem;">
                 <div>Provider: ${result.provider}</div>
                 <div>Cost: $${result.cost.toFixed(4)}</div>
@@ -598,7 +598,7 @@ function updateAPIKeyStatus() {
     
     if (statusDiv) {
         statusDiv.innerHTML = Object.entries(providers)
-            .map(([id, info]) => `<div class="ai-status-item"><span>${info.name}</span><span class="ai-status-badge badge-connected">Γ£ô Configured</span></div>`)
+            .map(([id, info]) => `<div class="ai-status-item"><span>${info.name}</span><span class="ai-status-badge badge-connected">✓ Configured</span></div>`)
             .join('');
     }
 }
@@ -659,7 +659,7 @@ function updateUI() {
     if (currentUser) {
         const userDisplay = document.querySelector('.user-display');
         if (userDisplay) {
-            userDisplay.textContent = `≡ƒæñ ${currentUser.login}`;
+            userDisplay.textContent = `👤 ${currentUser.login}`;
         }
     }
     
@@ -923,4 +923,3 @@ function loadProfileData() {
 }
 
 }
-
