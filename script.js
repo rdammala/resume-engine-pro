@@ -1262,6 +1262,31 @@ function addDownloadLink(container, blob, filename, label) {
     container.appendChild(a);
 }
 
+// Optional AI tailoring: when a provider is selected AND has an API key, call
+// the model and merge its tailored summary/skills/experience into the profile.
+// Returns { profile, cost, usedAI }. Throws on AI/network failure (caller falls back).
+async function tailorProfileWithAI(profile, jdText, provider, mode) {
+    const result = await AIIntegration.tailorResume(provider, profile, jdText, mode);
+    let aiData;
+    try {
+        aiData = JSON.parse(result.tailored);
+    } catch {
+        // Model returned prose, not JSON — use it as the summary
+        aiData = { summary: result.tailored };
+    }
+    const tailored = { ...profile };
+    if (aiData.summary) tailored.summary = String(aiData.summary);
+    if (Array.isArray(aiData.skills) && aiData.skills.length) {
+        tailored.skills = aiData.skills;
+    } else if (typeof aiData.skills === 'string' && aiData.skills.trim()) {
+        tailored.skills = aiData.skills.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (Array.isArray(aiData.experience) && aiData.experience.length) {
+        tailored.experience = aiData.experience;
+    }
+    return { profile: tailored, cost: result.cost || 0, usedAI: true };
+}
+
 async function generateSingle() {
     const select = document.getElementById('selectProfile');
     const profileId = select && select.value;
@@ -1295,25 +1320,46 @@ async function generateSingle() {
 
     try {
         const meta = extractJobMeta(jdText);
-        const matched = matchSkillsToJD(normalizeProfile(profile), jdText);
         const baseName = safeFileName(profile.displayName || profile.name);
         let count = 0;
 
+        // Optional AI tailoring (falls back to the raw profile on any failure)
+        const provider = document.getElementById('aiProvider')?.value;
+        const mode = document.getElementById('generationMode')?.value || 'smart';
+        let workingProfile = profile;
+        let aiUsed = false;
+        let aiCost = 0;
+        if (provider && window.AIIntegration && AIIntegration.isConfigured(provider)) {
+            if (statusContent) statusContent.innerHTML = '<p>🤖 Tailoring with AI...</p>';
+            try {
+                const r = await tailorProfileWithAI(profile, jdText, provider, mode);
+                workingProfile = r.profile;
+                aiUsed = true;
+                aiCost = r.cost;
+            } catch (e) {
+                console.warn('AI tailoring failed, using local:', e.message);
+                showToast('AI tailoring failed — generating locally instead', 'warning');
+            }
+            if (statusContent) statusContent.innerHTML = '<p>⏳ Building your documents...</p>';
+        }
+
+        const matched = matchSkillsToJD(normalizeProfile(workingProfile), jdText);
+
         if (wantResume) {
-            const pdfBlob = await buildResumePdfBlob(profile, matched);
+            const pdfBlob = await buildResumePdfBlob(workingProfile, matched);
             addDownloadLink(downloadLinks, pdfBlob, `${baseName}_Resume.pdf`, 'Resume (PDF)');
-            const docBlob = buildResumeDocBlob(profile, matched);
+            const docBlob = buildResumeDocBlob(workingProfile, matched);
             addDownloadLink(downloadLinks, docBlob, `${baseName}_Resume.doc`, 'Resume (Word)');
             count++;
         }
         if (wantCover) {
-            const clBlob = buildCoverLetterDocBlob(profile, meta.title, meta.company, jdText);
+            const clBlob = buildCoverLetterDocBlob(workingProfile, meta.title, meta.company, jdText);
             addDownloadLink(downloadLinks, clBlob, `${baseName}_CoverLetter.doc`, 'Cover Letter (Word)');
             count++;
         }
         if (wantPortfolio && window.PortfolioTemplates) {
             try {
-                const html = PortfolioTemplates.generatePortfolio(normalizeProfile(profile), template, 0);
+                const html = PortfolioTemplates.generatePortfolio(normalizeProfile(workingProfile), template, 0);
                 addDownloadLink(downloadLinks, new Blob([html], { type: 'text/html' }), `${baseName}_Portfolio.html`, 'Portfolio (HTML)');
                 count++;
             } catch (e) {
@@ -1331,12 +1377,15 @@ async function generateSingle() {
                 profile: profile.name,
                 jobTitle: meta.title,
                 outputs: count,
-                matchedSkills: matched.length
+                matchedSkills: matched.length,
+                aiUsed,
+                aiCost
             });
         } catch (e) { /* non-fatal */ }
 
         const matchNote = matched.length ? ` Matched ${matched.length} skill(s) to the JD.` : '';
-        if (statusContent) statusContent.innerHTML = `<p>✅ Generated ${count} document set(s).${matchNote} Click below to download.</p>`;
+        const aiNote = aiUsed ? ` AI-tailored (~$${aiCost.toFixed(4)}).` : '';
+        if (statusContent) statusContent.innerHTML = `<p>✅ Generated ${count} document set(s).${aiNote}${matchNote} Click below to download.</p>`;
         if (downloadLinks) downloadLinks.style.display = 'block';
         showToast(`Generated ${count} document set(s)`, 'success');
     } catch (error) {
@@ -1380,15 +1429,29 @@ async function generateBulk() {
     linkWrap.className = 'download-section';
     let done = 0;
 
+    // Optional AI tailoring per job when a bulk provider key is configured
+    const provider = document.getElementById('bulkAiProvider')?.value;
+    const useAI = provider && window.AIIntegration && AIIntegration.isConfigured(provider);
+
     try {
         for (let i = 0; i < jds.length; i++) {
-            const matched = matchSkillsToJD(normalizeProfile(profile), jds[i]);
-            const pdfBlob = await buildResumePdfBlob(profile, matched);
+            if (statusContent) statusContent.innerHTML = `<p>⏳ Generating resume ${i + 1} of ${jds.length}${useAI ? ' (AI tailoring)' : ''}...</p>`;
+            let workingProfile = profile;
+            if (useAI) {
+                try {
+                    const r = await tailorProfileWithAI(profile, jds[i], provider, 'smart');
+                    workingProfile = r.profile;
+                } catch (e) {
+                    console.warn(`AI tailoring failed for job ${i + 1}, using local:`, e.message);
+                }
+            }
+            const matched = matchSkillsToJD(normalizeProfile(workingProfile), jds[i]);
+            const pdfBlob = await buildResumePdfBlob(workingProfile, matched);
             addDownloadLink(linkWrap, pdfBlob, `${baseName}_Resume_${i + 1}.pdf`, `Resume #${i + 1} (PDF)`);
             done++;
         }
         try {
-            StorageManager.saveGeneration({ profile: profile.name, bulk: true, count: done });
+            StorageManager.saveGeneration({ profile: profile.name, bulk: true, count: done, aiUsed: !!useAI });
         } catch (e) { /* non-fatal */ }
         if (statusContent) {
             statusContent.innerHTML = `<p>✅ Generated ${done} resume(s). Click below to download.</p>`;

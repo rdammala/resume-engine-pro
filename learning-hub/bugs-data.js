@@ -205,6 +205,29 @@ window.BUGS = [
 window.generateSingle = generateSingle; // async: must expose explicitly (see #12)',
         lesson: 'When a heavy dependency (docx.js) is unavailable in the browser, prefer libraries already loaded (PDFKit) and degrade gracefully: an HTML Blob with application/msword opens cleanly in Word with zero dependencies. Always expose async handlers on window inside the load-guard block.',
         impact: 'High - The core value of the app (generating tailored resume documents) now works fully offline with no API key, producing downloadable PDF/Word/HTML/Markdown files.'
+    },
+    {
+        id: 15,
+        title: 'Optional AI Tailoring Wired Into Generation (Graceful Fallback)',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend Developer / SRE',
+        fixTime: '45 min',
+        description: 'Generation was local-only. Users who configure an AI provider key now get the model to tailor the resume summary, skills, and experience to each job description, while everyone else keeps the free local path. The integration must never block generation if the AI call fails.',
+        rootCause: 'The pre-existing AIIntegration.tailorResume() was never called from the generation flow. It returns a JSON string (keys: summary, experience, skills, ats_suggestions, full_resume) that needed parsing and merging into the profile before document building.',
+        resolution: 'Added tailorProfileWithAI(profile, jd, provider, mode): it calls AIIntegration.tailorResume, JSON-parses the response (falling back to treating prose as the summary), and merges summary/skills/experience into a cloned profile. generateSingle and generateBulk call it only when the selected provider isConfigured(); any AI/network error is caught and the flow falls back to local generation with a warning toast. Cost and aiUsed flags are recorded to history.',
+        codeExample: 'async function tailorProfileWithAI(profile, jd, provider, mode){
+  const r = await AIIntegration.tailorResume(provider, profile, jd, mode);
+  let ai; try { ai = JSON.parse(r.tailored); } catch { ai = { summary: r.tailored }; }
+  const t = { ...profile };
+  if (ai.summary) t.summary = String(ai.summary);
+  if (Array.isArray(ai.skills) && ai.skills.length) t.skills = ai.skills;
+  if (Array.isArray(ai.experience) && ai.experience.length) t.experience = ai.experience;
+  return { profile: t, cost: r.cost || 0, usedAI: true };
+}
+// in generateSingle: try AI -> on throw, showToast(warning) and use raw profile',
+        lesson: 'Enhancements that depend on a remote service must be strictly additive: wrap them in try/catch and fall back to the working baseline so a failed/blocked API call never breaks the core feature. Note: calling provider APIs directly from the browser exposes keys and is subject to CORS (Gemini works via key-in-URL; OpenAI/Anthropic typically block browser CORS) — a server-side proxy would be the production-grade approach.',
+        impact: 'Medium - Adds higher-quality tailored output for users with an API key, with zero risk to the free offline path.'
     }
 ];
 
