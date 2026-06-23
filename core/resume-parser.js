@@ -25,7 +25,7 @@ const ResumeParser = {
     async parsePDF(file) {
         // PDF parsing requires pdf.js library
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
         let text = '';
         
         for (let i = 1; i <= pdf.numPages; i++) {

@@ -22,6 +22,7 @@ let currentProfile = null;
 let selectedAIProvider = 'openai';
 let selectedMode = 'smart';
 let generatedResume = null;
+let parsedResumeProfile = null;
 
 console.log('Script variables initialized');
 
@@ -753,13 +754,9 @@ window.addEventListener('click', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     
-    // Tab switching
-    document.querySelectorAll('.main-tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tabName = this.dataset.tab;
-            switchMainTab(tabName);
-        });
-    });
+    // Tab switching is handled by inline onclick="switchMainTab('...')" on each
+    // .main-tab-btn. No extra listener needed here (a previous data-tab based
+    // listener fired switchMainTab(undefined) because the buttons have no data-tab).
     
     // PHASE 8: Voice note button listener
     const voiceNoteBtn = document.getElementById('voiceNoteBtn');
@@ -877,11 +874,108 @@ function switchProfileTab(tabName) {
     }
 }
 
-function handleResumeUpload(event) {
+async function handleResumeUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     console.log('File selected:', file.name);
-    alert('Resume parsing starting for: ' + file.name + ' (Implementation coming soon)');
+
+    const progress = document.getElementById('parseProgress');
+    const fill = document.getElementById('progressFill');
+    if (progress) progress.style.display = 'block';
+    if (fill) fill.style.width = '40%';
+
+    try {
+        if (typeof ResumeParser === 'undefined') {
+            throw new Error('ResumeParser module not loaded');
+        }
+        parsedResumeProfile = await ResumeParser.parseFile(file);
+        if (fill) fill.style.width = '100%';
+
+        // Suggest a reference name from the parsed resume
+        const displayNameInput = document.getElementById('profileDisplayName');
+        if (displayNameInput && !displayNameInput.value && parsedResumeProfile.name) {
+            displayNameInput.value = parsedResumeProfile.name;
+        }
+
+        const label = parsedResumeProfile.name || file.name;
+        showToast(`Resume parsed: ${label}. Click "Save Profile" to keep it.`, 'success');
+    } catch (error) {
+        console.error('Resume parse error:', error);
+        parsedResumeProfile = null;
+        showToast('Could not parse resume: ' + error.message, 'error');
+    } finally {
+        setTimeout(() => {
+            if (progress) progress.style.display = 'none';
+            if (fill) fill.style.width = '0%';
+        }, 800);
+    }
+}
+
+// Save a profile from either the Upload Resume or Manual Entry method
+function saveProfile() {
+    const manualMethod = document.getElementById('manualMethod');
+    const isManual = manualMethod && manualMethod.classList.contains('active');
+
+    let profile;
+    if (isManual) {
+        const name = document.getElementById('profileName')?.value.trim();
+        if (!name) {
+            showToast('Please enter your full name', 'warning');
+            return;
+        }
+        const skillsRaw = document.getElementById('profileSkills')?.value || '';
+        profile = {
+            id: Date.now().toString(),
+            name,
+            email: document.getElementById('profileEmail')?.value.trim() || '',
+            phone: document.getElementById('profilePhone')?.value.trim() || '',
+            linkedin: document.getElementById('profileLinkedIn')?.value.trim() || '',
+            yearsExperience: document.getElementById('profileYears')?.value || '',
+            location: document.getElementById('profileLocation')?.value.trim() || '',
+            summary: document.getElementById('profileSummary')?.value.trim() || '',
+            skills: skillsRaw.split(',').map(s => s.trim()).filter(Boolean),
+            experience: [],
+            education: [],
+            source: 'manual'
+        };
+    } else {
+        if (!parsedResumeProfile) {
+            showToast('Please upload a resume first, or use Manual Entry', 'warning');
+            return;
+        }
+        profile = { ...parsedResumeProfile, source: 'upload' };
+    }
+
+    const displayName = document.getElementById('profileDisplayName')?.value.trim();
+    if (displayName) profile.displayName = displayName;
+
+    try {
+        StorageManager.saveProfile(profile);
+        showToast('Profile saved successfully!', 'success');
+        parsedResumeProfile = null;
+        clearProfileForm();
+        closeProfileCreation();
+        displayProfiles();
+        if (typeof updateStats === 'function') updateStats();
+    } catch (error) {
+        console.error('Save profile error:', error);
+        showToast('Error saving profile: ' + error.message, 'error');
+    }
+}
+
+function closeProfileCreation() {
+    const profileCreation = document.getElementById('profileCreation');
+    if (profileCreation) profileCreation.style.display = 'none';
+}
+
+function clearProfileForm() {
+    ['profileName', 'profileEmail', 'profilePhone', 'profileLinkedIn', 'profileYears',
+     'profileLocation', 'profileSummary', 'profileSkills', 'profileDisplayName'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const fileInput = document.getElementById('resumeFile');
+    if (fileInput) fileInput.value = '';
 }
 
 // ============================================================================
