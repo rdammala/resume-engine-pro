@@ -480,12 +480,12 @@ function importTrackerData() {
         reader.onload = (event) => {
             const result = JobTrackerManager.import(event.target.result);
             if (result.success) {
-                alert('Tracker data imported successfully');
+                showToast('Tracker data imported successfully', 'success');
                 renderApplicationsList();
                 renderContactsList();
                 renderPortfolioGuide();
             } else {
-                alert(`Import failed: ${result.error}`);
+                showToast(`Import failed: ${result.error}`, 'error');
             }
         };
         reader.readAsText(file);
@@ -590,7 +590,7 @@ async function startVoiceRecording() {
         }
     } catch (err) {
         console.error('Recording error:', err);
-        alert('Microphone access denied. Please check permissions.');
+        showToast('Microphone access denied. Please check permissions.', 'error');
     }
 }
 
@@ -626,7 +626,7 @@ function updateVoiceTimer() {
 
 function saveVoiceNote() {
     if (!currentVoiceBlob) {
-        alert('No recording available');
+        showToast('No recording available', 'warning');
         return;
     }
     
