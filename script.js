@@ -1131,6 +1131,14 @@ function normalizeProfile(profile) {
     } else if (!Array.isArray(p.education)) {
         p.education = [];
     }
+    // Safety net: if structured parsing produced nothing but we still have the
+    // raw resume text, surface it so the generated document isn't empty.
+    const hasContent = (p.summary && p.summary.trim()) || p.skills.length || p.experience.length || p.education.length;
+    if (!hasContent && p.rawText && p.rawText.trim()) {
+        const raw = p.rawText.trim();
+        p.summary = raw.split('\n').slice(0, 4).join(' ').slice(0, 600);
+        p.experience = [{ position: '', description: raw.slice(0, 4000) }];
+    }
     return p;
 }
 
@@ -1143,11 +1151,34 @@ function matchSkillsToJD(profile, jdText) {
 
 // Try to guess job title + company from a pasted JD (best-effort, optional)
 function extractJobMeta(jdText) {
-    const firstLine = (jdText || '').split('\n').map(l => l.trim()).filter(Boolean)[0] || '';
-    return {
-        title: firstLine.slice(0, 80) || 'the role',
-        company: 'the company'
-    };
+    const lines = (jdText || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const roleRe = /(engineer|manager|developer|analyst|architect|specialist|lead|director|administrator|consultant|designer|scientist|technician|coordinator|officer|head\s+of|vp\b|president)/i;
+
+    // Prefer an explicit "Job Title:" / "Position:" line, then a role-like line
+    let title = '';
+    const labeled = lines.find(l => /^(job\s*title|position|role)\s*[:\-]/i.test(l));
+    if (labeled) {
+        title = labeled.replace(/^(job\s*title|position|role)\s*[:\-]\s*/i, '').trim();
+    }
+    if (!title) {
+        const roleLine = lines.find(l => roleRe.test(l) && l.length < 70 && !/\?$/.test(l));
+        if (roleLine) title = roleLine;
+    }
+    if (!title) {
+        title = (lines.find(l => !/\?$/.test(l) && l.length > 3) || 'the role').slice(0, 80);
+    }
+
+    // Best-effort company extraction
+    let company = 'the company';
+    const compLine = lines.find(l => /^(company|employer|organization)\s*[:\-]/i.test(l));
+    if (compLine) {
+        company = compLine.replace(/^(company|employer|organization)\s*[:\-]\s*/i, '').trim() || company;
+    } else {
+        const atMatch = (jdText || '').match(/\bat\s+([A-Z][A-Za-z0-9&.\- ]{2,40})/);
+        if (atMatch) company = atMatch[1].trim();
+    }
+
+    return { title: title || 'the role', company };
 }
 
 // Build a Word-compatible .doc Blob from HTML (docx.js isn't loaded in-browser)
@@ -1161,7 +1192,7 @@ function buildResumeDocBlob(profile, matched) {
         ${p.summary ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Summary</h2><p style="font-family:Calibri,sans-serif;">${escHtml(p.summary)}</p>` : ''}
         ${skills.length ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Core Skills</h2><p style="font-family:Calibri,sans-serif;">${skills.map(escHtml).join(' • ')}</p>` : ''}
         ${p.experience.length ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Experience</h2>${p.experience.map(exp => `
-            <p style="font-family:Calibri,sans-serif;"><strong>${escHtml(exp.position || exp.title || '')}</strong>${exp.company ? ' — ' + escHtml(exp.company) : ''}${exp.year ? ' (' + escHtml(exp.year) + ')' : ''}<br>${escHtml(exp.description || '')}</p>`).join('')}` : ''}
+            <p style="font-family:Calibri,sans-serif;"><strong>${escHtml(exp.position || exp.title || '')}</strong>${exp.company ? ' — ' + escHtml(exp.company) : ''}${exp.year ? ' (' + escHtml(exp.year) + ')' : ''}<br>${escHtml(exp.description || '').replace(/\n/g, '<br>')}</p>`).join('')}` : ''}
         ${p.education.length ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Education</h2>${p.education.map(e => `<p style="font-family:Calibri,sans-serif;">${escHtml(typeof e === 'string' ? e : (e.degree || e.school || ''))}</p>`).join('')}` : ''}
     `;
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body>${body}</body></html>`;
