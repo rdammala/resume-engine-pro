@@ -59,6 +59,31 @@ const AIIntegration = {
                 smart: { tokens: 1500, cost: 0.002 },
                 ultra: { tokens: 2500, cost: 0.005 }
             }
+        },
+        pollinations: {
+            name: 'Free AI (Pollinations — no key needed)',
+            endpoint: 'https://text.pollinations.ai/openai',
+            model: 'openai',
+            free: true,
+            noKey: true,
+            costs: { input: 0, output: 0 },
+            modes: {
+                fast: { tokens: 500, cost: 0 },
+                smart: { tokens: 1500, cost: 0 },
+                ultra: { tokens: 2500, cost: 0 }
+            }
+        },
+        custom: {
+            name: 'Custom / Your own provider (OpenAI-compatible)',
+            endpoint: '',
+            model: '',
+            custom: true,
+            costs: { input: 0, output: 0 },
+            modes: {
+                fast: { tokens: 500, cost: 0 },
+                smart: { tokens: 1500, cost: 0 },
+                ultra: { tokens: 2500, cost: 0 }
+            }
         }
     },
     
@@ -79,7 +104,30 @@ const AIIntegration = {
     },
     
     isConfigured(provider) {
+        if (provider === 'pollinations') return true; // free, no key required
+        if (provider === 'custom') {
+            const c = this.getCustomConfig();
+            return !!(c && c.endpoint);
+        }
         return !!this.getAPIKey(provider);
+    },
+
+    // Custom OpenAI-compatible provider configuration (BYO endpoint/model/key)
+    setCustomConfig(endpoint, model, key) {
+        StorageManager.set('customAIConfig', { endpoint: endpoint || '', model: model || '' }, false);
+        if (key) {
+            StorageManager.saveAPIKey('custom', key, true);
+        }
+        return true;
+    },
+
+    getCustomConfig() {
+        const cfg = StorageManager.get('customAIConfig', false) || {};
+        return {
+            endpoint: cfg.endpoint || '',
+            model: cfg.model || '',
+            key: this.getAPIKey('custom') || ''
+        };
     },
     
     getConfigured() {
@@ -100,6 +148,7 @@ const AIIntegration = {
     // ========================================================================
     
     getCost(provider, mode = 'smart') {
+        if (provider === 'pollinations' || provider === 'custom') return 0;
         if (!this.providers[provider]) return 0;
         return this.providers[provider].modes[mode]?.cost || 0;
     },
@@ -113,6 +162,14 @@ const AIIntegration = {
     // ========================================================================
     
     async tailorResume(provider, resumeData, jdData, mode = 'smart') {
+        // Free + custom providers handle their own auth
+        if (provider === 'pollinations') {
+            return this.tailorWithPollinations(resumeData, jdData, mode);
+        }
+        if (provider === 'custom') {
+            return this.tailorWithCustom(resumeData, jdData, mode);
+        }
+
         const key = this.getAPIKey(provider);
         if (!key) {
             throw new Error(`${provider} API key not configured`);
@@ -312,7 +369,75 @@ const AIIntegration = {
             throw new Error(`Mistral error: ${error.message}`);
         }
     },
-    
+
+    // ========================================================================
+    // FREE PROVIDER (Pollinations - no API key, CORS-enabled, OpenAI-compatible)
+    // ========================================================================
+
+    async tailorWithPollinations(resumeData, jdData, mode) {
+        const prompt = this.buildTailoringPrompt(resumeData, jdData, mode);
+        try {
+            const response = await fetch(this.providers.pollinations.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'openai',
+                    messages: [
+                        { role: 'system', content: 'You are an expert resume writer and ATS specialist. Always respond with valid JSON.' },
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Pollinations API error: ${response.status}`);
+            }
+            const data = await response.json();
+            const content = data?.choices?.[0]?.message?.content
+                ?? (typeof data === 'string' ? data : JSON.stringify(data));
+            return { success: true, provider: 'pollinations', cost: 0, tailored: content };
+        } catch (error) {
+            throw new Error(`Pollinations error: ${error.message}`);
+        }
+    },
+
+    // ========================================================================
+    // CUSTOM PROVIDER (user's own OpenAI-compatible endpoint + model + key)
+    // ========================================================================
+
+    async tailorWithCustom(resumeData, jdData, mode) {
+        const cfg = this.getCustomConfig();
+        if (!cfg || !cfg.endpoint) {
+            throw new Error('Custom provider not configured. Add your endpoint, model, and key in Settings.');
+        }
+        const prompt = this.buildTailoringPrompt(resumeData, jdData, mode);
+        const headers = { 'Content-Type': 'application/json' };
+        if (cfg.key) headers['Authorization'] = `Bearer ${cfg.key}`;
+        try {
+            const response = await fetch(cfg.endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    model: cfg.model || 'gpt-3.5-turbo',
+                    messages: [
+                        { role: 'system', content: 'You are an expert resume writer and ATS specialist. Respond with valid JSON.' },
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Custom provider error: ${response.status}`);
+            }
+            const data = await response.json();
+            // Support OpenAI-style and Anthropic-style responses
+            const content = data?.choices?.[0]?.message?.content
+                ?? data?.content?.[0]?.text
+                ?? (typeof data === 'string' ? data : JSON.stringify(data));
+            return { success: true, provider: 'custom', cost: 0, tailored: content };
+        } catch (error) {
+            throw new Error(`Custom provider error: ${error.message}`);
+        }
+    },
+
     // ========================================================================
     // PROMPT BUILDING
     // ========================================================================

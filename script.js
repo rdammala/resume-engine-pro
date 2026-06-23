@@ -213,6 +213,11 @@ function switchMainTab(tabName) {
         if (tabName === 'generator' && typeof populateProfileSelects === 'function') {
             populateProfileSelects();
         }
+
+        // Render AI provider settings (keys + custom provider) when entering Settings
+        if (tabName === 'settings' && typeof renderAISettings === 'function') {
+            renderAISettings();
+        }
     } catch (error) {
         console.error(`❌ switchMainTab error: ${error.message}`);
     }
@@ -1163,51 +1168,65 @@ function buildResumeDocBlob(profile, matched) {
     return new Blob(['\ufeff', html], { type: 'application/msword' });
 }
 
-// Build a PDF Blob using PDFKit + blob-stream (both loaded from CDN)
+// Build a PDF Blob using jsPDF (reliable browser global: window.jspdf.jsPDF)
 function buildResumePdfBlob(profile, matched) {
     return new Promise((resolve, reject) => {
         try {
-            if (typeof PDFDocument === 'undefined' || typeof blobStream === 'undefined') {
+            const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+            if (!jsPDFCtor) {
                 reject(new Error('PDF library not loaded'));
                 return;
             }
             const p = normalizeProfile(profile);
-            const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
-            const stream = doc.pipe(blobStream());
+            const doc = new jsPDFCtor({ unit: 'pt', format: 'letter' });
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const margin = 50;
+            const maxW = pageW - margin * 2;
+            let y = margin;
 
+            const ensure = (h) => { if (y + h > pageH - margin) { doc.addPage(); y = margin; } };
+            const writeBlock = (text, size, color, gap) => {
+                if (!text) return;
+                doc.setFontSize(size);
+                doc.setTextColor(color);
+                const lines = doc.splitTextToSize(String(text), maxW);
+                lines.forEach(line => { ensure(size + 2); doc.text(line, margin, y); y += size + 3; });
+                y += (gap || 0);
+            };
             const heading = (text) => {
-                doc.moveDown(0.6).fontSize(12).fillColor('#1a73e8').text(text.toUpperCase());
-                doc.moveTo(doc.x, doc.y).lineTo(560, doc.y).strokeColor('#cccccc').stroke();
-                doc.moveDown(0.3).fillColor('#222');
+                y += 8; ensure(20);
+                doc.setFontSize(12); doc.setTextColor('#1a73e8');
+                doc.text(String(text).toUpperCase(), margin, y); y += 6;
+                doc.setDrawColor('#cccccc'); doc.line(margin, y, pageW - margin, y); y += 12;
             };
 
-            doc.fontSize(22).fillColor('#111').text(p.displayName || p.name || 'Your Name', { align: 'center' });
+            // Header
+            doc.setFontSize(22); doc.setTextColor('#111111');
+            doc.text(p.displayName || p.name || 'Your Name', pageW / 2, y, { align: 'center' }); y += 22;
             const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).join('   |   ');
-            if (contact) doc.moveDown(0.2).fontSize(9).fillColor('#555').text(contact, { align: 'center' });
+            if (contact) { doc.setFontSize(9); doc.setTextColor('#555555'); doc.text(contact, pageW / 2, y, { align: 'center' }); y += 14; }
 
-            if (p.summary) { heading('Summary'); doc.fontSize(10).text(p.summary); }
+            if (p.summary) { heading('Summary'); writeBlock(p.summary, 10, '#333333', 4); }
 
             const skills = (matched && matched.length ? matched : p.skills);
-            if (skills.length) { heading('Core Skills'); doc.fontSize(10).text(skills.join('  •  ')); }
+            if (skills.length) { heading('Core Skills'); writeBlock(skills.join('  •  '), 10, '#333333', 4); }
 
             if (p.experience.length) {
                 heading('Experience');
                 p.experience.forEach(exp => {
                     const head = [exp.position || exp.title, exp.company].filter(Boolean).join(' — ');
-                    if (head) doc.fontSize(11).fillColor('#000').text(head + (exp.year ? `  (${exp.year})` : ''));
-                    if (exp.description) doc.fontSize(10).fillColor('#333').text(exp.description);
-                    doc.moveDown(0.3);
+                    if (head) writeBlock(head + (exp.year ? `  (${exp.year})` : ''), 11, '#000000', 1);
+                    if (exp.description) writeBlock(exp.description, 10, '#333333', 4);
                 });
             }
 
             if (p.education.length) {
                 heading('Education');
-                p.education.forEach(e => doc.fontSize(10).fillColor('#333').text(typeof e === 'string' ? e : (e.degree || e.school || '')));
+                p.education.forEach(e => writeBlock(typeof e === 'string' ? e : (e.degree || e.school || ''), 10, '#333333', 2));
             }
 
-            doc.end();
-            stream.on('finish', () => resolve(stream.toBlob('application/pdf')));
-            stream.on('error', err => reject(err));
+            resolve(doc.output('blob'));
         } catch (err) {
             reject(err);
         }
@@ -1476,8 +1495,18 @@ function updateAICost() {
     }
     const cost = (window.AIIntegration && AIIntegration.getCost) ? AIIntegration.getCost(provider, mode) : 0;
     const configured = window.AIIntegration && AIIntegration.isConfigured(provider);
+    if (provider === 'pollinations') {
+        box.innerHTML = '<p>✅ <strong>Free AI</strong> selected — no key needed, $0.00 cost. Tailoring runs in your browser.</p>';
+        return;
+    }
+    if (provider === 'custom') {
+        box.innerHTML = configured
+            ? '<p>✅ Using your <strong>custom AI provider</strong> — billed by your own account/provider.</p>'
+            : '<p>⚠️ Custom provider not configured yet. Add your endpoint &amp; key in the <strong>Settings</strong> tab.</p>';
+        return;
+    }
     box.innerHTML = `<p>Estimated AI cost: <strong>$${cost.toFixed(4)}</strong> per resume (${mode}).` +
-        (configured ? '' : ' <em>No API key set — will generate locally for free.</em>') + '</p>';
+        (configured ? '' : ' <em>No API key set — add it in Settings, or it will generate locally for free.</em>') + '</p>';
 }
 
 function updateBulkCost() {
@@ -1488,6 +1517,14 @@ function updateBulkCost() {
     if (!box) return;
     if (!provider) {
         box.innerHTML = `${count} job(s) detected — generated locally for free.`;
+        return;
+    }
+    if (provider === 'pollinations') {
+        box.innerHTML = `${count} job(s) × <strong>Free AI</strong> (Pollinations) — $0.00 total, no key needed.`;
+        return;
+    }
+    if (provider === 'custom') {
+        box.innerHTML = `${count} job(s) via your <strong>custom AI provider</strong> — billed by your own account.`;
         return;
     }
     const cost = (window.AIIntegration && AIIntegration.getBulkCost) ? AIIntegration.getBulkCost(provider, count, 'smart') : 0;
@@ -1524,6 +1561,88 @@ async function fetchJDFromURL() {
 window.generateSingle = generateSingle;
 window.generateBulk = generateBulk;
 window.fetchJDFromURL = fetchJDFromURL;
+
+// ============================================================================
+// AI PROVIDER SETTINGS UI (free, key-based, and custom BYO providers)
+// ============================================================================
+
+function renderAISettings() {
+    const container = document.getElementById('aiProvidersSettings');
+    if (!container || !window.AIIntegration) return;
+    const providers = AIIntegration.providers;
+
+    let html = '';
+
+    // Free, no-key provider
+    html += `<div class="ai-provider-card">
+        <h4>${escHtml(providers.pollinations.name)}</h4>
+        <p>✅ Ready to use — no account or API key required. Just pick <strong>Free AI</strong> in the Generate tab.</p>
+    </div>`;
+
+    // Key-based providers (use your own account/token)
+    ['openai', 'claude', 'gemini', 'mistral'].forEach(id => {
+        const configured = AIIntegration.isConfigured(id);
+        html += `<div class="ai-provider-card">
+            <h4>${escHtml(providers[id].name)} ${configured ? '✅' : ''}</h4>
+            <div class="form-group">
+                <input type="password" id="aikey_${id}" placeholder="Paste your ${escHtml(id)} API key" />
+                <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save Key</button>
+            </div>
+            <small>Use your own token from your ${escHtml(providers[id].name)} account. Stored only in your browser.</small>
+        </div>`;
+    });
+
+    // Custom / BYO OpenAI-compatible provider
+    const cfg = AIIntegration.getCustomConfig();
+    html += `<div class="ai-provider-card">
+        <h4>Custom / Your own AI provider ${cfg.endpoint ? '✅' : ''}</h4>
+        <p>Use any OpenAI-compatible endpoint — e.g. OpenRouter, Together, Groq, LM Studio, or a local Ollama server.</p>
+        <div class="form-group">
+            <label>API Endpoint URL</label>
+            <input type="text" id="customEndpoint" placeholder="https://openrouter.ai/api/v1/chat/completions" value="${escHtml(cfg.endpoint)}" />
+        </div>
+        <div class="form-group">
+            <label>Model name</label>
+            <input type="text" id="customModel" placeholder="e.g. gpt-4o-mini, llama-3.1-70b-instruct" value="${escHtml(cfg.model)}" />
+        </div>
+        <div class="form-group">
+            <label>API Key (leave blank for local servers like Ollama)</label>
+            <input type="password" id="customKey" placeholder="Paste your key" />
+        </div>
+        <button class="btn btn-secondary" onclick="saveCustomAIConfig()">Save Custom Provider</button>
+    </div>`;
+
+    container.innerHTML = html;
+}
+
+function saveAIProviderKey(provider) {
+    const input = document.getElementById('aikey_' + provider);
+    const key = input && input.value.trim();
+    if (!key) {
+        showToast('Please paste an API key first', 'warning');
+        return;
+    }
+    try {
+        AIIntegration.setAPIKey(provider, key);
+        showToast(`${provider} key saved`, 'success');
+        renderAISettings();
+    } catch (e) {
+        showToast('Could not save key: ' + e.message, 'error');
+    }
+}
+
+function saveCustomAIConfig() {
+    const endpoint = document.getElementById('customEndpoint')?.value.trim();
+    const model = document.getElementById('customModel')?.value.trim();
+    const key = document.getElementById('customKey')?.value.trim();
+    if (!endpoint) {
+        showToast('Please enter the API endpoint URL', 'warning');
+        return;
+    }
+    AIIntegration.setCustomConfig(endpoint, model, key);
+    showToast('Custom AI provider saved', 'success');
+    renderAISettings();
+}
 
 }
 
