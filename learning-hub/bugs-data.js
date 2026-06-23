@@ -284,5 +284,36 @@ window.generateSingle = generateSingle; // async: must expose explicitly (see #1
         codeExample: '// BROKEN - newline inside a single-quoted string is a SyntaxError\ncodeExample: \'async function generateSingle(){\n  const p = ...;\n}\',\n\n// FIXED - backtick template literal can span lines\ncodeExample: `async function generateSingle(){\n  const p = ...;\n}`,\n\n// Validate: node --check learning-hub/bugs-data.js\n// Assert load: node -e "window={}; require(\'./learning-hub/bugs-data.js\'); console.log(window.BUGS.length)"',
         lesson: 'Documentation and data files are code too - a broken data file can disable an entire feature with zero visible error. Validate every committed .js (including data/content files) with node --check, and prefer backtick template literals for any string that contains code snippets or spans multiple lines.',
         impact: 'High - Restored the entire Learning Hub Bug Tracking view (table + detail modals); window.BUGS now loads all documented bugs again.'
+    },
+    {
+        id: 20,
+        title: 'AI Output Rendered as Raw JSON + Garbled PDF Glyphs + Unstyled White Form Controls',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / SRE',
+        fixTime: '70 min',
+        description: 'A batch of user-reported defects on the Generate flow: (1) Documents tailored with the free Pollinations AI came out as the raw JSON the model returned (the whole {summary, experience, skills} blob dumped into the resume) instead of a formatted resume. (2) The PDF rendered special characters (en-dashes, bullets, smart quotes) as garbage "&"-separated glyphs. (3) The profile select, AI Provider, and Generation Mode dropdowns plus the URL field rendered as plain white-on-white, unreadable boxes. (4) The Paste-Text JD textarea could be dragged/resized until it overlapped other columns and could not be restored without a page refresh (which wiped pasted text). (5) The Generation Mode options still showed dollar price tags even when a free provider (None / Pollinations / Custom) was selected. (6) Uploaded-resume profile cards showed Untitled / N/A / 0 instead of the captured name, email, phone, and skills.',
+        rootCause: 'AI models wrap their JSON answers in markdown ```json code fences and sometimes add prose, so JSON.parse() failed and the catch-block stuffed the entire response into the summary. The AI experience objects also used a different shape (role/company/location/dates/details[]) than the document builder expected (position/company/year/description), so even valid JSON would not render. jsPDF built-in fonts are WinAnsi/Latin1 and cannot draw characters above U+00FF, producing garbled output. The generator-step selects/inputs/textareas live OUTSIDE .form-group, so they never inherited the dark-theme form styling. The JD textarea had the browser default resize:both with no max bounds. Generation Mode price labels were hard-coded in the HTML. Upload profiles never captured/echoed email/phone/skills.',
+        resolution: 'Added parseAIResponse() to strip ```json/``` fences, isolate the first {...} block, and JSON.parse with a clean-text summary fallback; added normalizeAIExperience() to map the model shape (role/title, company+location, dates/duration, details[]/responsibilities[]/bullets[]) onto the builder shape. Added an ascii() sanitizer in buildResumePdfBlob that converts smart quotes/dashes/bullets/ellipsis to ASCII and drops remaining non-Latin1 chars before every doc.text(). Added CSS for .generator-step and .jd-input selects/inputs/textareas (dark bg, light text, custom SVG dropdown arrow) and select option {background:#14162a} to fix the white dropdown popup; constrained #jdText/#bulkJDs to resize:vertical with min/max-height and max-width:100%, and laid out #urlJD as flex with an oninput title so the full pasted link shows on hover. Added refreshGenerationModeLabels(provider) to strip the price tags for free providers. Added editable Email/Phone/Skills fields to the upload form, auto-filled from the parser and merged into the saved profile, and the profile card now shows displayName/name/email/phone/skill-count.',
+        codeExample: `function parseAIResponse(raw){
+  let s = String(raw).replace(/\\\`\\\`\\\`[a-zA-Z]*\\s*/g,'').replace(/\\\`\\\`\\\`/g,'').trim();
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  try { return JSON.parse(a!==-1 && b>a ? s.slice(a,b+1) : s); }
+  catch { return { summary: s }; }   // never dump raw JSON again
+}
+function normalizeAIExperience(e){
+  return {
+    position: e.position||e.role||e.title||'',
+    company: [e.company||e.employer||'', e.location||''].filter(Boolean).join(', '),
+    year: e.year||e.dates||e.duration||'',
+    description: (e.details||e.responsibilities||e.bullets||[]).join('\\n') || e.description || ''
+  };
+}
+// jsPDF is Latin1: sanitize before drawing
+const ascii = s => String(s).replace(/[\\u2018\\u2019]/g,"'").replace(/[\\u201C\\u201D]/g,'"')
+  .replace(/[\\u2013\\u2014]/g,'-').replace(/[\\u2022\\u25CF\\u00B7]/g,'-')
+  .replace(/[^\\x09\\x0A\\x0D\\x20-\\x7E]/g,'');`,
+        lesson: 'LLMs return JSON inside markdown code fences and with model-specific field names - always strip fences, isolate the {...} block, parse defensively, and normalize the shape before use; never let a parse failure leak raw JSON to the user. jsPDF built-in fonts are Latin1-only, so sanitize text to ASCII (or embed a Unicode font) to avoid garbled glyphs. Form controls that sit outside the shared .form-group wrapper get no theme styling - either reuse the wrapper or add explicit selectors, and remember <option> needs its own dark background to fix white-on-white popups. Constrain resizable textareas (resize:vertical + max-width:100%) so they cannot overlap the layout.',
+        impact: 'High - Free-AI generation now produces properly formatted resumes (not raw JSON), PDFs render clean text, all Generate-tab controls are readable on the dark theme, the JD box no longer breaks the layout, free providers hide price tags, and uploaded profiles show real contact info and skills.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

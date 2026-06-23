@@ -473,10 +473,18 @@ function displayProfiles() {
         const card = document.createElement('div');
         card.className = 'profile-card';
         card.innerHTML = `
-            <h4>${profile.name || 'Untitled'}</h4>
+            <h4>${profile.displayName || profile.name || 'Untitled'}</h4>
+            <div class="profile-detail">
+                <span>Name:</span>
+                <span>${profile.name || 'N/A'}</span>
+            </div>
             <div class="profile-detail">
                 <span>Email:</span>
                 <span>${profile.email || 'N/A'}</span>
+            </div>
+            <div class="profile-detail">
+                <span>Phone:</span>
+                <span>${profile.phone || 'N/A'}</span>
             </div>
             <div class="profile-detail">
                 <span>Skills:</span>
@@ -803,6 +811,11 @@ window.addEventListener('click', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
+
+    // Normalize the Generation Mode price tags for the default provider on load
+    if (typeof refreshGenerationModeLabels === 'function') {
+        refreshGenerationModeLabels(document.getElementById('aiProvider')?.value || '');
+    }
     
     // Tab switching is handled by inline onclick="switchMainTab('...')" on each
     // .main-tab-btn. No extra listener needed here (a previous data-tab based
@@ -947,8 +960,16 @@ async function handleResumeUpload(event) {
             displayNameInput.value = parsedResumeProfile.name;
         }
 
+        // Auto-fill the editable contact + skills fields so the user can verify/correct
+        const emailInput = document.getElementById('uploadEmail');
+        if (emailInput) emailInput.value = parsedResumeProfile.email || '';
+        const phoneInput = document.getElementById('uploadPhone');
+        if (phoneInput) phoneInput.value = parsedResumeProfile.phone || '';
+        const skillsInput = document.getElementById('uploadSkills');
+        if (skillsInput) skillsInput.value = (parsedResumeProfile.skills || []).join(', ');
+
         const label = parsedResumeProfile.name || file.name;
-        showToast(`Resume parsed: ${label}. Click "Save Profile" to keep it.`, 'success');
+        showToast(`Resume parsed: ${label}. Review the fields below, then click "Save Profile".`, 'success');
     } catch (error) {
         console.error('Resume parse error:', error);
         parsedResumeProfile = null;
@@ -999,6 +1020,13 @@ function saveProfile() {
             return;
         }
         profile = { ...parsedResumeProfile, source: 'upload' };
+        // Apply any edits the user made to the auto-filled contact/skills fields
+        const em = document.getElementById('uploadEmail')?.value.trim();
+        if (em) profile.email = em;
+        const ph = document.getElementById('uploadPhone')?.value.trim();
+        if (ph) profile.phone = ph;
+        const sk = document.getElementById('uploadSkills')?.value.trim();
+        if (sk) profile.skills = sk.split(',').map(s => s.trim()).filter(Boolean);
     }
 
     const displayName = document.getElementById('profileDisplayName')?.value.trim();
@@ -1026,7 +1054,8 @@ function closeProfileCreation() {
 
 function clearProfileForm() {
     ['profileName', 'profileEmail', 'profilePhone', 'profileLinkedIn', 'profileYears',
-     'profileLocation', 'profileSummary', 'profileSkills', 'profileDisplayName'].forEach(id => {
+     'profileLocation', 'profileSummary', 'profileSkills', 'profileDisplayName',
+     'uploadEmail', 'uploadPhone', 'uploadSkills'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -1216,37 +1245,48 @@ function buildResumePdfBlob(profile, matched) {
             const maxW = pageW - margin * 2;
             let y = margin;
 
+            // jsPDF's built-in fonts are WinAnsi — normalize smart quotes, dashes,
+            // bullets and drop any remaining non-ASCII so text never renders garbled.
+            const ascii = (s) => String(s == null ? '' : s)
+                .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+                .replace(/[\u201C\u201D\u201E]/g, '"')
+                .replace(/[\u2013\u2014\u2212]/g, '-')
+                .replace(/[\u2022\u2023\u25CF\u25AA\u25E6\u00B7\u2043]/g, '-')
+                .replace(/\u2026/g, '...')
+                .replace(/\u00A0/g, ' ')
+                .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+
             const ensure = (h) => { if (y + h > pageH - margin) { doc.addPage(); y = margin; } };
             const writeBlock = (text, size, color, gap) => {
                 if (!text) return;
                 doc.setFontSize(size);
                 doc.setTextColor(color);
-                const lines = doc.splitTextToSize(String(text), maxW);
+                const lines = doc.splitTextToSize(ascii(text), maxW);
                 lines.forEach(line => { ensure(size + 2); doc.text(line, margin, y); y += size + 3; });
                 y += (gap || 0);
             };
             const heading = (text) => {
                 y += 8; ensure(20);
                 doc.setFontSize(12); doc.setTextColor('#1a73e8');
-                doc.text(String(text).toUpperCase(), margin, y); y += 6;
+                doc.text(ascii(String(text)).toUpperCase(), margin, y); y += 6;
                 doc.setDrawColor('#cccccc'); doc.line(margin, y, pageW - margin, y); y += 12;
             };
 
             // Header
             doc.setFontSize(22); doc.setTextColor('#111111');
-            doc.text(p.displayName || p.name || 'Your Name', pageW / 2, y, { align: 'center' }); y += 22;
+            doc.text(ascii(p.displayName || p.name || 'Your Name'), pageW / 2, y, { align: 'center' }); y += 22;
             const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).join('   |   ');
-            if (contact) { doc.setFontSize(9); doc.setTextColor('#555555'); doc.text(contact, pageW / 2, y, { align: 'center' }); y += 14; }
+            if (contact) { doc.setFontSize(9); doc.setTextColor('#555555'); doc.text(ascii(contact), pageW / 2, y, { align: 'center' }); y += 14; }
 
             if (p.summary) { heading('Summary'); writeBlock(p.summary, 10, '#333333', 4); }
 
             const skills = (matched && matched.length ? matched : p.skills);
-            if (skills.length) { heading('Core Skills'); writeBlock(skills.join('  •  '), 10, '#333333', 4); }
+            if (skills.length) { heading('Core Skills'); writeBlock(skills.join('  -  '), 10, '#333333', 4); }
 
             if (p.experience.length) {
                 heading('Experience');
                 p.experience.forEach(exp => {
-                    const head = [exp.position || exp.title, exp.company].filter(Boolean).join(' — ');
+                    const head = [exp.position || exp.title, exp.company].filter(Boolean).join(' - ');
                     if (head) writeBlock(head + (exp.year ? `  (${exp.year})` : ''), 11, '#000000', 1);
                     if (exp.description) writeBlock(exp.description, 10, '#333333', 4);
                 });
@@ -1317,24 +1357,63 @@ function addDownloadLink(container, blob, filename, label) {
 // Returns { profile, cost, usedAI }. Throws on AI/network failure (caller falls back).
 async function tailorProfileWithAI(profile, jdText, provider, mode) {
     const result = await AIIntegration.tailorResume(provider, profile, jdText, mode);
-    let aiData;
-    try {
-        aiData = JSON.parse(result.tailored);
-    } catch {
-        // Model returned prose, not JSON — use it as the summary
-        aiData = { summary: result.tailored };
-    }
+    const aiData = parseAIResponse(result.tailored);
+
     const tailored = { ...profile };
-    if (aiData.summary) tailored.summary = String(aiData.summary);
+    if (aiData.summary && typeof aiData.summary === 'string') {
+        tailored.summary = aiData.summary.trim();
+    }
+    // Skills: accept array or comma string
     if (Array.isArray(aiData.skills) && aiData.skills.length) {
-        tailored.skills = aiData.skills;
+        tailored.skills = aiData.skills.map(s => String(s).trim()).filter(Boolean);
     } else if (typeof aiData.skills === 'string' && aiData.skills.trim()) {
         tailored.skills = aiData.skills.split(',').map(s => s.trim()).filter(Boolean);
     }
+    // Experience: normalize the model's shape into what the builders expect
     if (Array.isArray(aiData.experience) && aiData.experience.length) {
-        tailored.experience = aiData.experience;
+        tailored.experience = aiData.experience.map(normalizeAIExperience);
     }
     return { profile: tailored, cost: result.cost || 0, usedAI: true };
+}
+
+// Parse an AI response that may be wrapped in markdown code fences or contain
+// surrounding prose. Always returns an object; on total failure, returns the
+// cleaned text as { summary } so generation still produces readable output.
+function parseAIResponse(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    let s = String(raw).trim();
+    // Strip ```json ... ``` or ``` ... ``` fences (anywhere)
+    s = s.replace(/```[a-zA-Z]*\s*/g, '').replace(/```/g, '').trim();
+    // Isolate the JSON object if the model added extra prose around it
+    const start = s.indexOf('{');
+    const end = s.lastIndexOf('}');
+    let candidate = (start !== -1 && end > start) ? s.slice(start, end + 1) : s;
+    try {
+        const obj = JSON.parse(candidate);
+        if (obj && typeof obj === 'object') return obj;
+    } catch (_) {
+        // fall through
+    }
+    // Could not parse JSON — use the cleaned, fence-free text as the summary
+    return { summary: s };
+}
+
+// Map a model experience entry (role/company/location/dates/details[]) onto the
+// builder shape ({ position, company, year, description }).
+function normalizeAIExperience(exp) {
+    if (typeof exp === 'string') return { position: '', company: '', year: '', description: exp };
+    const position = exp.position || exp.role || exp.title || '';
+    const company = [exp.company || exp.employer || exp.organization || '', exp.location || '']
+        .filter(Boolean).join(', ');
+    const year = exp.year || exp.dates || exp.date || exp.duration || exp.period || '';
+    let description = '';
+    if (Array.isArray(exp.details)) description = exp.details.join('\n');
+    else if (Array.isArray(exp.responsibilities)) description = exp.responsibilities.join('\n');
+    else if (Array.isArray(exp.bullets)) description = exp.bullets.join('\n');
+    else if (Array.isArray(exp.highlights)) description = exp.highlights.join('\n');
+    else description = exp.description || exp.summary || '';
+    return { position, company, year, description };
 }
 
 async function generateSingle() {
@@ -1519,6 +1598,8 @@ function updateAICost() {
     const provider = document.getElementById('aiProvider')?.value;
     const mode = document.getElementById('generationMode')?.value || 'smart';
     const box = document.getElementById('costEstimate');
+    // Show/hide the per-mode price tags depending on whether the provider charges
+    refreshGenerationModeLabels(provider);
     if (!box) return;
     if (!provider) {
         box.innerHTML = '<p>No AI provider selected — documents are generated locally for free.</p>';
@@ -1538,6 +1619,23 @@ function updateAICost() {
     }
     box.innerHTML = `<p>Estimated AI cost: <strong>$${cost.toFixed(4)}</strong> per resume (${mode}).` +
         (configured ? '' : ' <em>No API key set — add it in Settings, or it will generate locally for free.</em>') + '</p>';
+}
+
+// Free providers (none / Pollinations / your own custom endpoint) must not show
+// dollar price tags on the Generation Mode options. Paid providers do.
+function refreshGenerationModeLabels(provider) {
+    const sel = document.getElementById('generationMode');
+    if (!sel) return;
+    const free = !provider || provider === 'pollinations' || provider === 'custom';
+    const base = {
+        fast: 'Fast (Quick keyword matching)',
+        smart: 'Smart (Full tailoring)',
+        ultra: 'Ultra (Full + Portfolio content)'
+    };
+    const price = { fast: ' - $0.001', smart: ' - $0.03', ultra: ' - $0.06' };
+    Array.from(sel.options).forEach(o => {
+        if (base[o.value]) o.textContent = base[o.value] + (free ? '' : price[o.value]);
+    });
 }
 
 function updateBulkCost() {

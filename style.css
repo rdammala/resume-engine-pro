@@ -709,6 +709,90 @@ body {
 }
 
 /* ============================================================================
+   GENERATOR FORM CONTROLS — unified dark theme for all selects/inputs/textareas
+   (these live outside .form-group so they need explicit styling)
+   ============================================================================ */
+
+.generator-step select,
+.generator-step input,
+.generator-step textarea,
+.jd-input select,
+.jd-input input,
+.jd-input textarea {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    background: rgba(18, 20, 38, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.generator-step select,
+.jd-input select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    padding-right: 2.2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%2300d9ff' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+}
+
+/* Dropdown option list — force dark so it isn't white-on-white */
+.generator-step select option,
+.jd-input select option,
+.form-group select option,
+select option {
+    background: #14162a;
+    color: #e6e6e6;
+}
+
+.generator-step select:focus,
+.generator-step input:focus,
+.generator-step textarea:focus,
+.jd-input select:focus,
+.jd-input input:focus,
+.jd-input textarea:focus {
+    outline: none;
+    border-color: #0099ff;
+    box-shadow: 0 0 8px rgba(0, 153, 255, 0.25);
+}
+
+/* JD paste box: resize vertically only, never overflow into other columns */
+#jdText,
+#bulkJDs {
+    resize: vertical;
+    min-height: 180px;
+    max-height: 600px;
+    max-width: 100%;
+    line-height: 1.45;
+}
+
+/* URL field: keep button on one line, let input flex and show full link */
+#urlJD {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+#urlJD input {
+    flex: 1;
+    min-width: 0;
+    text-overflow: ellipsis;
+}
+
+#urlJD .btn,
+#urlJD button {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ============================================================================
    HISTORY
    ============================================================================ */
 
