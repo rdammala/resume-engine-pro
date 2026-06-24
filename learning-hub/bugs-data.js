@@ -422,5 +422,30 @@ fetch(url, { signal: controller.signal, body: JSON.stringify({
 })}); // retry once on "fetch failed"; default model = llama3.2 (3B), NOT llama3 (8B)`,
         lesson: 'GitHub run-list API is eventually consistent AND cacheable - when locating a just-dispatched run from the browser, always add a cache-buster + no-cache header and poll generously (minutes, not seconds). Match a free CPU CI runner memory budget: a 3B model (llama3.2) is the safe default; an 8B model (llama3) can be OOM-killed mid-inference and surface only as a generic "fetch failed", so cap num_ctx, set an AbortController timeout, retry once, and dump the server log on failure. Finally, when a long-running cloud job can fail, the UX must tell the user exactly what to do (link to the run, wait/retry) and reassure them about cost - public-repo Actions are free and the runner self-destructs.',
         impact: 'High - The cloud Ollama flow is now resilient end-to-end: runs are reliably located despite API lag, generation no longer crashes from OOM on the default model, failures give clear recovery steps with a direct Actions link, and users are explicitly reassured there is no lingering server and $0 cost.'
+    },
+    {
+        id: 25,
+        title: 'Cloud Resume Silently Lost: generated/ Was .gitignored + No History Logged for Failed/Partial Runs',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'DevOps / Frontend Developer / SRE',
+        fixTime: '75 min',
+        description: 'A live test exposed three end-user pain points. (1) The GitHub Actions run reached the generate step, produced generated/<run_id>.json successfully, then FAILED at the commit step - so the browser polled, never found the file, and showed "Failed to fetch". (2) The in-progress UI sat on a static "Failed to fetch" poster while the job was actually still running on GitHub, with no periodic "still working" updates. (3) After the failure, refreshing the page showed no trace of the attempt - the Generation History only recorded fully successful runs, and even those showed "Provider: undefined / Mode: undefined" as plain cards.',
+        rootCause: 'Three independent gaps. (1) .gitignore contained generated/, and the workflow ran git add generated/ under bash -e; git add on an ignored path exits 1, aborting the commit step, so the artifact was never pushed and the runner self-destructed with the result trapped inside it. (2) waitForCompletion only invoked the progress callback on a status CHANGE, so a multi-minute in_progress phase produced no heartbeat. (3) saveGeneration was called once, only on full success, and omitted provider/mode/status; there was no updateGeneration to transition an attempt from in-progress to success/failed, and no failure path recorded anything.',
+        resolution: 'Workflow: switched to git add -f generated/ so the committed artifact is never blocked by .gitignore. Storage: saveGeneration now assigns a stable id (and returns it), plus a new updateGeneration(id, patch) to transition a record. generateSingle now logs EVERY attempt up-front as status:in-progress (with profile, provider, mode, timestamp) and patches it to success (cost, outputs, matched skills) or failed (with the error reason) - including the Ollama token-missing and cloud-error paths. Runner: waitForCompletion adds an elapsed timer and emits a heartbeat on every status change AND roughly every ~21s, and the cloud card now shows "(Xm Ys elapsed). You can switch tabs and keep working - I will keep monitoring." The failure poster was softened from "did not complete / Failed to fetch / What to do" to "Still finishing... the job runs on GitHub servers, not this tab - navigate away and I will keep monitoring, or you can also:". Finally, Generation History was rebuilt from individual cards into a sortable-friendly table (Profile, Provider, Mode, Status badge, Cost, Outputs, Date & Time, Details/Reason).',
+        codeExample: `// Workflow: never let .gitignore block the artifact
+git add -f generated/   // was: git add generated/  (exited 1 under bash -e)
+
+// Storage: log every attempt, then patch the outcome
+const id = StorageManager.saveGeneration({ profile, provider, mode, status:'in-progress', cost:0, outputs:0 });
+// ...on success:
+StorageManager.updateGeneration(id, { status:'success', cost, outputs, matchedSkills });
+// ...on any failure / early return:
+StorageManager.updateGeneration(id, { status:'failed', error: e.message });
+
+// Runner heartbeat so the UI never looks stuck
+if (onProgress && (changed || i % 7 === 0)) onProgress(r.status, r, elapsedSec);`,
+        lesson: 'When a CI job is the source of truth for an artifact, never leave its output directory in .gitignore - use git add -f (or a !generated/ un-ignore) or the commit step silently dies AFTER the expensive work, stranding the result in a runner that then self-destructs. For long async jobs, a status-change-only progress callback looks frozen; add a time-based heartbeat with elapsed time and tell users they can leave the tab. And treat history as an audit log, not a success log: record every attempt the moment it starts, give each a stable id, and patch it to success/failed (with the reason) so a refresh never erases evidence of what the user tried. A table beats cards once you track status + failure reasons.',
+        impact: 'High - No more silently lost resumes (artifact always commits), the progress card stays alive with elapsed-time heartbeats and reassures users they can multitask, and every generation attempt - successful, failed, or in-progress - is now permanently logged in a clear table with provider, mode, status, cost, timestamp, outputs, and the failure reason.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

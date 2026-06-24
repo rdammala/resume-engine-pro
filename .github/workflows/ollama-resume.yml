@@ -85,7 +85,7 @@ jobs:
         run: |
           git config user.name "resume-engine-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add generated/
+          git add -f generated/
           if git diff --cached --quiet; then
             echo "Nothing to commit"
           else

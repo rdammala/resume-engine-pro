@@ -126,13 +126,28 @@ const StorageManager = {
     
     saveGeneration(generation) {
         const history = this.get('history', false) || [];
-        history.unshift({
+        const id = generation.id || ('gen-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7));
+        const entry = {
+            id,
             ...generation,
-            generatedAt: new Date().toISOString()
-        });
+            generatedAt: generation.generatedAt || new Date().toISOString()
+        };
+        history.unshift(entry);
         // Keep only last 100 entries
         const trimmed = history.slice(0, 100);
-        return this.set('history', trimmed);
+        this.set('history', trimmed);
+        return id;
+    },
+
+    // Patch an existing history entry in place (e.g. in-progress -> success/failed).
+    updateGeneration(id, patch) {
+        if (!id) return false;
+        const history = this.get('history', false) || [];
+        const idx = history.findIndex(h => h && h.id === id);
+        if (idx === -1) return false;
+        history[idx] = { ...history[idx], ...patch, updatedAt: new Date().toISOString() };
+        this.set('history', history);
+        return true;
     },
     
     getHistory(limit = 50) {

@@ -123,14 +123,22 @@ const GitHubRunner = {
     // ----- poll until the run completes -----
     async waitForCompletion(runId, onProgress) {
         const cfg = this.getConfig();
+        const started = Date.now();
         const run = await this.findRun(runId);
-        if (onProgress) onProgress(run.status || 'queued', run);
+        if (onProgress) onProgress(run.status || 'queued', run, 0);
         let last = run.status;
-        for (let i = 0; i < 130; i++) { // ~6.5 min at 3s
-            const res = await this.api(`/repos/${cfg.owner}/${cfg.repo}/actions/runs/${run.id}`);
+        for (let i = 0; i < 220; i++) { // ~11 min at 3s
+            const res = await this.api(`/repos/${cfg.owner}/${cfg.repo}/actions/runs/${run.id}?t=${Date.now()}`, {
+                headers: { 'Cache-Control': 'no-cache' }
+            });
             if (res.ok) {
                 const r = await res.json();
-                if (r.status !== last) { last = r.status; if (onProgress) onProgress(r.status, r); }
+                const elapsed = Math.round((Date.now() - started) / 1000);
+                const changed = r.status !== last;
+                if (changed) last = r.status;
+                // Heartbeat: report on every status change AND roughly every ~21s
+                // so the UI keeps saying "still working" instead of looking stuck.
+                if (onProgress && (changed || i % 7 === 0)) onProgress(r.status, r, elapsed);
                 if (r.status === 'completed') {
                     if (r.conclusion === 'success') return r;
                     throw new Error('Cloud job finished as "' + (r.conclusion || 'failure') + '". See the Actions logs.');
@@ -138,7 +146,7 @@ const GitHubRunner = {
             }
             await this._sleep(3000);
         }
-        throw new Error('Cloud job timed out. Check the repo Actions tab for progress.');
+        throw new Error('The cloud job is taking longer than usual. It is still running on GitHub — check the Actions tab; your result will be committed there when it finishes.');
     },
 
     // ----- read the committed result file -----

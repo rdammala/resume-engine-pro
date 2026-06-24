@@ -693,21 +693,65 @@ function displayHistory() {
     const history = StorageManager.getHistory(50);
     const container = document.getElementById('historyList');
     if (!container) return;
-    
-    container.innerHTML = '';
-    
-    history.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'history-card';
-        card.innerHTML = `
-            <h4>${item.profile}</h4>
-            <p>Provider: ${item.provider}</p>
-            <p>Mode: ${item.mode}</p>
-            <p>Cost: $${item.cost?.toFixed(4) || '0.00'}</p>
-            <p style="font-size: 0.8rem; color: #808080;">${new Date(item.generatedAt).toLocaleString()}</p>
-        `;
-        container.appendChild(card);
-    });
+
+    if (!history.length) {
+        container.innerHTML = '<p style="color:#9fb3c8;">No generations yet. Every attempt — successful or not — will be logged here.</p>';
+        return;
+    }
+
+    const providerLabel = (id) => {
+        if (!id) return '—';
+        const p = (window.AIIntegration && AIIntegration.providers && AIIntegration.providers[id]);
+        return p && p.name ? p.name.split('(')[0].trim() : id;
+    };
+
+    const rows = history.map(item => {
+        const when = item.generatedAt ? new Date(item.generatedAt) : null;
+        const dateStr = when ? when.toLocaleDateString() : '—';
+        const timeStr = when ? when.toLocaleTimeString() : '';
+        const status = item.status || 'success';
+        const statusClass = status === 'success' ? 'hist-ok'
+            : status === 'failed' ? 'hist-fail'
+            : status === 'in-progress' ? 'hist-run' : 'hist-muted';
+        const statusLabel = status === 'in-progress' ? 'In progress'
+            : status.charAt(0).toUpperCase() + status.slice(1);
+        const cost = typeof item.cost === 'number' ? item.cost
+            : (typeof item.aiCost === 'number' ? item.aiCost : 0);
+        const details = item.error
+            ? `<span class="hist-err">${escHtml(item.error)}</span>`
+            : (item.outputs != null
+                ? `${item.outputs} file(s)` + (item.matchedSkills != null ? `, ${item.matchedSkills} skill(s) matched` : '')
+                : '—');
+        return `<tr>
+            <td>${escHtml(item.profile || '—')}</td>
+            <td>${escHtml(providerLabel(item.provider))}</td>
+            <td>${escHtml(item.mode || '—')}</td>
+            <td><span class="hist-status ${statusClass}">${escHtml(statusLabel)}</span></td>
+            <td>$${cost.toFixed(4)}</td>
+            <td style="text-align:center;">${item.outputs != null ? item.outputs : '—'}</td>
+            <td>${escHtml(dateStr)}<br><small style="color:#808080;">${escHtml(timeStr)}</small></td>
+            <td class="hist-details">${details}</td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="hist-table-wrap">
+            <table class="hist-table">
+                <thead>
+                    <tr>
+                        <th>Profile</th>
+                        <th>Provider</th>
+                        <th>Mode</th>
+                        <th>Status</th>
+                        <th>Cost</th>
+                        <th>Outputs</th>
+                        <th>Date &amp; Time</th>
+                        <th>Details / Reason</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
 }
 
 // ============================================================================
@@ -1470,9 +1514,10 @@ async function runOllamaInCloud(profile, jdText, statusContent) {
     const { runId } = await GitHubRunner.dispatch({ resumeData: resumeText, jobDescription: jdText, model });
 
     setProg(18, 'Launching a free, ephemeral cloud runner…');
-    await GitHubRunner.waitForCompletion(runId, (status) => {
-        if (status === 'queued') setProg(28, 'Runner queued — installing & starting Ollama…');
-        else if (status === 'in_progress') setProg(58, `Running ${escHtml(model)} and tailoring your resume to the JD…`);
+    await GitHubRunner.waitForCompletion(runId, (status, run, elapsed) => {
+        const t = formatElapsed(elapsed);
+        if (status === 'queued') setProg(28, `Runner queued — installing & starting Ollama… (${t})`);
+        else if (status === 'in_progress') setProg(58, `Running ${escHtml(model)} and tailoring your resume to the JD… (${t} elapsed). You can switch to other tabs and keep working — I’ll keep monitoring this job and update you right here.`);
         else if (status === 'completed') setProg(90, 'Committing the tailored resume back to GitHub…');
     });
 
@@ -1527,6 +1572,13 @@ function buildResumeSourceText(profile) {
     return parts.join('\n\n').slice(0, 28000);
 }
 
+// Format a seconds count as "Xm Ys" (or "Ys" under a minute).
+function formatElapsed(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return m ? `${m}m ${s}s` : `${s}s`;
+}
+
 // Render the live "what's happening on the backend" progress card.
 function renderCloudProgress(container, pct, msg) {
     if (!container) return;
@@ -1575,6 +1627,7 @@ async function generateSingle() {
     if (downloadLinks) { downloadLinks.style.display = 'none'; downloadLinks.innerHTML = ''; }
     if (statusContent) statusContent.innerHTML = '<p>⏳ Generating your documents...</p>';
 
+    let histId = null;
     try {
         const meta = extractJobMeta(jdText);
         const baseName = safeFileName(profile.displayName || profile.name);
@@ -1586,6 +1639,21 @@ async function generateSingle() {
         let workingProfile = profile;
         let aiUsed = false;
         let aiCost = 0;
+
+        // Record this attempt up-front so EVERY try is logged (success or not).
+        try {
+            histId = StorageManager.saveGeneration({
+                profile: profile.displayName || profile.name || 'Profile',
+                jobTitle: meta.title || '',
+                provider: provider || 'local',
+                mode,
+                status: 'in-progress',
+                cost: 0,
+                outputs: 0
+            });
+            displayHistory();
+        } catch (_) { /* non-fatal */ }
+
         if (provider === 'ollama') {
             // Ollama runs in a free, ephemeral GitHub Actions cloud runner — no
             // local server needed. Dispatch the workflow, show live progress,
@@ -1593,6 +1661,7 @@ async function generateSingle() {
             if (!window.GitHubRunner || !GitHubRunner.hasToken()) {
                 if (statusContent) statusContent.innerHTML = '<p>⚙️ <strong>Ollama runs in a free GitHub cloud runner.</strong> Add a GitHub Personal Access Token in <strong>Settings → Ollama / Llama 3 (cloud)</strong> first, then click Generate again.</p>';
                 showToast('Add a GitHub token in Settings to use the Ollama cloud generator', 'warning');
+                try { StorageManager.updateGeneration(histId, { status: 'failed', error: 'No GitHub token configured (Settings → Ollama).' }); displayHistory(); } catch (_) {}
                 return;
             }
             try {
@@ -1600,20 +1669,21 @@ async function generateSingle() {
                 aiUsed = true;
             } catch (e) {
                 console.warn('Ollama cloud generation failed:', e.message);
+                try { StorageManager.updateGeneration(histId, { status: 'failed', provider: 'ollama', error: e.message }); displayHistory(); } catch (_) {}
                 const actionsUrl = (window.GitHubRunner && GitHubRunner.actionsUrl) ? GitHubRunner.actionsUrl() : '#';
                 if (statusContent) statusContent.innerHTML = `
                     <div class="cloud-error">
-                        <p>❌ <strong>Ollama cloud generation didn't complete.</strong></p>
+                        <p>⏳ <strong>Still finishing your Ollama cloud resume…</strong></p>
                         <p>${escHtml(e.message)}</p>
-                        <p style="margin-top:0.6rem;"><strong>What to do:</strong></p>
+                        <p style="margin-top:0.6rem;">Good news — the job runs on GitHub's servers, not in this browser tab, so it keeps going on its own. <strong>You can navigate to other pages and finish other work while I keep monitoring and updating this job for you</strong>, or you can also:</p>
                         <ol class="cloud-error-steps">
                             <li>Open your <a href="${actionsUrl}" target="_blank" rel="noopener">Actions tab</a> and find the latest <em>Ollama Resume</em> run. If it's still running (yellow dot), just wait — it can take ~2–4 min on the free CPU runner.</li>
-                            <li>Click <strong>Generate Now</strong> again to start a fresh attempt (it's free). With the latest fix the app now waits longer and bypasses GitHub's API cache, so it should attach correctly.</li>
+                            <li>Click <strong>Generate Now</strong> again to re-attach / start a fresh attempt (it's free). The app now waits longer and bypasses GitHub's API cache, so it should attach correctly.</li>
                             <li>If a run shows a red ✗, click it to read the logs (usually a token-permission or model-name issue), fix it in <strong>Settings → Ollama</strong>, and retry. Tip: use model <code>llama3.2</code> (3B) — it finishes faster than <code>llama3</code> (8B).</li>
                         </ol>
                         <p class="cloud-error-cost">💸 <strong>No cost concern:</strong> this repo is public, so GitHub Actions minutes are <strong>unlimited and free</strong>. The runner is temporary and shuts itself down automatically when the job finishes (or after 15 min max) — there is no server left running to bill you.</p>
                     </div>`;
-                showToast('Ollama cloud job is still running or needs attention — see the steps shown', 'warning');
+                showToast('Ollama cloud job is still running or needs attention — see the options shown', 'warning');
                 return;
             }
             if (statusContent) statusContent.innerHTML = '<p>⏳ Building your documents...</p>';
@@ -1659,16 +1729,19 @@ async function generateSingle() {
             count++;
         }
 
-        // Save to history
+        // Update the history record for this attempt (now that we know the outcome).
         try {
-            StorageManager.saveGeneration({
-                profile: profile.name,
+            StorageManager.updateGeneration(histId, {
                 jobTitle: meta.title,
+                provider: provider || 'local',
+                mode,
+                status: 'success',
                 outputs: count,
                 matchedSkills: matched.length,
                 aiUsed,
-                aiCost
+                cost: aiCost
             });
+            displayHistory();
         } catch (e) { /* non-fatal */ }
 
         const matchNote = matched.length ? ` Matched ${matched.length} skill(s) to the JD.` : '';
@@ -1678,6 +1751,7 @@ async function generateSingle() {
         showToast(`Generated ${count} document set(s)`, 'success');
     } catch (error) {
         console.error('Generation error:', error);
+        try { StorageManager.updateGeneration(histId, { status: 'failed', error: error.message }); displayHistory(); } catch (_) {}
         if (statusContent) statusContent.innerHTML = `<p>❌ Generation failed: ${escHtml(error.message)}</p>`;
         showToast('Generation failed: ' + error.message, 'error');
     }
