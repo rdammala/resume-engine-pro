@@ -193,7 +193,7 @@ await JobTrackerManager.syncToGitHub('resume-engine-data');
 [Search Box] [Status Filter] [+ Add Application Button]
 [Statistics Badges: Total, Applied, Interviewing, Offered, Rejected]
 [Applications Table]
-  ├── Headers: Role, Company, Applied, Portfolio, Status, Comments, Actions
+  ├── Headers: Role, Company, Applied, Links (Portfolio | Repo), Status, Comments, Actions
   ├── Rows: One per application
   └── Actions: Edit (✏️), Delete (🗑️)
 ```
@@ -203,7 +203,14 @@ await JobTrackerManager.syncToGitHub('resume-engine-data');
 - Filter by status
 - Inline edit/delete actions
 - Status badges with color coding
-- Portfolio links
+- Links column shows the live **Portfolio** (GitHub Pages) and the source **Repo**
+
+**Publish to GitHub (auto-fill):**
+After a successful resume generation, click **📤 Publish to GitHub** on the result or on any
+Success row in the History table. This creates a role-named public repo containing the
+resume, cover letter, job-details, and portfolio (served live via GitHub Pages), and then
+adds an Applications entry automatically with the Portfolio + Repo links pre-filled. You can
+still add or edit entries manually using the form below.
 
 **Status Colors:**
 - Applied: Blue (#0099ff)
@@ -265,6 +272,7 @@ await JobTrackerManager.syncToGitHub('resume-engine-data');
    - Role: "Senior Manager, Site Reliability Engineering" *required
    - Company: "NVIDIA" *required
    - Portfolio Link: "https://rdammala.github.io/Senior-Manager-SRE/"
+   - Repo Link: "https://github.com/rdammala/Senior-Manager-SRE" (optional; auto-filled when published)
    - Status: Select "Applied", "Interviewing", "Offered", or "Rejected" *required
    - Comments: "Great team, exciting challenges"
 4. Click "Save"

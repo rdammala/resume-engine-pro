@@ -1,6 +1,13 @@
 # Resume Engine Pro - Complete Documentation
 
-## 🚀 Overview
+## � Quick Links
+
+- **▶️ Live App:** https://rdammala.github.io/resume-engine-pro/
+- **📚 Learning Hub:** https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html
+
+> Tip: After deploying changes, open the Live App and hard-refresh with **Ctrl+Shift+R**.
+
+## �🚀 Overview
 
 Resume Engine Pro is a comprehensive, browser-based resume and portfolio generation platform that runs entirely on your device. It leverages GitHub for storage and supports multiple AI providers for intelligent resume tailoring.
 
