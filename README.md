@@ -22,7 +22,55 @@ Resume Engine Pro is a comprehensive, browser-based resume and portfolio generat
 - ✅ Complete privacy control
 - ✅ Works offline
 
+## 🤖 AI Models — Which One Is Best at What
+
+Resume Engine Pro can tailor your résumé with several different engines. You pick one in **Generate → AI Provider** (and, for Ollama, a specific model in **Settings → Ollama**). Here is how they compare so you can choose the right one for the job.
+
+### Quick recommendation
+
+| Your priority | Pick this |
+|---|---|
+| **Free, private, zero setup** | **Ollama `llama3.2` (3B)** — runs in a free GitHub cloud runner |
+| **Free but noticeably smarter** | **Ollama `qwen2.5:7b`** — better JD/company reading & ATS phrasing |
+| **Free, no GitHub token at all** | **Pollinations** (no key needed) |
+| **Highest writing quality, cost no object** | **OpenAI GPT‑4** (your key) |
+| **Best quality‑per‑dollar (paid)** | **Claude 3 Sonnet** or **Mistral Large** (your key) |
+| **No AI at all (pure keyword match)** | **None — generate locally** |
+
+### Provider comparison (bring-your-own-key & free)
+
+| Provider | Model | Cost / résumé* | Strengths | Watch-outs |
+|---|---|---|---|---|
+| **None (local)** | keyword matching | **$0** | Instant, fully offline, totally private | No real tailoring — just matches JD keywords |
+| **Ollama (cloud)** | `llama3.2` (3B) | **$0** | Free, private, runs on a throwaway GitHub runner; fast (~2–4 min) | 3B model → weaker at nuanced company/JD extraction |
+| **Pollinations** | OpenAI-compatible | **$0** | Free, **no API key**, decent quality | Shared free endpoint — slower/variable, no privacy guarantee |
+| **OpenAI** | GPT‑4 | ~$0.03 | Best overall writing, reasoning & ATS polish | Most expensive; needs your key |
+| **Claude** | Claude 3 Sonnet | ~$0.005 | Excellent long-form, natural cover letters, strong instruction-following | Needs your key |
+| **Google Gemini** | Gemini Pro | ~$0.0075 | Good general quality, generous free tier | Needs your key; quality below GPT‑4/Claude |
+| **Mistral AI** | Mistral Large | ~$0.002 | Cheapest paid option, fast, solid quality | Needs your key; slightly less polished than GPT‑4 |
+| **Custom** | your choice | varies | Point at any OpenAI-compatible endpoint/model | You manage the endpoint, key & limits |
+
+\* Approximate cost for one *Smart*-mode résumé tailoring. Actual cost varies with résumé/JD length and mode (Fast / Smart / Ultra).
+
+### Ollama models on the free GitHub runner
+
+The Ollama path runs entirely free inside an ephemeral GitHub Actions runner (**CPU-only, ~16 GB RAM**). You type the model name in **Settings → Ollama**. Because the runner has no GPU and limited memory, model choice matters:
+
+| Model | Size | Speed | Quality | Verdict |
+|---|---|---|---|---|
+| **`llama3.2`** (3B) | ~2 GB | ⚡ Fast (2–4 min) | Good | ✅ **Default** — best balance of speed & reliability |
+| **`qwen2.5:7b`** | ~4.7 GB | 🚶 Moderate | Better | ✅ **Best free quality** — sharper JD/company extraction & ATS wording |
+| **`mistral`** (7B) | ~4.1 GB | 🚶 Moderate | Good+ | ✅ Solid alternative; strong instruction-following |
+| **`phi3`** (3.8B) | ~2.3 GB | ⚡ Fast | OK | ➖ Lightweight; fine when speed matters most |
+| **`llama3`** (8B) | ~4.7 GB | 🐢 Slow | Better | ⚠️ **Avoid** — can run out of memory mid-generation on the free runner |
+| **`gemma2:9b`** / larger | 5 GB+ | 🐢 Slow | Better | ⚠️ Risky — likely OOM / timeout on a 16 GB CPU runner |
+
+**Rule of thumb:** start with `llama3.2` for fast, dependable runs. If the summary, bullets, or the extracted company/title aren't sharp enough, switch to `qwen2.5:7b` — it reads the job description more carefully at the cost of a bit more time. Stay at or below ~7B parameters so the job fits the free runner's memory.
+
+> 💡 The cloud generator is tuned with `num_ctx: 8192` and `num_predict: 2048` so the full résumé + JD fit in context and the model has room to produce 4–6 quantified bullets per role and 14–18 JD-aligned skills, regardless of which model you choose.
+
 ## 📚 Learning Hub
+
 
 **Interactive development documentation for Resume Engine Pro**
 
