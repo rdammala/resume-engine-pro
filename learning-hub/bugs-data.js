@@ -578,5 +578,38 @@ try { rebuildDocuments(aiData); StorageManager.updateGeneration(id, { status:'su
 catch (e) { StorageManager.updateGeneration(id, { status:'success', note:'Rebuild failed - use Publish/Re-check.' }); }`,
         lesson: 'When calling a cross-origin API from the browser, every request header you add is a CORS liability: any non-simple header (Cache-Control, If-None-Match, custom X- headers) forces a preflight, and if the server does not echo it in Access-Control-Allow-Headers the real request is blocked outright - so prefer a ?t= cache-buster query param over a no-cache header for defeating caches. Read a console "blocked by CORS policy: request header field X is not allowed" as "remove header X", not "the endpoint is down". And never let a derived step (document rebuild) failure mask the true terminal state of an async job - mark the job success and degrade the side effect, rather than stranding the record.',
         impact: 'High - GitHub API calls succeed again, Re-check now authoritatively flips success rows to Success (rebuilding and offering the documents) and failed rows to Failed, the 30s background reconciler works, and a successful run is never stranded In progress even when the optional document rebuild hiccups.'
+    },
+    {
+        id: 30,
+        title: 'Finished Documents Had No Re-download Path + Publish Failed 403 Because the Repo-Scoped Token Cannot Create New Repos',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend Developer / DevOps',
+        fixTime: '45 min',
+        description: 'Once Re-check correctly flipped a cloud run to Success (4 files, 0 skills matched), the user asked a fair question: where are the files to download? The rebuilt documents had been rendered as download buttons on the Generate tab, but the user was on the History tab and never saw them, and the links vanish on reload - a success row offered only a Publish button, no way to get the files back. Separately, clicking Publish failed with HTTP 403 "Resource not accessible by personal access token" while trying to create the repo Team-Leadership-Engineering-Partnership, which looked like a lost approval but was actually a token-scope limitation.',
+        rootCause: 'Two issues. (1) finalizeResumedRun (and the original generate flow) wrote the download links into the Generate tab download container and showed a toast, but there was no persistent, per-row way to re-obtain the files; once the user navigated away or reloaded, the object URLs were gone and the only stored copy was the committed JSON in the repo. (2) The generation token is a fine-grained PAT scoped to ONLY the resume-engine-pro repository with Actions + Contents - perfect for dispatching the cloud workflow, but the Publish flow calls POST /user/repos to create a brand-new role-named repo, and a single-repo fine-grained token has no account-level Administration permission to create repositories, so GitHub returns 403. Nothing was revoked; the token simply never had repo-create rights.',
+        resolution: 'Added a Download action to every successful History row: downloadHistoryEntry(histId, btnEl) reloads the profile, re-fetches the committed Ollama result and re-applies mergeTailored so the docs stay tailored, rebuilds all selected outputs via buildDocumentsFromProfile, switches to the Generate tab, and auto-clicks each generated link (staggered 400ms so the browser does not coalesce them) - with the buttons also left visible as a fallback. The async handler is exposed on window (per the bug 28 lesson) so the inline onclick can reach it. For Publish, documented the exact token requirement in the failure card and to the user: either a classic token with repo + workflow scope, or a fine-grained token with access to All repositories and Administration + Contents + Pages + Actions = Read and write (single-repo tokens can dispatch the cloud job but cannot create the publish repo).',
+        codeExample: `// Per-row re-download: rebuild tailored docs and auto-start the downloads.
+async function downloadHistoryEntry(histId, btnEl) {
+  const item = StorageManager.getHistory(100).find(h => h.id === histId);
+  const profile = StorageManager.getProfile(item.profileId);
+  let workingProfile = profile;
+  if (item.provider === 'ollama' && item.runId) {
+    const aiData = await GitHubRunner.fetchResult(item.runId);     // committed JSON
+    if (aiData && !aiData._raw) workingProfile = mergeTailored(profile, aiData);
+  }
+  const links = document.getElementById('downloadLinks');
+  links.innerHTML = '';
+  await buildDocumentsFromProfile(workingProfile, item.jd, item.baseName, item.genOpts, links);
+  switchMainTab('generator');
+  links.querySelectorAll('a[download]').forEach((a, i) => setTimeout(() => a.click(), i * 400));
+}
+window.downloadHistoryEntry = downloadHistoryEntry;   // async fns must be put on window
+
+// Publish 403: POST /user/repos needs repo-create rights the repo-scoped token lacks.
+// Fix = classic token (repo + workflow) OR fine-grained token on ALL repositories
+// with Administration + Contents + Pages + Actions = Read and write.`,
+        lesson: 'If the only durable copy of a generated artifact is remote (a committed file) or transient (an object URL), give users a first-class, repeatable way to re-obtain it - do not assume they saw a one-time link on another tab. Persist enough context (profile id, run id, output options) so any finished row can be rebuilt on demand, and auto-trigger the download while still showing the buttons as a fallback. On tokens: scope is not approval - a 403 "Resource not accessible by personal access token" on POST /user/repos means the token cannot create repositories, not that access was revoked. A fine-grained PAT scoped to a single repo can drive that repo (dispatch, read/write contents) but cannot create NEW repos; that needs a classic repo scope or a fine-grained token over All repositories with Administration write. Match token scope to the broadest operation the feature performs.',
+        impact: 'Medium - users can re-download every finished application package directly from History with one click (tailored, not just the base profile), and the Publish permission failure is now self-explanatory with exact token guidance, so creating the published repo + live portfolio succeeds once the right token is supplied.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
