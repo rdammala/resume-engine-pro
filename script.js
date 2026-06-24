@@ -1962,8 +1962,16 @@ async function publishHistoryEntry(histId, btnEl) {
         try {
             setMsg('<p>⏳ Writing README with the live portfolio link…</p>');
             const readme = buildPublishReadme({ role, company, pagesUrl, fileNames: names, date });
-            await GitHubRunner.putFile(login, repoName, 'README.md', utf8ToBase64(readme), 'Add README with live portfolio link');
-        } catch (_) { /* README is best-effort */ }
+            await GitHubRunner.putFile(login, repoName, 'README.md', utf8ToBase64(readme), 'Update README with live portfolio link');
+        } catch (e) {
+            console.warn('README write failed:', e && e.message);
+            showToast('Published, but updating the README failed: ' + (e && e.message ? e.message : 'unknown error'), 'warning');
+        }
+
+        // Surface the live link in the repo's About sidebar too (best-effort).
+        if (pagesUrl) {
+            try { await GitHubRunner.updateRepoMeta(login, repoName, { homepage: pagesUrl }); } catch (_) {}
+        }
 
         // Applied date defaults to the generation time (editable later in tracker).
         try {

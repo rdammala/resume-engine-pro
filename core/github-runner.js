@@ -283,6 +283,24 @@ const GitHubRunner = {
         }
     },
 
+    // Set the repo's About homepage (and optionally description) so the live
+    // portfolio link is visible in the sidebar. Best-effort; never throws.
+    async updateRepoMeta(owner, name, { homepage, description } = {}) {
+        try {
+            const body = {};
+            if (homepage != null) body.homepage = homepage;
+            if (description != null) body.description = String(description).slice(0, 350);
+            if (!Object.keys(body).length) return false;
+            const res = await this.api(`/repos/${owner}/${name}`, {
+                method: 'PATCH',
+                body: JSON.stringify(body)
+            });
+            return res.ok;
+        } catch (_) {
+            return false;
+        }
+    },
+
     _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 };
 
