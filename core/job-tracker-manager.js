@@ -43,9 +43,27 @@ const JobTrackerManager = {
                 existing.repo = d.repo;
             }
         });
-        
-        this.saveApplications(stored);
-        return stored;
+
+        // Collapse rows that point at the same package (same repo, or same live
+        // link). Re-publishing the same entry on the old build created identical
+        // duplicate rows; this cleans them up the next time the tracker loads.
+        const deduped = this.dedupeByRepo(stored);
+        this.saveApplications(deduped);
+        return deduped;
+    },
+
+    // Keep the first occurrence of each repo/live-link; drop later duplicates.
+    // Entries without a repo or link (manual one-offs) are always kept.
+    dedupeByRepo(apps) {
+        const seen = new Set();
+        const out = [];
+        (apps || []).forEach(a => {
+            const key = (a && (a.repo || a.link)) || '';
+            if (key && seen.has(key)) return;
+            if (key) seen.add(key);
+            out.push(a);
+        });
+        return out;
     },
     
     saveApplications(apps) {
