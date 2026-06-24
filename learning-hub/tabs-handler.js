@@ -172,7 +172,7 @@ window.renderCodeBlock = function(code) {
 
 window.copyCode = function(btn) {
     const wrap = btn && btn.closest('.code-wrap');
-    const codeEl = wrap && wrap.querySelector('code');
+    const codeEl = wrap && (wrap.querySelector('code') || wrap.querySelector('.code-block'));
     if (!codeEl) return;
     const text = codeEl.textContent;
     const done = () => {
@@ -273,9 +273,41 @@ window.showFeatureDetail = function(featureId) {
     document.getElementById('bugModal').classList.add('active');
 };
 
+// Enhance the STATIC code blocks that live in the role/perspective tabs (they
+// are hard-coded <div class="code-block"> in the HTML). Give them the same
+// IDE-style formatting (preserve line breaks) and the hover copy button, so
+// every tab behaves like the Bug/Feature trackers. Runs once at load.
+window.enhanceStaticCodeBlocks = function() {
+    document.querySelectorAll('.code-block').forEach(block => {
+        if (block.closest('.code-wrap')) return; // already enhanced / dynamic
+
+        // Plain-text blocks: preserve their internal formatting and trim the
+        // blank first/last line that comes from the HTML indentation.
+        if (block.children.length === 0) {
+            block.classList.add('code-pre');
+            block.textContent = block.textContent.replace(/^\s*\n/, '').replace(/\s+$/, '');
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'code-wrap';
+        block.parentNode.insertBefore(wrap, block);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn';
+        btn.title = 'Copy code';
+        btn.innerHTML = '📋 Copy';
+        btn.setAttribute('onclick', 'window.copyCode(this)');
+
+        wrap.appendChild(btn);
+        wrap.appendChild(block);
+    });
+};
+
 // Set up event listeners
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOMContentLoaded fired");
+    window.enhanceStaticCodeBlocks();
     document.addEventListener('click', (e) => {
         if (e.target.id === 'bugModal') {
             window.closeModal();
