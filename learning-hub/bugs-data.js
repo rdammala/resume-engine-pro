@@ -611,5 +611,29 @@ window.downloadHistoryEntry = downloadHistoryEntry;   // async fns must be put o
 // with Administration + Contents + Pages + Actions = Read and write.`,
         lesson: 'If the only durable copy of a generated artifact is remote (a committed file) or transient (an object URL), give users a first-class, repeatable way to re-obtain it - do not assume they saw a one-time link on another tab. Persist enough context (profile id, run id, output options) so any finished row can be rebuilt on demand, and auto-trigger the download while still showing the buttons as a fallback. On tokens: scope is not approval - a 403 "Resource not accessible by personal access token" on POST /user/repos means the token cannot create repositories, not that access was revoked. A fine-grained PAT scoped to a single repo can drive that repo (dispatch, read/write contents) but cannot create NEW repos; that needs a classic repo scope or a fine-grained token over All repositories with Administration write. Match token scope to the broadest operation the feature performs.',
         impact: 'Medium - users can re-download every finished application package directly from History with one click (tailored, not just the base profile), and the Publish permission failure is now self-explanatory with exact token guidance, so creating the published repo + live portfolio succeeds once the right token is supplied.'
+    },
+    {
+        id: 31,
+        title: 'Published Repo Shipped a Bare Auto-Generated README With No Link to the Live Portfolio',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '25 min',
+        description: 'After Publish started working end-to-end (creates the role-named repo, pushes the resume, cover letter and portfolio, enables GitHub Pages, and adds a tracker entry), the resulting repository README.md was just the one-line stub that auto_init generates from the repo description. A visitor landing on the repo had no obvious way to reach the live portfolio - the github.io URL was nowhere on the repo home page, even though Pages was live. The user asked for the live link to be written into the README created in their repo.',
+        rootCause: 'ensureRepo creates the repository with auto_init: true, which seeds a minimal README.md containing only the repo name and description. The publish flow uploaded the document files and enabled Pages but never replaced that stub, so the live Pages URL (only known AFTER enablePages runs) was never surfaced anywhere a repo visitor would see it.',
+        resolution: 'Added buildPublishReadme(), which composes a Markdown README that leads with a 🔗 Live Portfolio section linking the github.io Pages URL (with a note that Pages can take ~1 min), then a 📄 Documents section listing each committed file with a friendly label (Resume PDF/Word, Cover Letter, Job Details), the role as the H1, the company line, and a generated-on date. After enablePages resolves the pagesUrl, publishHistoryEntry writes this via GitHubRunner.putFile(login, repo, README.md, ...) - putFile already fetches the existing file SHA, so it cleanly overwrites the auto_init stub. Text is committed with a UTF-8-safe utf8ToBase64 helper (btoa(unescape(encodeURIComponent(str)))) so accented names and emoji survive base64. The README write is best-effort and wrapped in try/catch so a hiccup never fails the overall publish.',
+        codeExample: `// README must be written AFTER Pages is enabled (that is when pagesUrl exists).
+const ok = await GitHubRunner.enablePages(login, repoName, 'main');
+if (ok) pagesUrl = \`https://\${login}.github.io/\${repoName}/\`;
+
+const readme = buildPublishReadme({ role, company, pagesUrl, fileNames: names, date });
+// putFile fetches the existing SHA, so this overwrites the auto_init stub cleanly.
+await GitHubRunner.putFile(login, repoName, 'README.md',
+  utf8ToBase64(readme), 'Add README with live portfolio link');
+
+// UTF-8-safe base64 so accented names / emoji survive the Contents API:
+function utf8ToBase64(str){ return btoa(unescape(encodeURIComponent(String(str||'')))); }`,
+        lesson: 'When auto_init creates a repository it also creates a stub README - if you want a meaningful landing page you must overwrite it, and an idempotent putFile that reads the current SHA first makes that a one-liner. Sequence matters: a value that only exists after a later step (the Pages URL after enablePages) can only be written once that step completes, so order the README write last. Always base64-encode text for the Contents API through a UTF-8-safe path (btoa alone throws on non-Latin1 characters). And keep cosmetic finishing touches best-effort so they never jeopardize the core operation.',
+        impact: 'Low - every published application repo now opens with a clear, clickable link to the live portfolio plus a tidy list of the included documents, so anyone landing on the repo (recruiter, the user) reaches the hosted portfolio in one click instead of hunting for the github.io URL.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
