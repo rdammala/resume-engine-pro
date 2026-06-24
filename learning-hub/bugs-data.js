@@ -513,5 +513,36 @@ await GitHubRunner.enablePages(login, repoName, 'main');
 JobTrackerManager.addApplication({ role, company, link: pagesUrl, repo: repoUrl, status: 'Applied' });`,
         lesson: 'Any client-driven async job must persist its server-side identifier the instant it is dispatched; without it a later success cannot be matched back to the row that started it. Store enough context (inputs, options, source ids) up front to fully rebuild outputs later, and always provide a manual recovery path for rows created before a fix shipped, since old data will not benefit from new write-time logic. When a job already produces a durable artifact in a repo, listing recent runs and re-importing is a cheap, robust fallback. Finally, keep CI action versions current so deprecation warnings do not pile up.',
         impact: 'High - stuck rows can now be recovered with one click, every generation is rebuildable, finished application packages live in the user GitHub with a live portfolio, the tracker shows portfolio and repo links, and the CI deprecation warning is gone.'
+    },
+    {
+        id: 28,
+        title: 'Re-check and Publish Buttons Threw "not defined" Because async Function Declarations Do Not Leak to Global Scope + Data-Durability Hardening Pass',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / SRE',
+        fixTime: '75 min',
+        description: 'Right after the Publish and Re-check feature shipped, clicking the Re-check action in the History table did nothing and the console showed ReferenceError: recheckHistoryEntry is not defined (and the same for publishHistoryEntry). The buttons use inline onclick handlers, which require the function to be reachable on the global object. Separately, live testing exposed three smaller defects on the same screens: the Settings gear icon rendered as an empty dark box, the tracker toolbar showed doubled labels Export Export and Import Import, and the Export Settings and Import Settings buttons called functions that were never defined. A bigger reliability concern was also confirmed: all application data lives only in browser localStorage, so clearing browsing data silently wiped the user profiles and history with no backup path.',
+        rootCause: 'The whole of script.js is wrapped in a load-guard if/else block. In sloppy mode browsers hoist plain function declarations out of a block to the enclosing (global) scope via Annex B, which is why earlier inline handlers worked. That legacy hoisting does NOT apply to async function, generator, or class declarations, so the new async function publishHistoryEntry and async function recheckHistoryEntry stayed block-scoped and invisible to the inline onclick attribute. The gear was invisible because .btn-icon set no color or font-size so the glyph inherited an unreadable value; the doubled labels and the dead Export/Import Settings buttons were stale markup pointing at functions that did not exist; and there was simply no full-backup feature.',
+        resolution: 'Exposed both async handlers explicitly the same way generateSingle already was: window.publishHistoryEntry = publishHistoryEntry and window.recheckHistoryEntry = recheckHistoryEntry. Gave .btn-icon an explicit color and font-size and switched the glyph to the emoji gear so it is always visible. Replaced the doubled labels with single Export and Import, and replaced the dead Export Settings and Import Settings buttons with a working one-click Backup Everything (downloads a single timestamped JSON of every resumeEngineProV1_ key) and Restore Everything (validates a full-backup file, replaces local data, and reloads). Default tracker entries were also backfilled with repo links, and the merge step now backfills a missing repo onto rows already saved in the browser.',
+        codeExample: `// script.js is wrapped in a load-guard block:
+if (typeof window._scriptLoaded !== 'undefined') { } else {
+  window._scriptLoaded = true;
+
+  // Plain declarations leak to global in sloppy mode (Annex B) - this works:
+  function toggleSettingsMenu() { }
+
+  // async declarations DO NOT leak out of the block - inline onclick cannot see it:
+  async function recheckHistoryEntry(id, btn) { }
+
+  // Fix: expose async handlers on window explicitly (same as generateSingle):
+  window.publishHistoryEntry = publishHistoryEntry;
+  window.recheckHistoryEntry = recheckHistoryEntry;
+}
+
+// One-click durable backup of every app key, with a timestamped filename:
+const backup = StorageManager.exportAll();      // { type: 'full-backup', data: { } }
+download('resume-engine-pro-backup_' + stamp + '.json', JSON.stringify(backup));`,
+        lesson: 'Inline onclick handlers can only call functions on the global object, so any handler must be verifiably global. Remember the asymmetry in block scoping: plain function declarations leak to the enclosing scope in sloppy mode, but async, generator, and class declarations do not, so inside any wrapper block they must be attached to window by hand. When a regular function and an async function sit side by side and only the async one is undefined at runtime, suspect exactly this. More broadly, if the only copy of user data lives in browser storage, treat a one-click export and restore as a first-class feature, warn before destructive clears, and timestamp every backup so restores are unambiguous.',
+        impact: 'High - the Re-check and Publish actions work again, the settings menu is reachable, the tracker toolbar reads correctly, and users can now take a single timestamped backup of everything and restore it after clearing browser data.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
