@@ -2007,12 +2007,16 @@ async function publishHistoryEntry(histId, btnEl) {
 
         // Applied date defaults to the generation time (editable later in tracker).
         try {
-            JobTrackerManager.addApplication({
+            JobTrackerManager.upsertApplicationByRepo({
                 portfolio: repoName, role, company, date,
                 link: pagesUrl || repoUrl, repo: repoUrl, status: 'Applied', comments: ''
             });
             if (typeof renderApplicationsList === 'function') renderApplicationsList();
-        } catch (_) { /* tracker add is best-effort */ }
+            if (typeof updateTrackerLastUpdated === 'function') updateTrackerLastUpdated();
+        } catch (trackErr) {
+            console.error('Tracker update failed:', trackErr);
+            showToast('Published, but adding it to the tracker failed: ' + (trackErr && trackErr.message ? trackErr.message : 'unknown error'), 'warning');
+        }
 
         try { StorageManager.updateGeneration(histId, { published: true, repoUrl, pagesUrl }); displayHistory(); } catch (_) {}
 

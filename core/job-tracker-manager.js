@@ -69,7 +69,26 @@ const JobTrackerManager = {
     addApplication(app) {
         const apps = this.loadApplications();
         app.id = apps.length ? Math.max(...apps.map(a => a.id)) + 1 : 1;
-        apps.push(app);
+        // Newest first so a freshly published application is visible at the top
+        // of the list instead of being buried at the bottom.
+        apps.unshift(app);
+        this.saveApplications(apps);
+        return app;
+    },
+
+    // Add or refresh an application keyed by its GitHub repo URL. Used by the
+    // Publish flow so re-publishing the same entry updates the existing row
+    // (link/date/status) instead of creating a duplicate.
+    upsertApplicationByRepo(app) {
+        const apps = this.loadApplications();
+        const idx = app.repo ? apps.findIndex(a => a.repo && a.repo === app.repo) : -1;
+        if (idx !== -1) {
+            apps[idx] = { ...apps[idx], ...app, id: apps[idx].id };
+            this.saveApplications(apps);
+            return apps[idx];
+        }
+        app.id = apps.length ? Math.max(...apps.map(a => a.id)) + 1 : 1;
+        apps.unshift(app);
         this.saveApplications(apps);
         return app;
     },

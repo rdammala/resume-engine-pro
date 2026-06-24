@@ -689,5 +689,30 @@ function looksLikeCompany(s){
 }`,
         lesson: 'An LLM imitates the SHAPE of your schema example far more faithfully than your prose rules - a single-bullet example yields single-bullet output no matter how many times you write produce 4-6 bullets, so the example itself must demonstrate the desired density. Context window is a silent failure mode: if num_ctx is smaller than your input the model just never sees the tail of the prompt, so size it to the real token count and leave num_predict headroom to generate. Add explicit, countable HARD REQUIREMENTS (>=14 skills, 4-6 bullets) the model can self-check. And prefer the structured extraction the model returns (job_title/company) over brittle regex heuristics, but still gate it with a sanity filter so a benefit phrase can never masquerade as the employer.',
         impact: 'High - new generations produce tight, ATS-ready resumes with 4-6 quantified, technology-named bullets per role and 14-18 prioritized JD-aligned skills, plus an accurate target title/company. This is the core value of the product, so the quality lift is the difference between an unusable draft and a recruiter-grade package.'
+    },
+    {
+        id: 34,
+        title: 'Published Apps Looked Like They Never Reached the Job Tracker',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend / UX',
+        fixTime: '20 min',
+        description: 'After publishing a generated package to GitHub (repo + live portfolio created), the Applications tab appeared unchanged - users reported that nothing was added to the Job Application Tracker. Re-publishing the same package made it worse by silently creating duplicate rows.',
+        rootCause: 'The data WAS being saved - addApplication did apps.push(app), appending each new application to the END of a list that already had 10+ rows. With the table scrolled to the top showing the default entries, the freshly published row landed below the fold at the very bottom, so it looked like nothing happened. Separately, every publish called addApplication unconditionally, so re-publishing the same repo inserted a duplicate. And the tracker write was wrapped in catch(_){} which swallowed any failure with no toast or console trace.',
+        resolution: 'Changed addApplication to apps.unshift(app) so new applications appear at the TOP of the list immediately. Added JobTrackerManager.upsertApplicationByRepo, which the Publish flow now uses: it finds an existing row by repo URL and updates it (link/date/status) instead of adding a duplicate, otherwise inserts at the top. The publish tracker block now logs failures and shows a warning toast instead of silently swallowing them, and refreshes the Last Updated stamp.',
+        codeExample: `// Before: new rows buried at the bottom + duplicates on re-publish
+addApplication(app){ /* ... */ apps.push(app); this.saveApplications(apps); }
+
+// After: newest first, and de-duplicate by repo so re-publish refreshes the row
+addApplication(app){ /* ... */ apps.unshift(app); this.saveApplications(apps); }
+upsertApplicationByRepo(app){
+  const apps = this.loadApplications();
+  const idx = app.repo ? apps.findIndex(a => a.repo === app.repo) : -1;
+  if (idx !== -1){ apps[idx] = { ...apps[idx], ...app, id: apps[idx].id }; }
+  else { app.id = apps.length ? Math.max(...apps.map(a=>a.id))+1 : 1; apps.unshift(app); }
+  this.saveApplications(apps); return apps[idx!==-1?idx:0];
+}`,
+        lesson: 'When a write succeeds but the user says nothing happened, suspect ordering and visibility before suspecting persistence. Appending to the end of a long list hides the result below the fold - surface new items where the eye lands (the top). Make idempotent actions actually idempotent (upsert by a stable key) so repeating them refreshes rather than duplicates. And never swallow a best-effort write with an empty catch: at minimum log it and toast, or a real failure becomes an invisible one.',
+        impact: 'Medium - publishing now visibly updates the tracker (new row at the top) and re-publishing updates the same row instead of piling up duplicates, restoring trust that the end-to-end Generate -> Publish -> Track flow works.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
