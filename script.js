@@ -1742,6 +1742,17 @@ async function finalizeResumedRun(item, aiData) {
         showToast('Your Ollama cloud resume is ready — open the Generate tab to download', 'success');
     } catch (e) {
         console.warn('finalizeResumedRun failed:', e.message);
+        // The cloud run itself SUCCEEDED (its result is committed in the repo);
+        // only the local document rebuild failed. Never strand a succeeded run as
+        // "in progress" - mark it Success so the row is actionable (Publish / retry).
+        try {
+            StorageManager.updateGeneration(item.id, {
+                status: 'success',
+                error: 'Run succeeded, but auto-rebuilding the documents failed (' + (e.message || 'error') + '). Use the Publish button or click Re-check to rebuild.'
+            });
+            displayHistory();
+            showToast('Cloud run succeeded, but rebuilding documents failed — see History', 'warning');
+        } catch (_) {}
     }
 }
 
@@ -1887,8 +1898,9 @@ async function publishHistoryEntry(histId, btnEl) {
     }
 }
 
-// Manually reconcile a stuck row. If it carries a runId, check that run; else
-// offer to import the most recent successful run from the Actions history.
+// Manually reconcile a stuck row. Reads the recent run list once (reliable -
+// it carries status + conclusion + the run-id in name/display_title), resolves
+// this row's runId directly, and falls back to importing the latest success.
 async function recheckHistoryEntry(histId, btnEl) {
     const item = (StorageManager.getHistory(100) || []).find(h => h.id === histId);
     if (!item) { showToast('Could not find that generation', 'error'); return; }
@@ -1899,28 +1911,41 @@ async function recheckHistoryEntry(histId, btnEl) {
     const origLabel = btnEl ? btnEl.innerHTML : '';
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Checking…'; }
     try {
+        const runs = await GitHubRunner.listRecentRuns(20);
+        const matchRun = (rid) => runs.find(r =>
+            (r.name && r.name.includes(rid)) || (r.display_title && r.display_title.includes(rid))
+        );
+
+        // 1) If this row carries a runId, resolve it straight from the run list.
         if (item.runId) {
-            const r = await GitHubRunner.checkAndFetch(item.runId);
-            if (r.state === 'success') {
-                await finalizeResumedRun(item, r.data);
-                showToast('Run completed — flipped to Success', 'success');
-            } else if (r.state === 'failed') {
-                StorageManager.updateGeneration(item.id, { status: 'failed', error: 'Concluded ' + (r.conclusion || 'failure') + '. See the Actions logs.' });
-                displayHistory();
-                showToast('That run concluded as a failure', 'error');
-            } else {
+            const run = matchRun(item.runId);
+            if (run) {
+                if (run.status === 'completed') {
+                    if (run.conclusion === 'success') {
+                        const data = await GitHubRunner.fetchResult(item.runId);
+                        await finalizeResumedRun(item, data);
+                        showToast('Run completed — flipped to Success', 'success');
+                    } else {
+                        StorageManager.updateGeneration(item.id, { status: 'failed', error: 'Concluded ' + (run.conclusion || 'failure') + '. See the Actions logs.' });
+                        displayHistory();
+                        showToast('That run concluded as a failure', 'error');
+                    }
+                    return;
+                }
                 showToast('Still running on GitHub — check again shortly', 'warning');
+                return;
             }
-            return;
+            // runId not in the recent list (aged out) — fall through to import.
         }
-        // No runId stored (older entry): import the most recent successful run.
-        const runs = await GitHubRunner.listRecentRuns(15);
+
+        // 2) No runId, or it is no longer in the recent list: import the most
+        //    recent successful run so the user still gets their documents.
         const done = runs.filter(r => r.status === 'completed' && r.conclusion === 'success');
         if (!done.length) { showToast('No completed successful runs found to import', 'warning'); return; }
         const pick = done[0];
-        const rid = ((String(pick.name || pick.display_title || '')).match(/run-[a-z0-9-]+/i) || [])[0];
+        const rid = ((String(pick.display_title || pick.name || '')).match(/run-[a-z0-9-]+/i) || [])[0];
         if (!rid) { showToast('Could not parse a run id from the latest run', 'warning'); return; }
-        if (!confirm(`This entry has no stored run id. Import documents from the latest successful run "${rid}"?`)) return;
+        if (!confirm('This entry has no matching run. Import documents from the latest successful run "' + rid + '"?')) return;
         const data = await GitHubRunner.fetchResult(rid);
         await finalizeResumedRun({ ...item, runId: rid }, data);
         showToast('Imported the latest successful run', 'success');

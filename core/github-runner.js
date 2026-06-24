@@ -163,28 +163,22 @@ const GitHubRunner = {
     // Returns { state: 'pending' | 'success' | 'failed', data?, conclusion? }.
     // Never throws — designed for a quiet background reconciler.
     async checkAndFetch(runId) {
-        const cfg = this.getConfig();
         let run;
-        try { run = await this.findRun(runId, 2); } catch (_) { return { state: 'pending' }; }
-        try {
-            const res = await this.api(`/repos/${cfg.owner}/${cfg.repo}/actions/runs/${run.id}?t=${Date.now()}`, {
-                headers: { 'Cache-Control': 'no-cache' }
-            });
-            if (res.ok) {
-                const r = await res.json();
-                if (r.status === 'completed') {
-                    if (r.conclusion === 'success') {
-                        try {
-                            const data = await this.fetchResult(runId);
-                            return { state: 'success', data };
-                        } catch (_) {
-                            return { state: 'success', data: null };
-                        }
-                    }
-                    return { state: 'failed', conclusion: r.conclusion };
+        try { run = await this.findRun(runId, 4); } catch (_) { return { state: 'pending' }; }
+        // findRun returns the run-list item, which already carries status +
+        // conclusion — trust it directly instead of making a second call that
+        // can blip and falsely report "pending".
+        if (run.status === 'completed') {
+            if (run.conclusion === 'success') {
+                try {
+                    const data = await this.fetchResult(runId);
+                    return { state: 'success', data };
+                } catch (_) {
+                    return { state: 'success', data: null };
                 }
             }
-        } catch (_) { /* transient */ }
+            return { state: 'failed', conclusion: run.conclusion };
+        }
         return { state: 'pending' };
     },
 
