@@ -25,6 +25,11 @@ window.switchTab = function(tabName) {
     if (tabName === 'bugs') {
         window.renderBugs();
     }
+
+    // Render features tab if requested
+    if (tabName === 'features') {
+        window.renderFeatures();
+    }
 };
 
 window.renderBugs = function() {
@@ -142,6 +147,93 @@ window.filterBySeverity = function(severity) {
     // Update filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
+};
+
+// ===========================================================================
+// FEATURE TRACKER — companion to the bug tracker. Code snippets render inside a
+// <pre> with HTML escaped so they keep real line breaks + indentation (the
+// older bug snippets collapse onto one line because they use a <div>).
+// ===========================================================================
+window.escapeCode = function(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+};
+
+window.featureStatusIcon = function(status) {
+    if (status === 'Shipped') return '✅ ';
+    if (status === 'In Progress') return '🔄 ';
+    if (status === 'Planned') return '🗓️ ';
+    return '✨ ';
+};
+
+window.renderFeatureRows = function(features) {
+    const tbody = document.getElementById('featureTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = features.map(f => `
+        <tr>
+            <td><span class="bug-link" onclick="window.showFeatureDetail(${f.id})">#${f.id}</span></td>
+            <td>${f.title}</td>
+            <td><span class="role-badge">${f.category}</span></td>
+            <td>${window.featureStatusIcon(f.status)}${f.status}</td>
+            <td><span class="role-badge">${f.role}</span></td>
+            <td>${f.effort}</td>
+        </tr>
+    `).join('');
+};
+
+window.renderFeatures = function() {
+    console.log("renderFeatures called, FEATURES length:", window.FEATURES?.length || 0);
+    if (!window.FEATURES || window.FEATURES.length === 0) {
+        console.warn("No FEATURES array available");
+        return;
+    }
+    window.renderFeatureRows(window.FEATURES);
+};
+
+window.filterFeatures = function() {
+    if (!window.FEATURES) return;
+    const search = document.getElementById('featureSearch').value.toLowerCase();
+    const filtered = window.FEATURES.filter(f =>
+        f.id.toString().includes(search) ||
+        f.title.toLowerCase().includes(search) ||
+        f.category.toLowerCase().includes(search)
+    );
+    window.renderFeatureRows(filtered);
+};
+
+window.showFeatureDetail = function(featureId) {
+    if (!window.FEATURES) return;
+    const f = window.FEATURES.find(x => x.id === featureId);
+    if (!f) return;
+    const modalBody = document.getElementById('modalBody');
+    if (!modalBody) return;
+
+    modalBody.innerHTML = `
+        <h3>✨ #${f.id}: ${f.title}</h3>
+        <p style="color: var(--text-light); margin-bottom: 1rem;"><strong>Category:</strong> ${f.category} | <strong>Role:</strong> ${f.role} | <strong>Status:</strong> ${window.featureStatusIcon(f.status)}${f.status} | <strong>Effort:</strong> ${f.effort}</p>
+
+        <h4>Summary</h4>
+        <p>${f.summary}</p>
+
+        <h4>Why It Was Built</h4>
+        <p>${f.motivation}</p>
+
+        <h4>How It Works</h4>
+        <p>${f.solution}</p>
+
+        <h4>Code</h4>
+        <pre class="code-block code-pre"><code>${window.escapeCode(f.codeExample)}</code></pre>
+
+        <h4>Lesson Learned</h4>
+        <p><strong>💡</strong> ${f.lesson}</p>
+
+        <h4>Impact</h4>
+        <p><strong>🎯</strong> ${f.impact}</p>
+    `;
+
+    document.getElementById('bugModal').classList.add('active');
 };
 
 // Set up event listeners

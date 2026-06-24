@@ -310,6 +310,22 @@
             line-height: 1.4;
         }
 
+        /* Multi-line code that reads like an IDE: preserve whitespace + breaks. */
+        .code-pre {
+            white-space: pre;
+            tab-size: 4;
+        }
+
+        .code-pre code {
+            background: transparent;
+            border: 0;
+            padding: 0;
+            color: inherit;
+            font-family: inherit;
+            font-size: inherit;
+            white-space: pre;
+        }
+
         .code-label {
             color: var(--text-light);
             font-size: 0.8rem;
@@ -557,6 +573,7 @@
         <div class="tabs">
             <button class="tab-button active" data-tab="overview" onclick="window.switchTab('overview')">📊 Overview</button>
             <button class="tab-button" data-tab="bugs" onclick="window.switchTab('bugs')">🐛 Bug Tracking</button>
+            <button class="tab-button" data-tab="features" onclick="window.switchTab('features')">✨ Feature Tracking</button>
             <button class="tab-button" data-tab="testing" onclick="window.switchTab('testing')">🧪 Testing</button>
             <button class="tab-button" data-tab="sre" onclick="window.switchTab('sre')">🚀 SRE</button>
             <button class="tab-button" data-tab="devops" onclick="window.switchTab('devops')">⚙️ DevOps</button>
@@ -569,8 +586,8 @@
         <div id="overview" class="tab-content active">
             <div class="section">
                 <h2>📊 Learning Hub Loaded Successfully ✅</h2>
-                <p>Click "Bug Tracking" tab to view all 34 bugs with detailed analysis. Click role tabs (SRE, DevOps, Build Engineer, Test Engineer, Release Manager) for perspective-specific content.</p>
-                <p><strong>Status:</strong> v0.3.0 - 34/34 bugs fixed (100% completion rate)</p>
+                <p>Click "Bug Tracking" tab to view all 34 bugs with detailed analysis. Click "Feature Tracking" to see shipped features with motivation, approach, and properly formatted code. Click role tabs (SRE, DevOps, Build Engineer, Test Engineer, Release Manager) for perspective-specific content.</p>
+                <p><strong>Status:</strong> v0.3.0 - 34/34 bugs fixed (100% completion rate) | 5 features documented</p>
             </div>
         </div>
 
@@ -599,6 +616,33 @@
                         </tr>
                     </thead>
                     <tbody id="bugTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FEATURE TRACKING TAB -->
+        <div id="features" class="tab-content">
+            <div class="section">
+                <h2>✨ Feature Tracking &amp; Decisions</h2>
+                <p style="color: var(--text-light); margin-bottom: 1rem;">Shipped capabilities documented for learning — the motivation, the approach, the real code that landed, and the lesson behind each one. Click a row for the full write-up with properly formatted, multi-line code.</p>
+
+                <div class="filter-section">
+                    <input type="text" id="featureSearch" class="filter-input" placeholder="Search features by ID, title, or category..." onkeyup="window.filterFeatures()">
+                </div>
+
+                <table class="bug-table" id="featureTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Feature</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Role</th>
+                            <th>Effort</th>
+                        </tr>
+                    </thead>
+                    <tbody id="featureTableBody">
                     </tbody>
                 </table>
             </div>
@@ -2333,7 +2377,7 @@ Browser Requirements:
 
     <div class="footer">
         <p><strong>Resume Engine Pro - Interview Learning Hub</strong></p>
-        <p>📚 30,000+ words of documentation | 🐛 34 bugs documented | ✅ 34 bugs fixed | 🎓 5 role perspectives</p>
+        <p>📚 30,000+ words of documentation | 🐛 34 bugs documented | ✅ 34 bugs fixed | ✨ 5 features documented | 🎓 5 role perspectives</p>
         <p>Updated: 2026-06-21 | Status: MVP Complete (v0.1.0) | License: MIT</p>
     </div>
 
@@ -2346,6 +2390,7 @@ Browser Requirements:
 
     <!-- External script files for tab navigation and bugs data -->
     <script src="bugs-data.js"></script>
+    <script src="features-data.js"></script>
     <script src="tabs-handler.js"></script>
 </body>
 </html>
