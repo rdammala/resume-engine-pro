@@ -192,6 +192,9 @@ body {
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    line-height: 1;
 }
 
 .btn-icon:hover {
