@@ -906,6 +906,60 @@ select option {
     line-height: 1.8;
 }
 
+/* Ollama cloud generator — live progress card */
+.cloud-progress {
+    background: rgba(0, 217, 255, 0.05);
+    border: 1px solid rgba(0, 217, 255, 0.25);
+    border-radius: 10px;
+    padding: 1.25rem 1.4rem;
+    color: #e6e6e6;
+}
+.cloud-progress-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: #00d9ff;
+    font-size: 0.98rem;
+    margin-bottom: 0.5rem;
+}
+.cloud-progress-msg {
+    margin: 0.25rem 0 0.75rem;
+    color: #cfe9ff;
+    font-size: 0.95rem;
+}
+.cloud-progress-track {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    height: 10px;
+    width: 100%;
+    overflow: hidden;
+}
+.cloud-progress-fill {
+    background: linear-gradient(90deg, #00b3ff, #00d9ff);
+    height: 100%;
+    width: 0;
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+.cloud-progress small {
+    display: block;
+    margin-top: 0.75rem;
+    color: #9fb3c8;
+    line-height: 1.5;
+}
+.cloud-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0, 217, 255, 0.3);
+    border-top-color: #00d9ff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: cloud-spin 0.8s linear infinite;
+}
+@keyframes cloud-spin {
+    to { transform: rotate(360deg); }
+}
+
 .download-section {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

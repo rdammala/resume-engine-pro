@@ -370,5 +370,32 @@ async tailorWithOllama(resumeData, jdData, mode) {
 }`,
         lesson: 'For genuine resume tailoring, give the model the FULL source resume text (not just lossy parsed fields) and instruct it concretely on HOW to optimize (keyword mirroring, quantification, summary rewrite, skill reordering) - a vague "rephrase, use only facts" prompt makes small models echo the input. Offering a local model (Ollama/Llama 3) gives users a free, private alternative; expose it as an OpenAI-compatible provider with a configurable endpoint so it works both locally and via a Codespaces forwarded port.',
         impact: 'High - The AI now meaningfully transforms the resume into an ATS-optimized, role-targeted document, and users have a second free, fully-private option (Ollama/Llama 3) runnable on their machine or a disposable Codespace.'
+    },
+    {
+        id: 23,
+        title: 'Ollama Required a Local Server (ERR_CONNECTION_REFUSED) - Replaced with Zero-Setup Cloud Runner',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Platform / Frontend Developer / DevOps',
+        fixTime: '120 min',
+        description: 'Selecting Ollama and clicking Generate produced repeated "Failed to load resource: net::ERR_CONNECTION_REFUSED  localhost:11434/v1/chat/completions" errors, because the browser was trying to reach an Ollama server that was not running on the user\'s machine. Asking a static GitHub Pages site to depend on a local daemon (or a manually-forwarded Codespaces port) is brittle and confusing.',
+        rootCause: 'The Ollama provider pointed the browser directly at http://localhost:11434. A static, client-only site has no Ollama runtime and no backend, so unless the user manually installed Ollama, ran OLLAMA_ORIGINS=* ollama serve, and (for Codespaces) forwarded the port publicly, every request was refused.',
+        resolution: 'Re-architected Ollama into a fully automated, ephemeral GitHub Actions pipeline. On Generate, the site dispatches the ollama-resume.yml workflow (workflow_dispatch) via the GitHub REST API using a user-supplied fine-grained token stored (obfuscated) in localStorage. A fresh free runner installs Ollama, pulls Llama 3, runs scripts/ollama-actions-generate.js to tailor the resume to the JD, commits the result to generated/<run_id>.json, then self-destructs automatically. A new core/github-runner.js dispatches the run, polls run status, and fetches the committed JSON; the browser shows a live progress card (spinner + percentage + step text) and then builds the PDF/Word/Portfolio locally from the tailored data. GitHub Actions is preferable to Codespaces here because the runner is destroyed automatically when the job ends - no manual "delete the node" step.',
+        codeExample: `// Browser dispatches the workflow (no local server, no backend)
+await fetch(\`https://api.github.com/repos/\${owner}/\${repo}/actions/workflows/ollama-resume.yml/dispatches\`, {
+  method:'POST',
+  headers:{ Authorization:'Bearer '+token, Accept:'application/vnd.github+json' },
+  body: JSON.stringify({ ref:'master', inputs:{ run_id, resume_data, job_description, model:'llama3.2' } })
+});
+// Workflow (ephemeral runner) — installs Ollama, generates, commits, self-destructs
+//   curl -fsSL https://ollama.com/install.sh | sh
+//   ollama serve & ; ollama pull llama3.2
+//   node scripts/ollama-actions-generate.js   # writes generated/<run_id>.json
+//   git add generated/ && git commit && git push
+// Browser polls the run, then reads the committed file
+const r = await fetch(\`.../contents/generated/\${runId}.json?ref=master\`);
+const aiData = JSON.parse(decodeURIComponent(escape(atob(r.content))));`,
+        lesson: 'A static site cannot depend on a localhost daemon. To run a free local-style model (Ollama/Llama 3) without any server, trigger an ephemeral CI runner (GitHub Actions workflow_dispatch) that does the heavy lifting and commits the artifact back - then poll + fetch from the browser. Prefer Actions over Codespaces for "create node -> run -> commit -> destroy" because Actions runners self-destruct automatically. Keep workflow_dispatch inputs under ~64KB, set run-name to the run id so the dispatch can be located (the API returns no run id), and store the PAT scoped to a single repo since it lives in the browser.',
+        impact: 'High - Ollama now works with zero local setup: one-time GitHub token, then click Generate. Eliminates the ERR_CONNECTION_REFUSED failures, gives a transparent live progress card, and runs entirely on free, self-destructing infrastructure at $0 cost.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

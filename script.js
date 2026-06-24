@@ -1451,6 +1451,99 @@ function normalizeAIExperience(exp) {
     return { position, company, year, description };
 }
 
+// ============================================================================
+// OLLAMA CLOUD PIPELINE (free, ephemeral GitHub Actions runner)
+// ----------------------------------------------------------------------------
+// Dispatches the ollama-resume.yml workflow, shows a live progress card while a
+// fresh runner installs & runs Llama 3, then fetches the committed result and
+// maps it onto the working profile. The runner self-destructs automatically.
+// ============================================================================
+async function runOllamaInCloud(profile, jdText, statusContent) {
+    const resumeText = buildResumeSourceText(profile);
+    const model = (window.AIIntegration && AIIntegration.getOllamaConfig)
+        ? (AIIntegration.getOllamaConfig().model || GitHubRunner.getConfig().model)
+        : GitHubRunner.getConfig().model;
+
+    const setProg = (pct, msg) => renderCloudProgress(statusContent, pct, msg);
+
+    setProg(8, 'Connecting to GitHub…');
+    const { runId } = await GitHubRunner.dispatch({ resumeData: resumeText, jobDescription: jdText, model });
+
+    setProg(18, 'Launching a free, ephemeral cloud runner…');
+    await GitHubRunner.waitForCompletion(runId, (status) => {
+        if (status === 'queued') setProg(28, 'Runner queued — installing & starting Ollama…');
+        else if (status === 'in_progress') setProg(58, `Running ${escHtml(model)} and tailoring your resume to the JD…`);
+        else if (status === 'completed') setProg(90, 'Committing the tailored resume back to GitHub…');
+    });
+
+    setProg(92, 'Fetching the generated resume…');
+    const aiData = await GitHubRunner.fetchResult(runId);
+    setProg(100, 'Done — building your documents…');
+
+    if (aiData && aiData._raw) {
+        throw new Error('The model did not return clean JSON. Try again or pick a different model in Settings.');
+    }
+
+    const tailored = { ...profile };
+    if (aiData && typeof aiData.summary === 'string' && aiData.summary.trim()) {
+        tailored.summary = aiData.summary.trim();
+    }
+    if (Array.isArray(aiData.skills) && aiData.skills.length) {
+        tailored.skills = aiData.skills.map(s => String(s).trim()).filter(Boolean);
+    }
+    if (Array.isArray(aiData.experience) && aiData.experience.length) {
+        const mapped = aiData.experience.map(normalizeAIExperience)
+            .filter(e => e.position || e.company || e.description);
+        if (mapped.length) tailored.experience = mapped;
+    }
+    return tailored;
+}
+
+// Build the richest possible plain-text source for the model: the full original
+// resume text if we captured it, otherwise a reconstruction from structured data.
+function buildResumeSourceText(profile) {
+    const parts = [];
+    if (profile && profile.rawText && String(profile.rawText).trim()) {
+        parts.push(String(profile.rawText).trim());
+    } else {
+        const p = (typeof normalizeProfile === 'function') ? normalizeProfile(profile) : (profile || {});
+        if (p.name) parts.push('Name: ' + p.name);
+        if (p.email) parts.push('Email: ' + p.email);
+        if (p.phone) parts.push('Phone: ' + p.phone);
+        if (p.location) parts.push('Location: ' + p.location);
+        if (p.summary) parts.push('Summary: ' + p.summary);
+        if (Array.isArray(p.skills) && p.skills.length) parts.push('Skills: ' + p.skills.join(', '));
+        if (Array.isArray(p.experience) && p.experience.length) {
+            parts.push('Experience:');
+            p.experience.forEach(e => {
+                parts.push([e.position, e.company, e.year].filter(Boolean).join(' | '));
+                if (e.description) parts.push(e.description);
+            });
+        }
+        if (Array.isArray(p.education) && p.education.length) {
+            parts.push('Education: ' + p.education.map(ed => (typeof ed === 'string' ? ed : [ed.degree, ed.school, ed.year].filter(Boolean).join(', '))).join('; '));
+        }
+    }
+    return parts.join('\n\n').slice(0, 28000);
+}
+
+// Render the live "what's happening on the backend" progress card.
+function renderCloudProgress(container, pct, msg) {
+    if (!container) return;
+    const safePct = Math.max(0, Math.min(100, Math.round(pct)));
+    container.innerHTML = `
+        <div class="cloud-progress">
+            <div class="cloud-progress-head">
+                <span class="cloud-spinner"></span>
+                <strong>Ollama Cloud Generator — Llama 3 on GitHub Actions</strong>
+            </div>
+            <p class="cloud-progress-msg">${escHtml(msg)}</p>
+            <div class="cloud-progress-track"><div class="cloud-progress-fill" style="width:${safePct}%"></div></div>
+            <small>A free, ephemeral GitHub runner is installing Ollama, generating your ATS-optimized resume, and committing it back — then it self-destructs. No server to manage, $0 cost (~1–3 min).</small>
+        </div>`;
+}
+
+
 async function generateSingle() {
     const select = document.getElementById('selectProfile');
     const profileId = select && select.value;
@@ -1493,7 +1586,26 @@ async function generateSingle() {
         let workingProfile = profile;
         let aiUsed = false;
         let aiCost = 0;
-        if (provider && window.AIIntegration && AIIntegration.isConfigured(provider)) {
+        if (provider === 'ollama') {
+            // Ollama runs in a free, ephemeral GitHub Actions cloud runner — no
+            // local server needed. Dispatch the workflow, show live progress,
+            // then fetch the committed result and tailor the profile.
+            if (!window.GitHubRunner || !GitHubRunner.hasToken()) {
+                if (statusContent) statusContent.innerHTML = '<p>⚙️ <strong>Ollama runs in a free GitHub cloud runner.</strong> Add a GitHub Personal Access Token in <strong>Settings → Ollama / Llama 3 (cloud)</strong> first, then click Generate again.</p>';
+                showToast('Add a GitHub token in Settings to use the Ollama cloud generator', 'warning');
+                return;
+            }
+            try {
+                workingProfile = await runOllamaInCloud(profile, jdText, statusContent);
+                aiUsed = true;
+            } catch (e) {
+                console.warn('Ollama cloud generation failed:', e.message);
+                if (statusContent) statusContent.innerHTML = `<p>❌ Ollama cloud generation failed: ${escHtml(e.message)}</p>`;
+                showToast('Ollama cloud generation failed', 'error');
+                return;
+            }
+            if (statusContent) statusContent.innerHTML = '<p>⏳ Building your documents...</p>';
+        } else if (provider && window.AIIntegration && AIIntegration.isConfigured(provider)) {
             if (statusContent) statusContent.innerHTML = '<p>🤖 Tailoring with AI...</p>';
             try {
                 const r = await tailorProfileWithAI(profile, jdText, provider, mode);
@@ -1647,7 +1759,10 @@ function updateAICost() {
         return;
     }
     if (provider === 'ollama') {
-        box.innerHTML = '<p>✅ <strong>Ollama / Llama 3</strong> selected — free and private. Make sure your Ollama server is running and reachable (configure the endpoint in <strong>Settings</strong>).</p>';
+        const ready = window.GitHubRunner && GitHubRunner.hasToken();
+        box.innerHTML = ready
+            ? '<p>✅ <strong>Ollama / Llama 3 (cloud)</strong> — on Generate, a free GitHub Actions runner spins up, runs Llama 3, commits the tailored resume, and self-destructs. $0 cost, ~1–3 min. A live progress card will show each step.</p>'
+            : '<p>⚙️ <strong>Ollama / Llama 3 (cloud)</strong> runs on a free GitHub Actions runner — no local server needed. Add a GitHub token in <strong>Settings → Ollama</strong> to enable it.</p>';
         return;
     }
     if (provider === 'custom') {
@@ -1692,7 +1807,7 @@ function updateBulkCost() {
         return;
     }
     if (provider === 'ollama') {
-        box.innerHTML = `${count} job(s) × <strong>Ollama / Llama 3</strong> — free, runs on your own server.`;
+        box.innerHTML = `${count} job(s) × <strong>Ollama / Llama 3</strong> — free, runs in an ephemeral GitHub cloud runner (single-resume tab supported).`;
         return;
     }
     if (provider === 'custom') {
@@ -1764,21 +1879,38 @@ function renderAISettings() {
         </div>`;
     });
 
-    // Ollama (local Llama 3) — free, runs on the user's machine or a Codespace
+    // Ollama (Llama 3) — runs FREE in an ephemeral GitHub Actions cloud runner.
+    // No local server: the website dispatches a workflow that installs Ollama,
+    // generates the tailored resume, commits it back, and self-destructs.
     const oll = AIIntegration.getOllamaConfig();
+    const ghCfg = (window.GitHubRunner && GitHubRunner.getConfig) ? GitHubRunner.getConfig() : { owner: 'rdammala', repo: 'resume-engine-pro', model: 'llama3.2' };
+    const hasTok = !!(window.GitHubRunner && GitHubRunner.hasToken());
+    const tokenScopeUrl = 'https://github.com/settings/tokens?type=beta';
     html += `<div class="ai-provider-card">
-        <h4>${escHtml(AIIntegration.providers.ollama.name)}</h4>
-        <p>Free and private — runs Llama 3 locally via <strong>Ollama</strong>. Default works if Ollama runs on this same machine. For GitHub Codespaces, paste the forwarded URL (ending in <code>/v1/chat/completions</code>).</p>
+        <h4>${escHtml(AIIntegration.providers.ollama.name)} ${hasTok ? '✅' : ''}</h4>
+        <p>Free &amp; automated — when you click <strong>Generate</strong>, the site triggers a GitHub Actions workflow that spins up a fresh cloud runner, installs Ollama, runs <strong>Llama 3</strong>, tailors your resume to the JD, commits the result, and <strong>self-destructs</strong>. No local server, $0 cost.</p>
+        <p style="font-size:0.85rem;opacity:0.85;">One-time setup: create a <a href="${tokenScopeUrl}" target="_blank" rel="noopener">fine-grained GitHub token</a> scoped to <code>${escHtml(ghCfg.owner)}/${escHtml(ghCfg.repo)}</code> with <strong>Actions: Read &amp; write</strong> and <strong>Contents: Read &amp; write</strong> (or a classic token with <code>repo</code> + <code>workflow</code>). It is stored only in your browser.</p>
         <div class="form-group">
-            <label>Ollama Endpoint URL</label>
-            <input type="text" id="ollamaEndpoint" placeholder="http://localhost:11434/v1/chat/completions" value="${escHtml(oll.endpoint)}" />
+            <label>GitHub Personal Access Token</label>
+            <input type="password" id="ghPat" placeholder="${hasTok ? '•••••••• (saved — paste to replace)' : 'github_pat_… or ghp_…'}" />
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Repo owner</label>
+                <input type="text" id="ghOwner" placeholder="rdammala" value="${escHtml(ghCfg.owner)}" />
+            </div>
+            <div class="form-group">
+                <label>Repo name</label>
+                <input type="text" id="ghRepo" placeholder="resume-engine-pro" value="${escHtml(ghCfg.repo)}" />
+            </div>
         </div>
         <div class="form-group">
-            <label>Model name</label>
-            <input type="text" id="ollamaModel" placeholder="llama3" value="${escHtml(oll.model)}" />
+            <label>Model (3B is fast on the free CPU runner)</label>
+            <input type="text" id="ollamaModel" placeholder="llama3.2" value="${escHtml(oll.model || ghCfg.model)}" />
         </div>
-        <button class="btn btn-secondary" onclick="saveOllamaConfig()">Save Ollama Settings</button>
-        <small>Setup: install Ollama, run <code>ollama pull llama3</code>, then <code>OLLAMA_ORIGINS='*' ollama serve</code> so the browser can reach it. In Codespaces, forward port 11434 and make it public.</small>
+        <button class="btn btn-secondary" onclick="saveOllamaCloudConfig()">Save Ollama Cloud Settings</button>
+        ${hasTok ? '<button class="btn btn-secondary" onclick="clearOllamaToken()">Remove Token</button>' : ''}
+        <small>Requires the <code>ollama-resume.yml</code> workflow in your repo (already included). Larger models (e.g. <code>llama3</code> 8B) work but run slower on the free runner.</small>
     </div>`;
 
     // Custom / BYO OpenAI-compatible provider
@@ -1833,15 +1965,33 @@ function saveCustomAIConfig() {
     renderAISettings();
 }
 
-function saveOllamaConfig() {
-    const endpoint = document.getElementById('ollamaEndpoint')?.value.trim();
+function saveOllamaCloudConfig() {
+    const token = document.getElementById('ghPat')?.value.trim();
+    const owner = document.getElementById('ghOwner')?.value.trim();
+    const repo = document.getElementById('ghRepo')?.value.trim();
     const model = document.getElementById('ollamaModel')?.value.trim();
-    if (!endpoint) {
-        showToast('Please enter the Ollama endpoint URL', 'warning');
+    if (!window.GitHubRunner) {
+        showToast('GitHub runner module not loaded', 'error');
         return;
     }
-    AIIntegration.setOllamaConfig(endpoint, model);
-    showToast('Ollama settings saved', 'success');
+    if (token) GitHubRunner.setToken(token);
+    GitHubRunner.setConfig({ owner, repo, model });
+    // keep AIIntegration's model in sync so the cloud flow reads a consistent value
+    if (model) {
+        const cur = AIIntegration.getOllamaConfig();
+        AIIntegration.setOllamaConfig(cur.endpoint, model);
+    }
+    if (!GitHubRunner.hasToken()) {
+        showToast('Saved — add a GitHub token to enable the cloud generator', 'warning');
+    } else {
+        showToast('Ollama cloud settings saved', 'success');
+    }
+    renderAISettings();
+}
+
+function clearOllamaToken() {
+    if (window.GitHubRunner) GitHubRunner.clearToken();
+    showToast('GitHub token removed', 'info');
     renderAISettings();
 }
 

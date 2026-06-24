@@ -83,6 +83,9 @@
     <script src="core/ai-integration.js"></script>
     <script>window.modulesLoaded.AIIntegration = !!window.AIIntegration; console.log('DEBUG: AIIntegration loaded:', window.modulesLoaded.AIIntegration);</script>
     
+    <script src="core/github-runner.js"></script>
+    <script>window.modulesLoaded.GitHubRunner = !!window.GitHubRunner; console.log('DEBUG: GitHubRunner loaded:', window.modulesLoaded.GitHubRunner);</script>
+    
     <script src="core/cost-calculator.js"></script>
     <script>window.modulesLoaded.CostCalculator = !!window.CostCalculator; console.log('DEBUG: CostCalculator loaded:', window.modulesLoaded.CostCalculator);</script>
     
@@ -382,7 +385,7 @@
                                 <select id="aiProvider" onchange="updateAICost()">
                                     <option value="">None — generate locally (free, no AI)</option>
                                     <option value="pollinations">Free AI (Pollinations — no key needed)</option>
-                                    <option value="ollama">Ollama / Llama 3 (free — runs on your machine or Codespace)</option>
+                                    <option value="ollama">Ollama / Llama 3 (free — auto-runs in a GitHub cloud runner)</option>
                                     <option value="custom">Custom / Your own AI provider</option>
                                     <option value="openai">OpenAI (GPT-4) — needs your key</option>
                                     <option value="claude">Claude (Anthropic) — needs your key</option>
@@ -472,7 +475,7 @@
                         <select id="bulkAiProvider" onchange="updateBulkCost()">
                             <option value="">None — generate locally (free, no AI)</option>
                             <option value="pollinations">Free AI (Pollinations — no key needed)</option>
-                            <option value="ollama">Ollama / Llama 3 (free — runs on your machine or Codespace)</option>
+                            <option value="ollama">Ollama / Llama 3 (free — auto-runs in a GitHub cloud runner)</option>
                             <option value="custom">Custom / Your own AI provider</option>
                             <option value="openai">OpenAI — needs your key</option>
                             <option value="claude">Claude — needs your key</option>

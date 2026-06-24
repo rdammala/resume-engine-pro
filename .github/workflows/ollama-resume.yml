@@ -1,0 +1,87 @@
+name: Ollama Resume Generator
+run-name: Ollama Resume ${{ inputs.run_id }}
+
+# Ephemeral, free pipeline:
+#   website (Generate) --> workflow_dispatch --> this runner spins up
+#   --> installs & runs Ollama (Llama 3) --> tailors the resume to the JD
+#   --> commits the result back to generated/<run_id>.json --> runner
+#   self-destructs automatically. No server to manage, $0 cost.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Unique run identifier (also names the output file)
+        required: true
+        type: string
+      resume_data:
+        description: Combined raw text of the candidate's existing resume(s)
+        required: true
+        type: string
+      job_description:
+        description: Target job description
+        required: true
+        type: string
+      model:
+        description: Ollama model to use (3B default keeps the CPU runner fast)
+        required: false
+        default: llama3.2
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ollama-resume-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama server
+        run: |
+          ollama serve > ollama.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
+              echo "Ollama is up"; break
+            fi
+            sleep 1
+          done
+
+      - name: Pull the model
+        run: ollama pull "${{ inputs.model }}"
+
+      - name: Generate tailored resume
+        env:
+          BULK_DATA: ${{ inputs.resume_data }}
+          JOB_DESC: ${{ inputs.job_description }}
+          OUTPUT_NAME: ${{ inputs.run_id }}
+          OLLAMA_MODEL: ${{ inputs.model }}
+          OLLAMA_ENDPOINT: http://localhost:11434
+        run: node scripts/ollama-actions-generate.js
+
+      - name: Commit the result back to the repository
+        run: |
+          git config user.name "resume-engine-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add generated/
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "Generated tailored resume ${{ inputs.run_id }} [skip ci]"
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git push
+          fi

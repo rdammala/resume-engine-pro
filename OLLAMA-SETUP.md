@@ -1,15 +1,44 @@
-# Free Resume Tailoring with Ollama (Llama 3) on GitHub Codespaces
+# Free Resume Tailoring with Ollama (Llama 3)
 
-Run a **free**, private Llama 3 model to tailor your resume to a job description — no API keys, no cost. You can use it two ways:
+Run a **free**, private Llama 3 model to tailor your resume to a job description — no API keys, no cost. There are now **three** ways to use it:
 
-1. **In the web app** — pick **Ollama / Llama 3** in the Generate tab (configure the endpoint in Settings).
-2. **From the command line** — run `scripts/ollama-generate.js` to batch-generate tailored resumes.
+1. **Automated cloud (recommended, zero setup)** — pick **Ollama / Llama 3** in the Generate tab. When you click **Generate**, the website triggers a GitHub Actions workflow that spins up a fresh runner, installs Ollama, runs Llama 3, tailors your resume, commits the result, and **self-destructs**. A live progress card shows each step. See [Automated cloud flow](#automated-cloud-flow-no-server).
+2. **From the command line** — run `scripts/ollama-generate.js` (or `scripts/ollama-actions-generate.js`) to batch-generate tailored resumes inside a Codespace or any machine with Ollama.
+3. **Local server (advanced)** — run `OLLAMA_ORIGINS='*' ollama serve` on your own machine and point the app at it (legacy mode).
 
-Because GitHub Codespaces gives you free monthly hours and the environment is **deleted** when you stop it, you pay nothing.
+Because GitHub Actions runners are **free** and **deleted automatically** when the job ends, you pay nothing and there is nothing to clean up.
 
 ---
 
-## Procedure
+## Automated cloud flow (no server)
+
+This is the fully automated "create a node → run Ollama → commit → self-destruct" pipeline, driven entirely from the website.
+
+### One-time setup
+1. Create a **fine-grained GitHub Personal Access Token** at <https://github.com/settings/tokens?type=beta>, scoped to the `resume-engine-pro` repository, with:
+   - **Actions** → Read & write
+   - **Contents** → Read & write
+   (Or a classic token with the `repo` + `workflow` scopes.)
+2. In the app, open **Settings → Ollama / Llama 3 (cloud)**, paste the token, confirm the owner/repo and model (`llama3.2` is fast on the free CPU runner), and **Save**.
+
+### Each time you generate
+1. Pick a profile and paste the job description.
+2. Select **Ollama / Llama 3** as the AI provider and click **Generate**.
+3. Watch the live progress card. Behind the scenes the `ollama-resume.yml` workflow:
+   - installs Ollama (`curl -fsSL https://ollama.com/install.sh | sh`),
+   - pulls the model (`ollama pull llama3.2`),
+   - runs `scripts/ollama-actions-generate.js` to tailor your resume to the JD,
+   - commits the result to `generated/<run_id>.json`,
+   - and the runner is destroyed automatically.
+4. The app fetches the committed JSON and builds your PDF / Word / Portfolio locally.
+
+> Notes: workflow inputs are capped (~28KB resume text, ~6KB JD) to stay within GitHub's limit. The token lives only in your browser (obfuscated in localStorage) — keep it scoped to this one repo. Larger models like `llama3` (8B) work but run slower on the free runner.
+
+---
+
+## Codespaces / CLI procedure (alternative)
+
+If you prefer to run it yourself in a disposable Codespace:
 
 ### 1. Launch a Codespace
 From your repository on GitHub: **Code ▸ Codespaces ▸ Create codespace on master**.
