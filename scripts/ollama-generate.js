@@ -63,18 +63,18 @@ function readFileSafe(p) {
 }
 
 function buildPrompt(resumeText, jdText) {
-    return `You are a world-class resume writer and ATS (Applicant Tracking System) optimization specialist.
+    return `You are a world-class executive resume writer and ATS (Applicant Tracking System) optimization specialist with 15+ years placing senior technical talent. You write tight, metric-driven, recruiter-grade resumes.
 
-GOAL: Produce a NEW, polished, ATS-optimized resume for the candidate, targeted at the JOB DESCRIPTION below. Actively rewrite — do not echo the input.
+GOAL: Produce a NEW, polished, ATS-optimized resume for the candidate, precisely targeted at the JOB DESCRIPTION. Aggressively REWRITE — never echo the input verbatim.
 
-RULES:
-- Mirror the exact terminology, hard skills, tools and keywords from the job description, but only where the candidate genuinely has that experience.
-- Rewrite the summary into 3-4 punchy sentences positioning the candidate for THIS role.
-- Rewrite each experience bullet: strong action verb first, quantified impact where supported, aligned to the job's responsibilities.
-- Prioritize and reorder skills so the most JD-relevant come first.
-- Stay truthful: use only the candidate's real employers, titles, dates and accomplishments. Never fabricate.
+QUALITY BAR (non-negotiable):
+- SUMMARY: 3-4 punchy sentences. Lead with seniority + years + domain, then 2-3 signature strengths that mirror the JD, then a closing value statement. Plain text, no line breaks.
+- SKILLS: 14-18 skills, prioritized so the most JD-relevant appear first, using the EXACT tool/technology/keyword terminology from the job description wherever the candidate genuinely has it. Hard skills, platforms, methodologies — no soft-skill filler.
+- EXPERIENCE: for EACH role write 4-6 distinct achievement bullets. Every bullet starts with a strong past-tense action verb, contains a QUANTIFIED result where the source supports it (%, $, time, scale, uptime, MTTR), names concrete technologies/methods from the JD, and is one line under ~28 words. Most-recent role first; never merge roles.
+- TRUTHFULNESS: only the candidate's real employers, titles, dates and accomplishments. Never invent. If a number is not supported, write a strong qualitative bullet.
+- Also extract the target job's title and the hiring company into "job_title" and "company" (use "" if genuinely unclear — never guess a benefit/perk as the company).
 
-CANDIDATE RESUME(S) (authoritative source — extract every useful data point):
+CANDIDATE RESUME(S) (authoritative source — mine every useful data point):
 """
 ${resumeText}
 """
@@ -85,8 +85,13 @@ ${jdText}
 """
 
 Respond with ONE valid minified JSON object and NOTHING else. Use EXACTLY these keys:
-{"summary":"3-4 sentence ATS-optimized summary, plain text, no line breaks","skills":["12-20 prioritized JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["rewritten achievement bullet, action-verb first, quantified, under 28 words"]}],"education":["degree, institution, year"]}
-Return ONLY the JSON object.`;
+{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized summary, plain text, no line breaks","skills":["14-18 prioritized JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ...","Automated ... saving 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to 3x traffic at 99.95% uptime"]}],"education":["degree, institution, year"]}
+
+HARD REQUIREMENTS:
+- Each "details" array MUST contain 4 to 6 bullets — a single-bullet role is unacceptable.
+- "skills" MUST contain at least 14 entries.
+- Escape any double quotes inside strings; never use raw newline characters inside strings.
+- Return ONLY the JSON object.`;
 }
 
 async function callOllama(endpoint, model, prompt) {
@@ -96,8 +101,9 @@ async function callOllama(endpoint, model, prompt) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             model,
-            temperature: 0.4,
+            temperature: 0.35,
             stream: false,
+            options: { num_ctx: 8192, num_predict: 2048 },
             messages: [
                 { role: 'system', content: 'You are an expert resume writer and ATS specialist. Respond with ONLY a single valid minified JSON object — no markdown, no code fences.' },
                 { role: 'user', content: prompt }

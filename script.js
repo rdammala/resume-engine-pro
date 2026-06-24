@@ -1326,10 +1326,13 @@ function extractJobMeta(jdText) {
     let company = 'the company';
     const compLine = lines.find(l => /^(company|employer|organization)\s*[:\-]/i.test(l));
     if (compLine) {
-        company = compLine.replace(/^(company|employer|organization)\s*[:\-]\s*/i, '').trim() || company;
+        const candidate = compLine.replace(/^(company|employer|organization)\s*[:\-]\s*/i, '').trim();
+        if (candidate && looksLikeCompany(candidate)) company = candidate;
     } else {
-        const atMatch = (jdText || '').match(/\bat\s+([A-Z][A-Za-z0-9&.\- ]{2,40})/);
-        if (atMatch) company = atMatch[1].trim();
+        // Match "at <Company>" but stop at the first connective/benefit word so we
+        // never capture phrases like "at paid disability and life insurance".
+        const atMatch = (jdText || '').match(/\bat\s+([A-Z][A-Za-z0-9&.\-]+(?:\s+[A-Z][A-Za-z0-9&.\-]+){0,4})/);
+        if (atMatch && looksLikeCompany(atMatch[1])) company = atMatch[1].trim();
     }
 
     return { title: title || 'the role', company };
@@ -1631,13 +1634,40 @@ function mergeTailored(profile, aiData) {
             .filter(e => e.position || e.company || e.description);
         if (mapped.length) tailored.experience = mapped;
     }
+    // Carry the model's reading of the target job (title + hiring company) so the
+    // cover letter, README and tracker use accurate values instead of fragile
+    // keyword heuristics. Ignore obvious non-company noise (benefits/perks).
+    if (aiData && typeof aiData.job_title === 'string' && aiData.job_title.trim()) {
+        tailored._aiJobTitle = aiData.job_title.trim();
+    }
+    if (aiData && typeof aiData.company === 'string' && looksLikeCompany(aiData.company)) {
+        tailored._aiCompany = aiData.company.trim();
+    }
     return tailored;
+}
+
+// Quick sanity filter so a perk/benefit phrase is never used as a company name.
+function looksLikeCompany(value) {
+    const s = String(value || '').trim();
+    if (s.length < 2 || s.length > 60) return false;
+    if (/\b(insurance|disability|401k|pto|benefit|benefits|salary|bonus|vacation|paid|leave|coverage|equity|stipend)\b/i.test(s)) return false;
+    return true;
+}
+
+// Resolve the target job's title + hiring company, preferring the model's own
+// reading (captured on the tailored profile) and falling back to keyword
+// heuristics on the raw JD text.
+function resolveJobMeta(workingProfile, jdText) {
+    const meta = extractJobMeta(jdText);
+    const title = (workingProfile && workingProfile._aiJobTitle) || meta.title;
+    const company = (workingProfile && workingProfile._aiCompany) || meta.company;
+    return { title: title || 'the role', company: company || 'the company' };
 }
 
 // Build the requested document set from a (possibly AI-tailored) profile.
 // Shared by the foreground generator and the background run reconciler.
 async function buildDocumentsFromProfile(workingProfile, jdText, baseName, opts, downloadLinks) {
-    const meta = extractJobMeta(jdText);
+    const meta = resolveJobMeta(workingProfile, jdText);
     const matched = matchSkillsToJD(normalizeProfile(workingProfile), jdText);
     let count = 0;
     if (opts.wantResume) {
@@ -1832,7 +1862,7 @@ function blobToBase64(blob) {
 
 // Build { filename: Blob } for everything we want committed to the published repo.
 async function buildPublishFiles(workingProfile, jdText, opts, baseName) {
-    const meta = extractJobMeta(jdText);
+    const meta = resolveJobMeta(workingProfile, jdText);
     const matched = matchSkillsToJD(normalizeProfile(workingProfile), jdText);
     const files = {};
     if (opts.wantResume) {
@@ -1919,9 +1949,6 @@ async function publishHistoryEntry(histId, btnEl) {
         const jd = item.jd || '';
         const opts = item.genOpts || { wantResume: true, wantCover: true, wantPortfolio: true, wantJobDetails: true, template: 'minimalist' };
         const baseName = item.baseName || safeFileName(profile.displayName || profile.name);
-        const meta = extractJobMeta(jd);
-        const role = meta.title || item.jobTitle || profile.headline || 'Role';
-        const company = meta.company || item.company || 'Company';
 
         // For Ollama entries re-fetch the committed AI result so the published docs
         // carry the tailored summary/skills/experience, not just the base profile.
@@ -1932,6 +1959,11 @@ async function publishHistoryEntry(histId, btnEl) {
                 if (aiData && !aiData._raw) workingProfile = mergeTailored(profile, aiData);
             } catch (_) { /* fall back to base profile */ }
         }
+
+        // Resolve title/company AFTER tailoring so the model's own reading wins.
+        const meta = resolveJobMeta(workingProfile, jd);
+        const role = meta.title || item.jobTitle || profile.headline || 'Role';
+        const company = meta.company || item.company || 'Company';
 
         const login = await GitHubRunner.getLogin();
         const repoName = safeRepoName(role);

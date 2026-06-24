@@ -569,12 +569,14 @@ ${jdData}
 """
 
 Respond with ONE valid minified JSON object and NOTHING else — no markdown, no code fences, no commentary. Use EXACTLY these keys:
-{"summary":"3-4 sentence ATS-optimized professional summary, plain text, no line breaks","skills":["12-20 prioritized, JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["rewritten achievement bullet, action-verb first, quantified, under 28 words"]}]}
+{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized professional summary, plain text, no line breaks","skills":["14-18 prioritized, JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ...","Automated ... saving 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to 3x traffic at 99.95% uptime"]}]}
 
 Rules:
 - "summary" must be a single plain-text string with NO newline characters.
 - Escape any double quotes inside strings; never use raw newlines inside strings.
-- Order experience most-recent first; 3-6 strong bullets per role.
+- Order experience most-recent first; each role MUST have 4-6 strong, quantified bullets — a single-bullet role is unacceptable.
+- "skills" must contain at least 14 entries.
+- For "job_title"/"company", read the JOB DESCRIPTION; use "" if genuinely unclear and never guess a benefit or perk as the company.
 - Return ONLY the JSON object.`;
     },
     

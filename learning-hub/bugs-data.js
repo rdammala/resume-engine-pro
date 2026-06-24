@@ -635,5 +635,59 @@ await GitHubRunner.putFile(login, repoName, 'README.md',
 function utf8ToBase64(str){ return btoa(unescape(encodeURIComponent(String(str||'')))); }`,
         lesson: 'When auto_init creates a repository it also creates a stub README - if you want a meaningful landing page you must overwrite it, and an idempotent putFile that reads the current SHA first makes that a one-liner. Sequence matters: a value that only exists after a later step (the Pages URL after enablePages) can only be written once that step completes, so order the README write last. Always base64-encode text for the Contents API through a UTF-8-safe path (btoa alone throws on non-Latin1 characters). And keep cosmetic finishing touches best-effort so they never jeopardize the core operation.',
         impact: 'Low - every published application repo now opens with a clear, clickable link to the live portfolio plus a tidy list of the included documents, so anyone landing on the repo (recruiter, the user) reaches the hosted portfolio in one click instead of hunting for the github.io URL.'
+    },
+    {
+        id: 32,
+        title: 'Re-Publish Looked Like a No-Op - Only the PDF Refreshed, README Never Changed',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer / Release',
+        fixTime: '20 min',
+        description: 'After shipping the README-with-live-link change, the user re-published an entry and reported that nothing seemed to update except the PDF: the README looked unchanged and they could not tell the publish had done anything new. It read like a broken feature even though the code was correct.',
+        rootCause: 'Two compounding effects. First, the browser was running a cached copy of the old script.js (served by GitHub Pages with no cache-bust), so the very build that adds the README was not even executing - there was literally no Add README commit in the repo history. Second, once the fresh code did run, re-publishing identical inputs produces byte-identical .doc/.html/.md files, and the GitHub Contents API creates no new commit when content is unchanged. Only the PDF differs run-to-run because jsPDF embeds a generation timestamp, so the PDF was the single file that appeared to change - which is expected behavior, not a bug.',
+        resolution: 'Confirmed the README write was present and correct, then made it observable and resilient: wrapped the README putFile in try/catch that raises a visible warning toast on failure (no more silent skips), and set the repo homepage to the live Pages URL via updateRepoMeta so the change is also reflected in the GitHub About sidebar. Documented that identical files = no new commit is correct API behavior, and that the real culprit was a stale cached bundle. The fix on the user side is a hard refresh (Ctrl+Shift+R) plus ~1 min for Pages to redeploy the new script.js.',
+        codeExample: `// Make the README step observable instead of silently best-effort.
+try {
+  const readme = buildPublishReadme({ role, company, pagesUrl, fileNames: names, date });
+  await GitHubRunner.putFile(login, repoName, 'README.md',
+    utf8ToBase64(readme), 'Update README with live portfolio link');
+} catch (e) {
+  // A stale bundle or transient error must not look like success.
+  showToast('Published, but updating the README failed: ' + (e && e.message), 'warning');
+}
+
+// Reflect the live link in the repo About sidebar too (best-effort).
+if (pagesUrl) {
+  try { await GitHubRunner.updateRepoMeta(login, repoName, { homepage: pagesUrl }); } catch (_) {}
+}`,
+        lesson: 'When a deployed static app appears to ignore a fix, suspect a cached bundle before suspecting the code - GitHub Pages serves stale assets aggressively, so verify the actual commit history (was the new commit ever created?) before debugging logic. The Contents API is content-addressed: writing identical bytes is intentionally a no-op with no new commit, so do not treat unchanged files as a failure. And make every best-effort step at least observable - a silent catch on the README write is indistinguishable from the feature not running at all.',
+        impact: 'Low - re-publishing is now self-explanatory: README/homepage updates are confirmed or visibly warned, and the expected PDF-only diff on identical re-runs is understood rather than mistaken for breakage.'
+    },
+    {
+        id: 33,
+        title: 'Generated Resumes Were Thin and Sub-Par - One Bullet Per Role and Only ~7 Skills',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'AI / Prompt Engineering',
+        fixTime: '90 min',
+        description: 'The end product fell far short of an ATS-ready, technically strong resume. Generated documents had a single bullet per job, roughly 7 skills, and a thin summary - not the tight, metric-driven, recruiter-grade output expected. The pages were created but the content quality was poor, and the target company was sometimes mis-extracted (e.g. a benefit phrase like paid disability and life insurance was used as the company name).',
+        rootCause: 'Three distinct defects. (1) num_ctx was 4096 in callOllama, but the input (a resume sliced to 28000 chars ~ 7000 tokens plus the JD plus instructions) is ~9000 tokens - the context window silently TRUNCATED the work history, so the model never saw the full career and had no room to generate. (2) The prompt schema example showed exactly ONE bullet in details and asked for 12-20 skills loosely; LLMs imitate the shape of the example, so the model emitted one bullet per role and ~7 skills regardless of the prose instructions. (3) Title/company were derived only by keyword heuristics on the raw JD (extractJobMeta), whose at <Word> regex and Company: label could latch onto perk/benefit text.',
+        resolution: 'Raised num_ctx to 8192 and added num_predict 2048 (and lowered temperature to 0.35) in both generators so the full input fits and there is generation headroom. Rewrote buildPrompt in scripts/ollama-actions-generate.js and scripts/ollama-generate.js (and the schema in core/ai-integration.js): the schema example now shows FIVE quantified bullets, a HARD REQUIREMENTS block states each details array MUST have 4-6 bullets and skills MUST have >=14 entries, and the model now also returns job_title and company. mergeTailored captures aiData.job_title/company onto the tailored profile (filtered by looksLikeCompany, which rejects insurance/disability/benefit/PTO/etc.), and resolveJobMeta prefers those AI-read values over extractJobMeta. extractJobMeta itself was hardened with the same benefit-phrase guard and a tighter at <Company> regex.',
+        codeExample: `// 1) Give the model room: full input + space to write.
+options: { num_ctx: 8192, num_predict: 2048 }, temperature: 0.35
+
+// 2) The schema EXAMPLE is the strongest instruction - show multiple bullets:
+"details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to ...",
+           "Automated ... saving 200+ hours/quarter","Reduced MTTR 45m to 9m",
+           "Scaled platform to 3x traffic at 99.95% uptime"]
+// HARD REQUIREMENTS: each details array MUST contain 4-6 bullets; skills MUST have >=14.
+
+// 3) Trust the model's company read, but never accept a perk as the company:
+function looksLikeCompany(s){
+  return s.length>=2 && s.length<=60 &&
+    !/\\b(insurance|disability|401k|pto|benefit|benefits|salary|bonus|vacation|paid|leave|coverage|equity|stipend)\\b/i.test(s);
+}`,
+        lesson: 'An LLM imitates the SHAPE of your schema example far more faithfully than your prose rules - a single-bullet example yields single-bullet output no matter how many times you write produce 4-6 bullets, so the example itself must demonstrate the desired density. Context window is a silent failure mode: if num_ctx is smaller than your input the model just never sees the tail of the prompt, so size it to the real token count and leave num_predict headroom to generate. Add explicit, countable HARD REQUIREMENTS (>=14 skills, 4-6 bullets) the model can self-check. And prefer the structured extraction the model returns (job_title/company) over brittle regex heuristics, but still gate it with a sanity filter so a benefit phrase can never masquerade as the employer.',
+        impact: 'High - new generations produce tight, ATS-ready resumes with 4-6 quantified, technology-named bullets per role and 14-18 prioritized JD-aligned skills, plus an accurate target title/company. This is the core value of the product, so the quality lift is the difference between an unusable draft and a recruiter-grade package.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
