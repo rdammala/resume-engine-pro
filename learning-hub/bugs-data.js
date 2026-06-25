@@ -782,5 +782,32 @@ async function fetchGitHubFileCount(folder, rx) {
 }`,
         lesson: 'When a counter is permanently stuck at its initial value, confirm the code is writing to the SAME element the HTML renders - a stale or mismatched id silently no-ops with no error. Beware duplicate function definitions: the last one wins and can quietly replace the version you think is running. And for stats that should be global, do not treat per-browser localStorage as the source of truth; derive them from a shared, durable store. An append-only folder that another process already writes (here, CI committing one file per run) is a perfect zero-extra-write, tokenless, cross-device counter - just list and count it via the public API.',
         impact: 'Medium - the Dashboard now shows correct, live numbers that update on every visit and reflect generations made from any device, instead of a permanently-zero landing page.'
+    },
+    {
+        id: 37,
+        title: 'Dashboard "AI Status" and "Credits & Usage" Cards Were Inert Placeholders',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '50 min',
+        description: 'Two of the four Dashboard cards never did anything. "AI Status" was permanently stuck on its placeholder "Loading AI providers..." and "Credits & Usage" always showed "No AI providers configured yet" - even after engines were configured and resumes had been generated (including free Ollama runs). Users had no way to see which engines were ready or how much each had consumed.',
+        rootCause: 'The markup had the containers (#aiStatus and #creditsDisplay) but no code ever populated them - there was no renderer wired to either element, so they kept their hard-coded placeholder HTML forever. Separately, no per-engine usage was being summarised anywhere; generation History stored provider and mode per record but nothing aggregated it, and free engines (Ollama/Pollinations) recorded $0 with no token figure, so "free" looked like "nothing happened".',
+        resolution: 'Added renderAIStatus(), which walks AIIntegration.providers in a curated order and shows each engine with its effective model and a readiness badge derived from AIIntegration.isConfigured() (Key set / Ready·free / Configured / Not set), plus a "Manage in Settings" link and a ready-count. Added renderCreditsUsage(), which aggregates StorageManager.getHistory() by provider into generations, estimated tokens and cost: cost uses the stored value or AIIntegration.getCost(provider, mode); tokens are estimated per record from the mode token budget plus an input estimate from the stored JD length (~4 chars/token). Free engines show the estimated tokens consumed at $0 so Ollama usage is finally visible. Both renderers run from updateStats(), so they refresh on login and every time the Dashboard tab is opened.',
+        codeExample: `// Nothing populated these containers — they kept their placeholder forever.
+function updateStats() {
+  renderAIStatus();       // fills #aiStatus from AIIntegration.isConfigured()
+  renderCreditsUsage();   // fills #creditsDisplay from History, per engine
+}
+
+// Per-engine usage from History (free engines still show tokens at $0 cost).
+history.forEach(rec => {
+  const id = rec.provider;
+  if (!AIIntegration.providers[id]) return;
+  agg[id].count  += 1;
+  agg[id].tokens += estimateRecordTokens(rec);   // mode budget + JD/4 input est.
+  agg[id].cost   += rec.cost || AIIntegration.getCost(id, rec.mode || 'smart');
+});`,
+        lesson: 'A placeholder that never changes is a tell-tale that no renderer is bound to the element - having the container in the HTML is only half the wiring. Drive each dynamic card from a single refresh entry point (updateStats) that runs on the relevant tab open, so all cards stay in sync. And "free" is not the same as "zero usage": surface estimated token consumption for no-cost engines like Ollama so users can still reason about volume, clearly labelling figures as estimates when the engine does not report exact counts.',
+        impact: 'Medium - the Dashboard now shows which AI engines are ready (with models) and a per-engine breakdown of generations, estimated tokens and spend, including visible token usage for free Ollama runs.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

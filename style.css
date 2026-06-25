@@ -547,6 +547,59 @@ html:not(.js-ready)[data-boot="app"][data-tab="settings"] #settings { display: b
     font-weight: 600;
 }
 
+.ai-status-item.ai-off { opacity: 0.7; }
+.ai-status-item.ai-ok .ai-status-badge { color: #00e08a; }
+.ai-status-item.ai-off .ai-status-badge { color: var(--text-muted); }
+
+.ai-status-foot {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.ai-status-foot a { color: #00d9ff; }
+
+/* Credits & Usage card */
+.usage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.usage-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 153, 255, 0.05);
+    border-radius: 6px;
+    font-size: 0.88rem;
+}
+
+.usage-name { font-weight: 600; }
+
+.usage-meta {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.usage-free { color: #00e08a; font-weight: 600; }
+
+.usage-total {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.88rem;
+}
+
+.usage-note {
+    margin-top: 0.5rem;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
 .badge-connected {
     background: rgba(0, 204, 0, 0.2);
     color: #00cc00;

@@ -829,6 +829,10 @@ function updateStats() {
 
     // --- Live, GitHub-backed count (cross-device, not browser storage) ---
     refreshLiveStats();
+
+    // --- AI engine status + per-engine credit/token usage ---
+    try { renderAIStatus(); } catch (_) {}
+    try { renderCreditsUsage(); } catch (_) {}
 }
 
 // Pull live statistics straight from GitHub instead of trusting only this
@@ -871,6 +875,113 @@ async function fetchGitHubFileCount(folder, matchRegex) {
     const items = await res.json();
     if (!Array.isArray(items)) return 0;
     return items.filter(f => f && f.type === 'file' && (!matchRegex || matchRegex.test(f.name))).length;
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard: AI Status — which engines are configured / ready to use right now.
+// ---------------------------------------------------------------------------
+function renderAIStatus() {
+    const el = document.getElementById('aiStatus');
+    if (!el || !window.AIIntegration) return;
+
+    // Curated display order (paid first, then free, then custom).
+    const order = ['openai', 'claude', 'gemini', 'mistral', 'ollama', 'pollinations', 'custom'];
+    const rows = order.map(id => {
+        const p = AIIntegration.providers[id];
+        if (!p) return '';
+        const configured = AIIntegration.isConfigured(id);
+
+        // Resolve the model actually in effect for this provider.
+        let model = p.model || '';
+        try {
+            if (id === 'ollama' && AIIntegration.getOllamaConfig) model = AIIntegration.getOllamaConfig().model || model;
+            if (id === 'custom' && AIIntegration.getCustomConfig) model = AIIntegration.getCustomConfig().model || model;
+        } catch (_) {}
+
+        let badge, cls;
+        if (id === 'ollama' || id === 'pollinations') {
+            badge = configured ? '🟢 Ready · free' : '⚪ Not set';
+            cls = configured ? 'ok' : 'off';
+        } else if (id === 'custom') {
+            badge = configured ? '🟢 Configured' : '⚪ Not set';
+            cls = configured ? 'ok' : 'off';
+        } else {
+            badge = configured ? '✅ Key set' : '⚪ No key';
+            cls = configured ? 'ok' : 'off';
+        }
+
+        const modelHtml = model ? `<small style="opacity:.7;"> · ${escHtml(model)}</small>` : '';
+        return `<div class="ai-status-item ai-${cls}">
+            <span>${escHtml(p.name)}${modelHtml}</span>
+            <span class="ai-status-badge">${badge}</span>
+        </div>`;
+    }).join('');
+
+    const readyCount = order.filter(id => AIIntegration.providers[id] && AIIntegration.isConfigured(id)).length;
+    el.innerHTML = rows + `<div class="ai-status-foot">${readyCount} engine(s) ready · <a href="#" onclick="switchMainTab('settings');return false;">Manage in Settings</a></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard: Credits & Usage — per-engine generations, estimated tokens and
+// cost, aggregated from generation History. Free engines (Ollama, Pollinations)
+// still show estimated tokens consumed even though their cost is $0.
+// ---------------------------------------------------------------------------
+function estimateRecordTokens(rec) {
+    const prov = window.AIIntegration && AIIntegration.providers[rec.provider];
+    const mode = rec.mode || 'smart';
+    const out = (prov && prov.modes && prov.modes[mode] && prov.modes[mode].tokens) || 1500;
+    // Approximate input tokens from the stored JD (~4 chars/token) plus the
+    // resume + prompt scaffolding the model always sees.
+    const jdChars = rec.jd ? String(rec.jd).length : 0;
+    const input = Math.round(jdChars / 4) + 1800;
+    return input + out;
+}
+
+function renderCreditsUsage() {
+    const el = document.getElementById('creditsDisplay');
+    if (!el) return;
+
+    let history = [];
+    try { history = StorageManager.getHistory(1000) || []; } catch (_) { history = []; }
+
+    // Aggregate only records tied to a known AI engine.
+    const agg = {};
+    history.forEach(rec => {
+        const id = rec && rec.provider;
+        if (!id || !(window.AIIntegration && AIIntegration.providers[id])) return;
+        if (!agg[id]) agg[id] = { count: 0, tokens: 0, cost: 0 };
+        agg[id].count += 1;
+        agg[id].tokens += estimateRecordTokens(rec);
+        const recCost = (typeof rec.cost === 'number' && rec.cost > 0)
+            ? rec.cost
+            : (AIIntegration.getCost ? AIIntegration.getCost(id, rec.mode || 'smart') : 0);
+        agg[id].cost += recCost || 0;
+    });
+
+    const ids = Object.keys(agg);
+    if (!ids.length) {
+        el.innerHTML = `<p>No AI generations yet. Once you generate with an engine, its token usage and cost appear here.</p>
+            <button class="btn btn-secondary" onclick="switchMainTab('settings')">Set Up AI</button>`;
+        return;
+    }
+
+    const fmtTokens = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+    let totalCost = 0, totalTokens = 0, totalGen = 0;
+    const rows = ids.map(id => {
+        const a = agg[id];
+        totalCost += a.cost; totalTokens += a.tokens; totalGen += a.count;
+        const name = AIIntegration.providers[id].name;
+        const free = AIIntegration.providers[id].free;
+        const costLabel = free ? '<span class="usage-free">free</span>' : '$' + a.cost.toFixed(4);
+        return `<div class="usage-row">
+            <span class="usage-name">${escHtml(name)}</span>
+            <span class="usage-meta">${a.count} gen · ≈${fmtTokens(a.tokens)} tok · ${costLabel}</span>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `<div class="usage-list">${rows}</div>
+        <div class="usage-total">Total: ${totalGen} generation(s) · ≈${fmtTokens(totalTokens)} tokens · <strong>$${totalCost.toFixed(4)}</strong></div>
+        <p class="usage-note">Token counts are estimates (engines don’t all report exact usage). Free engines like Ollama show estimated tokens consumed at $0 cost.</p>`;
 }
 
 // ============================================================================
