@@ -1462,6 +1462,12 @@ function normalizeProfile(profile) {
         p.summary = raw.split('\n').slice(0, 4).join(' ').slice(0, 600);
         p.experience = [{ position: '', description: raw.slice(0, 4000) }];
     }
+    // The portfolio header uses p.title; AI tailoring stores the target role on
+    // _aiJobTitle, so fall back to it (and any role from the first job) instead
+    // of showing the generic "Professional".
+    if (!p.title) {
+        p.title = p._aiJobTitle || (p.experience[0] && (p.experience[0].position || p.experience[0].title)) || '';
+    }
     return p;
 }
 
@@ -1805,6 +1811,13 @@ function mergeTailored(profile, aiData) {
         const mapped = aiData.experience.map(normalizeAIExperience)
             .filter(e => e.position || e.company || e.description);
         if (mapped.length) tailored.experience = mapped;
+    }
+    // Carry the model's education too (it was previously dropped, so AI-tailored
+    // resumes/portfolios lost their schooling). Accept an array or a string.
+    if (aiData && Array.isArray(aiData.education) && aiData.education.length) {
+        tailored.education = aiData.education;
+    } else if (aiData && typeof aiData.education === 'string' && aiData.education.trim()) {
+        tailored.education = [aiData.education.trim()];
     }
     // Carry the model's reading of the target job (title + hiring company) so the
     // cover letter, README and tracker use accurate values instead of fragile

@@ -96,7 +96,7 @@ const PortfolioTemplates = {
         
         ${profile.skills && profile.skills.length ? `<section><h2>Skills</h2><div class="skills">${profile.skills.map(skill => `<div class="skill">${skill}</div>`).join('')}</div></section>` : ''}
         
-        ${profile.education ? `<section><h2>Education</h2>${profile.education.map(edu => `<p>${edu}</p>`).join('')}</section>` : ''}
+        ${profile.education ? `<section><h2>Education</h2>${profile.education.map(edu => `<p>${typeof edu === 'string' ? edu : [edu.degree, edu.school, edu.year].filter(Boolean).join(', ')}</p>`).join('')}</section>` : ''}
     </div>
 </body>
 </html>`;

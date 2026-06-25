@@ -809,5 +809,36 @@ history.forEach(rec => {
 });`,
         lesson: 'A placeholder that never changes is a tell-tale that no renderer is bound to the element - having the container in the HTML is only half the wiring. Drive each dynamic card from a single refresh entry point (updateStats) that runs on the relevant tab open, so all cards stay in sync. And "free" is not the same as "zero usage": surface estimated token consumption for no-cost engines like Ollama so users can still reason about volume, clearly labelling figures as estimates when the engine does not report exact counts.',
         impact: 'Medium - the Dashboard now shows which AI engines are ready (with models) and a per-engine breakdown of generations, estimated tokens and spend, including visible token usage for free Ollama runs.'
+    },
+    {
+        id: 38,
+        title: 'Content-Cascade Audit: AI Education Dropped, Portfolio Showed [object Object], and Tailored Role Missing From Portfolio',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'QA / Frontend Developer',
+        fixTime: '70 min',
+        description: 'A structured QA pass drove five diverse resume "subjects" (a fully structured tech profile, an AI/Ollama-tailored result, a profile with comma-string fields, a raw-text-only profile, and a unicode non-tech profile with object-shaped education) through the real single, bulk and portfolio generators to confirm every field cascades into the downloaded files. Core cascade was solid (67/67 checks for name, summary, skills, experience bullets, education, cover letter, job-details across PDF/Word/Markdown), but three real content defects surfaced: (1) AI-provided education never reached the documents, (2) an object-shaped education entry rendered as the literal "[object Object]" in the portfolio, and (3) the AI-tailored target role never appeared in the portfolio header (it showed the generic "Professional").',
+        rootCause: 'Three independent gaps. (1) mergeTailored() merged summary, skills, experience and the job title/company from the AI result but silently omitted aiData.education, so any AI run lost the schooling section. (2) The portfolio template rendered education with `${edu}` assuming every entry is a string; when an entry was an object like { degree, school } it coerced to "[object Object]" (the resume Word/PDF builders already handled objects, so only the portfolio was wrong). (3) AI tailoring stores the target role on profile._aiJobTitle, but the portfolio header reads profile.title, which was never populated from it, so tailored portfolios fell back to "Professional".',
+        resolution: 'Added an education merge to mergeTailored() (accepts an array or a string). Made normalizeProfile() populate p.title from p._aiJobTitle (then the first job role) when no explicit title exists, so the portfolio header reflects the tailored role. Hardened the portfolio education renderer to handle objects: string entries print as-is, object entries join degree/school/year. Re-running the harness confirmed the AI subject went from edu=0 to edu=3, the portfolio header showed the real role, and "[object Object]" disappeared - still 67/67 content checks. A separate finding (all five portfolio "templates" call generateMinimalist, so the picker has no visual effect) was logged for a follow-up template-variety pass.',
+        codeExample: `// 1) mergeTailored: AI education was never merged — now it is.
+if (aiData && Array.isArray(aiData.education) && aiData.education.length) {
+  tailored.education = aiData.education;
+} else if (aiData && typeof aiData.education === 'string' && aiData.education.trim()) {
+  tailored.education = [aiData.education.trim()];
+}
+
+// 2) normalizeProfile: portfolio header now reflects the tailored role.
+if (!p.title) {
+  p.title = p._aiJobTitle || (p.experience[0] && (p.experience[0].position || p.experience[0].title)) || '';
+}
+
+// 3) portfolio-templates.js: render education objects, not "[object Object]".
+profile.education.map(edu =>
+  '<p>' + (typeof edu === 'string'
+    ? edu
+    : [edu.degree, edu.school, edu.year].filter(Boolean).join(', ')) + '</p>'
+).join('')`,
+        lesson: 'Test the data, not just the happy path: driving several genuinely different input shapes (arrays, comma-strings, raw text, objects, unicode) through the real generators is what exposes silent field-dropping and type assumptions that a single tidy fixture never would. When one builder handles a shape (objects) and a sibling builder does not, normalise the assumption in every renderer. And whenever a merge function hand-picks fields to copy, audit it for the ones it forgot - aiData.education fell through simply because it was never listed.',
+        impact: 'Medium - AI-tailored resumes and portfolios now keep their education, the portfolio shows the tailored role instead of "Professional", and object-shaped education renders cleanly everywhere instead of leaking "[object Object]".'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
