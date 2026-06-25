@@ -870,5 +870,33 @@ window.initializeGithubRepo = initializeGithubRepo;
 .ai-provider-card small { margin-top: auto; }`,
         lesson: 'An inline onclick that names a function which does not exist fails silently from the user side (just a console ReferenceError) - controls wired this way must point at a verifiably-global function, and "does this even work?" usually means the handler is missing or mis-named. For card grids, keep full-width banners and content-heavy panels out of the uniform track (span the whole row) and pin per-card helper text to the bottom so unequal content still lines up. And a control is only "working" once its value is actually consumed end-to-end: the radio looked fine but nothing ever read it.',
         impact: 'Medium - the Settings menu looks clean (no underline), the AI Providers section is visually consistent and professional, and the Repository Access radios now genuinely control whether the created data repo is private or public.'
+    },
+    {
+        id: 40,
+        title: 'Public App Seeded Every Visitor With the Owner\u2019s Real Job Applications',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / Privacy',
+        fixTime: '30 min',
+        description: 'After the project was shared publicly (LinkedIn), a user reported they could see the owner\u2019s actual job applications in the Job Application Tracker - six real rows (company, role, status, even a "denied due to no visa sponsorship" comment). Anyone opening the public app got the owner\u2019s private application history pre-loaded.',
+        rootCause: 'JobTrackerManager shipped a hard-coded defaultApps array containing the owner\u2019s six real applications (and genericResumes held a personal portfolio entry). loadApplications() seeded these into every fresh visitor\u2019s localStorage on first load, and - worse - on every subsequent load it re-merged any missing default back in by portfolio name, so even deleting a row brought it back. Sample/seed data that happened to be REAL personal data leaked to every visitor.',
+        resolution: 'Emptied defaultApps and genericResumes to [] so new visitors start with a blank tracker. Added a one-time migration in loadApplications(), gated by a seedAppsCleared flag, that strips the six known legacy seed rows (matched by portfolio name or the owner\u2019s github.com/rdammala/<name> repo URL) from any browser that already cached them from an earlier build - so returning visitors and the owner get the leftover rows auto-removed without touching applications they genuinely added.',
+        codeExample: `// BEFORE: real personal applications shipped as defaults + re-seeded each load.
+defaultApps: [ { role:'Technical Support Director', company:'Boulevard', \u2026 }, \u2026 ],
+
+// AFTER: empty seed + a one-time purge of rows cached from the old build.
+defaultApps: [],
+loadApplications() {
+  const stored = StorageManager.get('applications', false);
+  if (!stored) { /* seed with [] */ }
+  let working = stored;
+  if (!StorageManager.get('seedAppsCleared', false)) {
+    working = stored.filter(a => !this._isLegacySeed(a));   // strip owner rows
+    StorageManager.set('seedAppsCleared', true);            // run once
+  }
+  /* \u2026merge (now empty) + dedupe\u2026 */
+}`,
+        lesson: 'Never ship real personal data as "sample"/seed content in a public app - placeholder data must be obviously fake or empty. Re-merging defaults on every load is doubly dangerous: it makes the leak sticky and un-deletable. And remember that emptying a seed only fixes NEW users; anyone who already loaded the old build has the data cached in their own storage, so a privacy regression needs a one-time client migration to scrub already-distributed copies, keyed on a stable signature so it never touches data the user added themselves.',
+        impact: 'High - a privacy leak: the owner\u2019s real application history (companies, roles, statuses, a sponsorship note) was visible to every visitor. New visitors now get a blank tracker, and already-seeded browsers self-clean on next load.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
