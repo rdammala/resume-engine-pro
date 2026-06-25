@@ -193,6 +193,39 @@ function readBulkJobs() {
 > models stay within the free runner's memory budget.`,
         lesson: 'Decision-making knowledge that only exists in code or conversation is invisible. A short comparison table in the README turns tribal knowledge into a self-serve choice.',
         impact: 'Medium — users can pick the right model up front instead of discovering OOM failures by trial and error.'
+    },
+    {
+        id: 6,
+        title: 'Five Distinct Portfolio Templates + Output HTML-Escaping',
+        category: 'Portfolio',
+        status: 'Shipped',
+        role: 'Front-End / Security',
+        effort: '70 min',
+        summary: 'The portfolio template picker is real again: Minimalist, Executive, Creative, Tech and Startup are now genuinely different designs (layout, fonts, colour systems), and every value is HTML-escaped so a published, public portfolio can never be broken or injected by unusual resume content.',
+        motivation: 'A QA pass found all five "templates" just called generateMinimalist — so the picker had no visual effect — and the templates interpolated profile fields raw, so a name/summary containing < or " could break the page or inject markup into a public GitHub Pages site.',
+        solution: 'Added a shared _prep() that escapes the whole profile once into a safe view model, a _body() that renders the About/Experience/Skills/Education sections with consistent class names (so content is identical across templates), and a _doc() wrapper. Each template now supplies its own emoji, <style> and palette while reusing that escaped body — guaranteeing content parity with distinct visuals. Multi-line summaries and experience bullets keep their line breaks via <br>.',
+        codeExample: `// Escape every profile value ONCE into a safe view model.
+_prep(profile) {
+  const p = profile || {};
+  return {
+    name: this._esc(p.name || p.displayName || 'Your Name'),
+    summary: p.summary ? this._escMulti(p.summary) : '',
+    skills: (Array.isArray(p.skills) ? p.skills : []).map(s => this._esc(s)),
+    education: (Array.isArray(p.education) ? p.education : []).map(e =>
+      typeof e === 'string' ? this._esc(e)
+        : this._esc([e.degree, e.school, e.year].filter(Boolean).join(', '))),
+    /* …experience, contacts… */
+  };
+}
+
+// Shared body → identical content; each template only changes the CSS.
+generateTech(profile) {
+  const d = this._prep(profile);
+  const css = '/* dark terminal: monospace, green-on-black, > headings */';
+  return this._doc(d, '💻', css);   // vs Executive serif+navy, Creative gradient…
+}`,
+        lesson: 'A picker with no effect is worse than no picker — it implies a choice that does not exist. Separate content from presentation: escape and assemble the content once, then let each theme vary only the CSS, so adding a template can never drop a field or reopen an injection hole. Treat any user text rendered into a published, public page as untrusted and escape it at the boundary, even when it is "your own" resume data.',
+        impact: 'Medium — the five templates now look distinctly different, and every published portfolio is safe from broken layout or HTML/script injection regardless of resume content.'
     }
 ];
 
