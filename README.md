@@ -1,13 +1,15 @@
 # Resume Engine Pro - Complete Documentation
 
-## � Quick Links
+## 🔗 Quick Links
 
 - **▶️ Live App:** https://rdammala.github.io/resume-engine-pro/
 - **📚 Learning Hub:** https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html
+- **⚡ Quick Start:** [QUICK-START.md](QUICK-START.md)
+- **🗂️ Job Tracker Guide:** [JOB-TRACKER-GUIDE.md](JOB-TRACKER-GUIDE.md)
 
 > Tip: After deploying changes, open the Live App and hard-refresh with **Ctrl+Shift+R**.
 
-## �🚀 Overview
+## 🚀 Overview
 
 Resume Engine Pro is a comprehensive, browser-based resume and portfolio generation platform that runs entirely on your device. It leverages GitHub for storage and supports multiple AI providers for intelligent resume tailoring.
 
@@ -76,7 +78,7 @@ The Ollama path runs entirely free inside an ephemeral GitHub Actions runner (**
 
 👉 **[Visit the Learning Hub](https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html)**
 
-The Learning Hub is an interactive guide documenting the design decisions, bugs, and architectural patterns behind Resume Engine Pro. Explore 7 role-specific perspectives (SRE, DevOps, Build Engineer, Test Engineer, Release Manager) and track the resolution of 8 critical bugs with complete root cause analysis and lessons learned.
+The Learning Hub is an interactive guide documenting the design decisions, bugs, and architectural patterns behind Resume Engine Pro. Explore 5 role-specific perspectives (SRE, DevOps, Build Engineer, Test Engineer, Release Manager), **39 documented bugs** with complete root-cause analysis and lessons learned, and **8 shipped features** — each with the motivation, approach, and properly formatted code.
 
 - **Bug Tracking:** 8 bugs documented with severity, status, and resolution details
 - **Role Perspectives:** 500+ words each on SRE, DevOps, Build, Test, and Release Management
