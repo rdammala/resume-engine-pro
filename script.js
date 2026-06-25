@@ -2860,6 +2860,9 @@ function renderAISettings() {
 
     let html = '';
 
+    // Privacy reassurance — mirrors the GitHub token modal note.
+    html += `<p class="ai-keys-privacy">🔒 Every key you add here stays in <strong>this browser only</strong> — saved to your local device storage and sent directly to each AI provider. We have no server and never see, store, or transmit your keys anywhere else.</p>`;
+
     // Free, no-key provider
     html += `<div class="ai-provider-card">
         <h4>${escHtml(providers.pollinations.name)}</h4>

@@ -1797,6 +1797,21 @@ select option {
     color: #00e08a;
 }
 
+.ai-keys-privacy {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(0, 224, 138, 0.08);
+    border: 1px solid rgba(0, 224, 138, 0.25);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.ai-keys-privacy strong {
+    color: #00e08a;
+}
+
 .github-token-actions {
     display: flex;
     gap: 1rem;
