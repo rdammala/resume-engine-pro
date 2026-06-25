@@ -320,7 +320,9 @@ function showGitHubTokenModal() {
                         <li>Copy and paste the token here</li>
                     </ol>
                 </div>
-                
+
+                <p class="github-token-privacy">🔒 Your token stays in <strong>this browser only</strong> — it’s saved to your local device storage and sent straight to GitHub. We have no server and never see, store, or transmit your key anywhere else.</p>
+
                 <div class="github-token-actions">
                     <button class="github-token-submit" onclick="submitGitHubToken()">Sign In</button>
                     <button class="github-token-cancel" onclick="closeGitHubTokenModal()">Cancel</button>
