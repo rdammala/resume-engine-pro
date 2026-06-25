@@ -2266,4 +2266,99 @@ audio {
     }
 }
 
+/* ============================================================================
+   LIGHT THEME — toggled from the navbar (☀️/🌙). data-theme="light" on <html>,
+   set before first paint by the boot script. Overrides the CSS variables plus
+   the surfaces/accents that hard-code dark values.
+   ============================================================================ */
+html[data-theme="light"] {
+    --primary: #0066d6;
+    --primary-dark: #0050b0;
+    --secondary: #0a7ea4;
+    --dark-bg: #eef1f6;
+    --card-bg: #ffffff;
+    --border: rgba(20, 40, 80, 0.14);
+    --text-primary: #1a2230;
+    --text-secondary: #4a5568;
+    --text-muted: #6b7280;
+}
+
+html[data-theme="light"] body {
+    background: linear-gradient(135deg, #eef1f6 0%, #e6ecf5 100%);
+    color: var(--text-primary);
+}
+
+html[data-theme="light"] .navbar {
+    background: rgba(255, 255, 255, 0.92);
+}
+
+/* Surfaces that hard-code a dark rgba background */
+html[data-theme="light"] .login-box,
+html[data-theme="light"] .dashboard-card,
+html[data-theme="light"] .ai-provider-card,
+html[data-theme="light"] .settings-section,
+html[data-theme="light"] .cost-box,
+html[data-theme="light"] .status-box,
+html[data-theme="light"] .generator-step,
+html[data-theme="light"] .github-token-modal-content,
+html[data-theme="light"] .modal-content,
+html[data-theme="light"] .settings-menu {
+    background: #ffffff;
+    border-color: var(--border);
+}
+
+html[data-theme="light"] .ai-provider-card { background: #f8fafc; }
+
+/* Form controls */
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+    background: #ffffff !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder { color: #9aa3b0; }
+
+/* Accent text that was hard-coded cyan (#00d9ff) for the dark background */
+html[data-theme="light"] .dashboard-card h3,
+html[data-theme="light"] .ai-provider-card h4,
+html[data-theme="light"] .generator-step h3,
+html[data-theme="light"] .stat-value,
+html[data-theme="light"] .main-tab-btn.active,
+html[data-theme="light"] .main-tab-btn:hover,
+html[data-theme="light"] .settings-menu a:hover,
+html[data-theme="light"] .settings-menu button:hover,
+html[data-theme="light"] .ai-status-foot a {
+    color: var(--primary);
+}
+html[data-theme="light"] .main-tab-btn.active { border-bottom-color: var(--primary); }
+
+/* Secondary/icon buttons rely on dark/transparent backgrounds */
+html[data-theme="light"] .btn-secondary {
+    background: #eef2f7;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+html[data-theme="light"] .btn-icon { color: var(--text-primary); }
+
+/* Generic dark code/preview surfaces */
+html[data-theme="light"] .code-block,
+html[data-theme="light"] pre {
+    background: #f4f6f8;
+    color: #1f2630;
+    border-color: var(--border);
+}
+
+/* Headings/body text default to the readable primary text colour */
+html[data-theme="light"] .main-tab-content h2,
+html[data-theme="light"] .settings-section h3,
+html[data-theme="light"] .modal h2,
+html[data-theme="light"] .modal h3 {
+    color: var(--text-primary);
+}
+
+/* The navbar theme button should read on both themes */
+html[data-theme="light"] #themeToggleBtn { color: #1a2230; }
+
 

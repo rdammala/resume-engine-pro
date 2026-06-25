@@ -40,8 +40,12 @@
                 var html = document.documentElement;
                 html.setAttribute('data-boot', hasGithub ? 'app' : 'login');
                 html.setAttribute('data-tab', tab);
+                // App theme (dark default) — set before first paint to avoid a flash.
+                var theme = localStorage.getItem('rep-app-theme');
+                html.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
             } catch (e) {
                 document.documentElement.setAttribute('data-boot', 'login');
+                document.documentElement.setAttribute('data-theme', 'dark');
             }
         })();
     </script>
@@ -159,6 +163,7 @@
             <h1 class="logo">Resume Engine Pro</h1>
             <div class="nav-right">
                 <span id="userDisplay" class="user-display"></span>
+                <button id="themeToggleBtn" class="btn btn-icon" onclick="toggleAppTheme()" title="Toggle light / dark theme" aria-label="Toggle light or dark theme">🌙</button>
                 <button id="settingsBtn" class="btn btn-icon" onclick="toggleSettingsMenu()" title="Settings">⚙️</button>
                 <div id="settingsMenu" class="settings-menu" style="display:none;">
                     <a href="#" onclick="switchMainTab('settings'); toggleSettingsMenu(); return false;">Settings</a>

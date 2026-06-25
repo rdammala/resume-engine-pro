@@ -1066,6 +1066,27 @@ function toggleSettingsMenu() {
     }
 }
 
+// Light/Dark theme for the app itself (the data-theme attribute is set on
+// <html> before first paint by the boot script in index.html; this just flips
+// and persists it). style.css defines the html[data-theme="light"] overrides.
+function applyAppThemeIcon() {
+    const btn = document.getElementById('themeToggleBtn');
+    if (!btn) return;
+    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+    btn.textContent = dark ? '🌙' : '☀️';
+    btn.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
+}
+
+function toggleAppTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('rep-app-theme', next); } catch (_) {}
+    applyAppThemeIcon();
+}
+window.toggleAppTheme = toggleAppTheme;
+window.applyAppThemeIcon = applyAppThemeIcon;
+
 // ============================================================================
 // FULL BACKUP / RESTORE (one-click, timestamped)
 // ============================================================================
@@ -1220,6 +1241,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApp().finally(() => {
         document.documentElement.classList.add('js-ready');
     });
+
+    // Sync the navbar theme button with the boot-applied theme.
+    if (typeof applyAppThemeIcon === 'function') applyAppThemeIcon();
 
     // Normalize the Generation Mode price tags for the default provider on load
     if (typeof refreshGenerationModeLabels === 'function') {

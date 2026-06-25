@@ -152,7 +152,18 @@ const PortfolioTemplates = {
         ${d.education.length ? `<section class="education"><h2>Education</h2>${d.education.map(e => `<p>${e}</p>`).join('')}</section>` : ''}`;
     },
 
-    _doc(d, emoji, css) {
+    _doc(d, emoji, css, vars) {
+        const v = vars || {};
+        const L = v.light || {};
+        const K = v.dark || {};
+        const keys = ['bg', 'surface', 'text', 'muted', 'border', 'chip'];
+        const decl = (o) => keys.map(k => (o[k] != null ? `--${k}:${o[k]};` : '')).join('');
+        // Default (no attribute) = light; an explicit data-theme overrides it.
+        const themeCss = `:root,:root[data-theme="light"]{${decl(L)}}:root[data-theme="dark"]{${decl(K)}}`;
+        const toggleCss = `.theme-toggle{position:fixed;top:14px;right:14px;z-index:50;display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .75rem;font:600 .8rem/1 'Inter',-apple-system,sans-serif;cursor:pointer;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);box-shadow:0 2px 12px rgba(0,0,0,.15)}.theme-toggle:hover{filter:brightness(1.08)}@media print{.theme-toggle{display:none}}`;
+        // Pre-paint theme decision (localStorage, else prefers-color-scheme).
+        const bootScript = `(function(){var K='rep-portfolio-theme',t;try{t=localStorage.getItem(K)}catch(e){}if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}document.documentElement.setAttribute('data-theme',t)})();`;
+        const toggleScript = `function __toggleTheme(){var K='rep-portfolio-theme',h=document.documentElement,t=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',t);try{localStorage.setItem(K,t)}catch(e){}__syncToggle()}function __syncToggle(){var b=document.querySelector('.theme-toggle');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️ Light':'🌙 Dark'}document.addEventListener('DOMContentLoaded',__syncToggle);`;
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -160,9 +171,11 @@ const PortfolioTemplates = {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${d.name} - Portfolio</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${emoji}</text></svg>">
-    <style>${css}</style>
+    <script>${bootScript}</script>
+    <style>${themeCss}${toggleCss}${css}</style>
 </head>
 <body>
+    <button class="theme-toggle" type="button" onclick="__toggleTheme()" aria-label="Toggle light or dark mode">🌙 Dark</button>
     <div class="container">
         <header>
             <h1>${d.name}</h1>
@@ -172,6 +185,7 @@ const PortfolioTemplates = {
         ${this._body(d)}
         <footer class="site-foot">Built with Resume Engine Pro</footer>
     </div>
+    <script>${toggleScript}</script>
 </body>
 </html>`;
     },
@@ -206,25 +220,28 @@ const PortfolioTemplates = {
         const c = pals[this._schemeIndex(profile, scheme, pals.length)];
         const css = `
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: #fafafa; color: #2b2b2b; line-height: 1.65; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; }
         .container { max-width: 820px; margin: 0 auto; padding: 3rem 2rem; }
-        header { padding: 2rem 0 2.5rem; border-bottom: 1px solid #e6e6e6; margin-bottom: 2.5rem; }
+        header { padding: 2rem 0 2.5rem; border-bottom: 1px solid var(--border); margin-bottom: 2.5rem; }
         h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; }
         .title { font-size: 1.1rem; color: ${c.accent}; margin-top: 0.35rem; }
-        .contact { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 1.1rem; font-size: 0.9rem; color: #777; }
+        .contact { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 1.1rem; font-size: 0.9rem; color: var(--muted); }
         .contact a { color: ${c.accent}; text-decoration: none; }
         .contact a:hover { text-decoration: underline; }
         section { margin: 2.25rem 0; }
-        h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.12em; color: #999; margin-bottom: 1rem; }
+        h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 1rem; }
         .jobs { display: grid; gap: 1.5rem; }
         .job h3 { font-size: 1.1rem; }
-        .job .meta { font-size: 0.85rem; color: #888; margin: 0.15rem 0 0.5rem; }
-        .job p { color: #444; }
+        .job .meta { font-size: 0.85rem; color: var(--muted); margin: 0.15rem 0 0.5rem; }
+        .job p { color: var(--text); }
         .skill-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-        .skill { background: ${c.soft}; color: ${c.accent}; padding: 0.4rem 0.85rem; border-radius: 4px; font-size: 0.88rem; }
-        .education p { color: #444; margin-bottom: 0.4rem; }
-        .site-foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e6e6e6; font-size: 0.8rem; color: #aaa; text-align: center; }`;
-        return this._doc(d, '📄', css);
+        .skill { background: var(--chip); color: ${c.accent}; padding: 0.4rem 0.85rem; border-radius: 4px; font-size: 0.88rem; }
+        .education p { color: var(--text); margin-bottom: 0.4rem; }
+        .site-foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); text-align: center; }`;
+        return this._doc(d, '📄', css, {
+            light: { bg: '#eef0f3', surface: '#ffffff', text: '#2b2b2b', muted: '#6b7280', border: '#dfe3e8', chip: 'rgba(0,0,0,0.05)' },
+            dark: { bg: '#14161b', surface: '#1b1e25', text: '#e7e9ee', muted: '#99a2b0', border: '#2a2e37', chip: 'rgba(255,255,255,0.06)' }
+        });
     },
 
     // ------------------------------------------------------------------
@@ -242,24 +259,27 @@ const PortfolioTemplates = {
         const c = pals[this._schemeIndex(profile, scheme, pals.length)];
         const css = `
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Georgia, 'Times New Roman', serif; background: #f7f5f0; color: #232a33; line-height: 1.7; }
-        .container { max-width: 860px; margin: 0 auto; background: #fffdf9; box-shadow: 0 0 40px rgba(0,0,0,0.06); }
+        body { font-family: Georgia, 'Times New Roman', serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .container { max-width: 860px; margin: 0 auto; background: var(--surface); box-shadow: 0 0 40px rgba(0,0,0,0.10); }
         header { background: ${c.head}; color: #fff; text-align: center; padding: 3.5rem 2rem; border-bottom: 4px solid ${c.gold}; }
         h1 { font-size: 2.6rem; font-weight: 400; letter-spacing: 0.04em; }
         .title { font-size: 1.15rem; color: ${c.soft}; font-style: italic; margin-top: 0.5rem; }
         .contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; margin-top: 1.25rem; font-size: 0.88rem; color: #c8d2dc; }
         .contact a { color: ${c.soft}; text-decoration: none; }
         section { padding: 0 3rem; margin: 2.4rem 0; }
-        h2 { font-size: 1.25rem; color: ${c.head}; border-bottom: 2px solid ${c.gold}; padding-bottom: 0.4rem; margin-bottom: 1.1rem; letter-spacing: 0.02em; }
+        h2 { font-size: 1.25rem; color: ${c.gold}; border-bottom: 2px solid ${c.gold}; padding-bottom: 0.4rem; margin-bottom: 1.1rem; letter-spacing: 0.02em; }
         .jobs { display: grid; gap: 1.6rem; }
-        .job h3 { font-size: 1.15rem; color: #232a33; }
-        .job .meta { font-size: 0.9rem; color: ${c.meta}; font-style: italic; margin: 0.2rem 0 0.55rem; }
-        .job p { color: #3a424c; }
+        .job h3 { font-size: 1.15rem; color: var(--text); }
+        .job .meta { font-size: 0.9rem; color: var(--muted); font-style: italic; margin: 0.2rem 0 0.55rem; }
+        .job p { color: var(--text); }
         .skill-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-        .skill { border: 1px solid ${c.gold}; color: ${c.text}; padding: 0.4rem 0.9rem; border-radius: 2px; font-size: 0.85rem; }
-        .education p { color: #3a424c; margin-bottom: 0.4rem; }
-        .site-foot { padding: 2rem 3rem 2.5rem; font-size: 0.8rem; color: #aaa; text-align: center; }`;
-        return this._doc(d, '🏛️', css);
+        .skill { border: 1px solid ${c.gold}; color: ${c.gold}; padding: 0.4rem 0.9rem; border-radius: 2px; font-size: 0.85rem; }
+        .education p { color: var(--text); margin-bottom: 0.4rem; }
+        .site-foot { padding: 2rem 3rem 2.5rem; font-size: 0.8rem; color: var(--muted); text-align: center; }`;
+        return this._doc(d, '🏛️', css, {
+            light: { bg: '#e9e3d6', surface: '#fbf8f2', text: '#232a33', muted: '#6f6750', border: '#e0d8c8' },
+            dark: { bg: '#17150f', surface: '#201d16', text: '#ece6db', muted: '#b3a88f', border: '#3a3326' }
+        });
     },
 
     // ------------------------------------------------------------------
@@ -277,7 +297,7 @@ const PortfolioTemplates = {
         const c = pals[this._schemeIndex(profile, scheme, pals.length)];
         const css = `
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', 'Segoe UI', sans-serif; background: #fff5fb; color: #2d1b3d; line-height: 1.65; }
+        body { font-family: 'Poppins', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; }
         .container { max-width: 880px; margin: 0 auto; padding: 0 1.5rem 3rem; }
         header { text-align: center; padding: 4rem 2rem 3rem; margin: 0 -1.5rem 2.5rem; background: linear-gradient(135deg, ${c.g1} 0%, ${c.g2} 50%, ${c.g3} 100%); color: #fff; border-radius: 0 0 32px 32px; }
         h1 { font-size: 3rem; font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
@@ -287,15 +307,18 @@ const PortfolioTemplates = {
         section { margin: 2.5rem 0; }
         h2 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(90deg, ${c.g1}, ${c.g2}); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1.2rem; }
         .jobs { display: grid; gap: 1.4rem; }
-        .job { background: #fff; padding: 1.5rem; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); border-left: 5px solid ${c.card}; }
+        .job { background: var(--surface); padding: 1.5rem; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.10); border-left: 5px solid ${c.card}; }
         .job h3 { font-size: 1.2rem; color: ${c.h3}; }
         .job .meta { font-size: 0.88rem; color: ${c.meta}; margin: 0.2rem 0 0.55rem; }
-        .job p { color: #4a3a52; }
+        .job p { color: var(--text); }
         .skill-list { display: flex; flex-wrap: wrap; gap: 0.7rem; }
         .skill { background: linear-gradient(135deg, ${c.g1}, ${c.g2}); color: #fff; padding: 0.5rem 1.1rem; border-radius: 24px; font-size: 0.88rem; font-weight: 600; }
-        .education p { color: #4a3a52; margin-bottom: 0.4rem; }
-        .site-foot { margin-top: 3rem; font-size: 0.8rem; color: #c79; text-align: center; }`;
-        return this._doc(d, '🎨', css);
+        .education p { color: var(--text); margin-bottom: 0.4rem; }
+        .site-foot { margin-top: 3rem; font-size: 0.8rem; color: var(--muted); text-align: center; }`;
+        return this._doc(d, '🎨', css, {
+            light: { bg: '#f3edf6', surface: '#ffffff', text: '#2d1b3d', muted: '#6b5878', border: '#ece0f0' },
+            dark: { bg: '#161018', surface: '#1f1726', text: '#f0e6f5', muted: '#b6a3c2', border: '#2e2438' }
+        });
     },
 
     // ------------------------------------------------------------------
@@ -313,29 +336,32 @@ const PortfolioTemplates = {
         const c = pals[this._schemeIndex(profile, scheme, pals.length)];
         const css = `
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; background: #0a0e14; color: #c9d1d9; line-height: 1.7; }
+        body { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; background: var(--bg); color: var(--text); line-height: 1.7; }
         .container { max-width: 880px; margin: 0 auto; padding: 3rem 2rem; }
-        header { border: 1px solid #1f2630; border-left: 3px solid ${c.accent}; background: #0d1117; padding: 2rem; border-radius: 8px; margin-bottom: 2.5rem; }
+        header { border: 1px solid var(--border); border-left: 3px solid ${c.accent}; background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 2.5rem; }
         h1 { font-size: 2.2rem; color: ${c.accent}; }
-        h1::before { content: '$ '; color: #3a4250; }
+        h1::before { content: '$ '; color: var(--muted); }
         .title { font-size: 1rem; color: ${c.link}; margin-top: 0.4rem; }
-        .title::before { content: '// '; color: #3a4250; }
+        .title::before { content: '// '; color: var(--muted); }
         .contact { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 1rem; font-size: 0.85rem; }
         .contact a, .contact span { color: ${c.link}; text-decoration: none; }
         .contact a:hover { color: ${c.accent}; }
         section { margin: 2.2rem 0; }
         h2 { font-size: 1.05rem; color: ${c.accent}; margin-bottom: 1rem; }
-        h2::before { content: '> '; color: #3a4250; }
+        h2::before { content: '> '; color: var(--muted); }
         .jobs { display: grid; gap: 1.25rem; }
-        .job { background: #0d1117; border: 1px solid #1f2630; border-radius: 6px; padding: 1.25rem; }
-        .job h3 { font-size: 1.05rem; color: #e6edf3; }
-        .job .meta { font-size: 0.82rem; color: ${c.accent}; margin: 0.2rem 0 0.5rem; }
-        .job p { color: #9aa6b2; }
+        .job { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; }
+        .job h3 { font-size: 1.05rem; color: var(--text); }
+        .job .meta { font-size: 0.82rem; color: ${c.link}; margin: 0.2rem 0 0.5rem; }
+        .job p { color: var(--muted); }
         .skill-list { display: flex; flex-wrap: wrap; gap: 0.55rem; }
-        .skill { background: rgba(255,255,255,0.04); border: 1px solid ${c.accent}55; color: ${c.accent}; padding: 0.35rem 0.75rem; border-radius: 4px; font-size: 0.82rem; }
-        .education p { color: #9aa6b2; margin-bottom: 0.4rem; }
-        .site-foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1f2630; font-size: 0.78rem; color: #3a4250; text-align: center; }`;
-        return this._doc(d, '💻', css);
+        .skill { background: var(--chip); border: 1px solid ${c.accent}55; color: var(--text); padding: 0.35rem 0.75rem; border-radius: 4px; font-size: 0.82rem; }
+        .education p { color: var(--muted); margin-bottom: 0.4rem; }
+        .site-foot { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); text-align: center; }`;
+        return this._doc(d, '💻', css, {
+            light: { bg: '#e9edf2', surface: '#ffffff', text: '#1f2630', muted: '#5a6675', border: '#dbe1e8', chip: 'rgba(0,0,0,0.045)' },
+            dark: { bg: '#0a0e14', surface: '#0d1117', text: '#c9d1d9', muted: '#8a96a3', border: '#1f2630', chip: 'rgba(255,255,255,0.04)' }
+        });
     },
 
     // ------------------------------------------------------------------
@@ -353,25 +379,28 @@ const PortfolioTemplates = {
         const c = pals[this._schemeIndex(profile, scheme, pals.length)];
         const css = `
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f6ff; color: #1e1b3a; line-height: 1.65; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; }
         .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 3rem; }
         header { text-align: center; padding: 4.5rem 2rem 3.5rem; margin: 0 -1.5rem 2.5rem; background: linear-gradient(135deg, ${c.a} 0%, ${c.b} 100%); color: #fff; }
         h1 { font-size: 3rem; font-weight: 800; letter-spacing: -0.02em; }
         .title { font-size: 1.25rem; color: ${c.titleC}; margin-top: 0.5rem; font-weight: 500; }
         .contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 1.5rem; font-size: 0.9rem; }
-        .contact a, .contact span { color: ${c.accent}; background: #fff; text-decoration: none; padding: 0.5rem 1.1rem; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 14px rgba(${c.shadow},0.25); }
+        .contact a, .contact span { color: ${c.accent}; background: var(--surface); text-decoration: none; padding: 0.5rem 1.1rem; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 14px rgba(${c.shadow},0.25); }
         section { margin: 2.5rem 0; }
-        h2 { font-size: 1.4rem; font-weight: 700; color: ${c.dark}; margin-bottom: 1.2rem; }
+        h2 { font-size: 1.4rem; font-weight: 700; color: ${c.accent}; margin-bottom: 1.2rem; }
         .jobs { display: grid; gap: 1.3rem; }
-        .job { background: #fff; padding: 1.6rem; border-radius: 14px; box-shadow: 0 4px 24px rgba(${c.shadow},0.1); }
-        .job h3 { font-size: 1.15rem; color: #1e1b3a; }
+        .job { background: var(--surface); padding: 1.6rem; border-radius: 14px; box-shadow: 0 4px 24px rgba(${c.shadow},0.12); border: 1px solid var(--border); }
+        .job h3 { font-size: 1.15rem; color: var(--text); }
         .job .meta { font-size: 0.86rem; color: ${c.meta}; font-weight: 600; margin: 0.2rem 0 0.55rem; }
-        .job p { color: #4a4660; }
+        .job p { color: var(--muted); }
         .skill-list { display: flex; flex-wrap: wrap; gap: 0.65rem; }
-        .skill { background: ${c.soft}; color: ${c.accent}; padding: 0.5rem 1rem; border-radius: 999px; font-size: 0.86rem; font-weight: 600; }
-        .education p { color: #4a4660; margin-bottom: 0.4rem; }
-        .site-foot { margin-top: 3rem; font-size: 0.8rem; color: #9b95c0; text-align: center; }`;
-        return this._doc(d, '🚀', css);
+        .skill { background: var(--chip); color: ${c.accent}; padding: 0.5rem 1rem; border-radius: 999px; font-size: 0.86rem; font-weight: 600; }
+        .education p { color: var(--muted); margin-bottom: 0.4rem; }
+        .site-foot { margin-top: 3rem; font-size: 0.8rem; color: var(--muted); text-align: center; }`;
+        return this._doc(d, '🚀', css, {
+            light: { bg: '#eef0fb', surface: '#ffffff', text: '#1e1b3a', muted: '#5a5675', border: '#e2e0f2', chip: 'rgba(0,0,0,0.05)' },
+            dark: { bg: '#13111c', surface: '#1c1930', text: '#ece9ff', muted: '#a29dc4', border: '#2c2840', chip: 'rgba(255,255,255,0.07)' }
+        });
     },
     
     getTemplateList() {

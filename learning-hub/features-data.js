@@ -249,6 +249,34 @@ const f = await GitHubManager.getFile(repoName, 'backups/latest.json');
 StorageManager.importAll(JSON.parse(f.content), { clearFirst: true });`,
         lesson: 'When the only copy of user data is per-browser, give a real choice of durability: a local file for offline control and a cloud copy (in their own account, not yours) for cross-device recovery. Build it from primitives you already have — a stable export/import format and an idempotent pushFile — instead of a new sync engine. Keep both a stable latest.json (easy restore) and timestamped copies (history), and always confirm before a destructive replace.',
         impact: 'Medium — users can now keep their data safe their way: a downloaded file, or their own private/public GitHub repo that restores on any device, instead of being trapped in one browser.'
+    },
+    {
+        id: 8,
+        title: 'Light/Dark Themes — Softer Portfolio Backgrounds, a Live Toggle on Every Published Page, and an App-Wide Theme Switch',
+        category: 'Theming / UX',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '110 min',
+        summary: 'The bright portfolio backgrounds were softened, every published portfolio now has a live 🌙/☀️ Light/Dark toggle (theme persists per visitor), and the Resume Engine Pro app itself gained a theme switch next to the Settings gear that flips the whole UI between dark (default) and light.',
+        motivation: 'Users found the Minimalist/Executive/Creative/Startup template backgrounds too bright, and wanted control over light vs dark — both on the published portfolio pages and in the app itself.',
+        solution: 'Refactored every portfolio template to drive its structural colours (bg, surface, text, muted, border, chip) from CSS custom properties, defined for both a softened light palette and a matching dark palette via :root[data-theme]. _doc() now injects those variables, a fixed toggle button, a pre-paint boot script (localStorage, else prefers-color-scheme), and a flip handler — so the page opens in the right theme with no flash and the visitor can switch live. For the app, a navbar button toggles data-theme on <html> (set before first paint by the existing boot script, persisted to rep-app-theme), and style.css gained an html[data-theme="light"] block overriding the CSS variables plus the surfaces/accents that hard-coded dark values.',
+        codeExample: `// Templates now theme via CSS variables (light + dark) instead of fixed colours.
+return this._doc(d, '📄', css, {
+  light: { bg:'#eef0f3', surface:'#fff', text:'#2b2b2b', muted:'#6b7280', border:'#dfe3e8', chip:'rgba(0,0,0,.05)' },
+  dark:  { bg:'#14161b', surface:'#1b1e25', text:'#e7e9ee', muted:'#99a2b0', border:'#2a2e37', chip:'rgba(255,255,255,.06)' }
+});
+
+// Each published page boots to the right theme (no flash) + a live toggle.
+(function(){var K='rep-portfolio-theme',t;try{t=localStorage.getItem(K)}catch(e){}
+  if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}
+  document.documentElement.setAttribute('data-theme',t)})();
+
+// App theme switch (navbar, next to Settings) — persisted, pre-paint applied.
+function toggleAppTheme(){var h=document.documentElement,
+  t=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',t); localStorage.setItem('rep-app-theme',t); applyAppThemeIcon();}`,
+        lesson: 'Theme by token, not by literal: routing every structural colour through CSS variables lets one design support light AND dark (and a live toggle) without forking the markup. Decide the theme synchronously before the first paint (inline script reading localStorage, falling back to prefers-color-scheme) to avoid a flash. Persist the choice so it sticks. And when retrofitting a light mode onto a dark-first app, the variables cover most of it — the real work is hunting the hard-coded accents (here, the cyan #00d9ff) that were only ever chosen to read on dark.',
+        impact: 'Medium — softer default portfolios, visitors can read any published portfolio in their preferred light/dark mode, and the whole app can be switched to a light theme from the navbar.'
     }
 ];
 
