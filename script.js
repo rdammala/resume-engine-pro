@@ -207,6 +207,11 @@ function switchMainTab(tabName) {
             }
         }
 
+        // Refresh dashboard statistics (local + live GitHub count) on entry
+        if (tabName === 'dashboard' && typeof updateStats === 'function') {
+            updateStats();
+        }
+
         // Render profile cards when entering My Profiles
         if (tabName === 'profiles' && typeof displayProfiles === 'function') {
             displayProfiles();
@@ -794,34 +799,78 @@ function updateUI() {
 }
 
 function updateStats() {
-    const stats = StorageManager.getStats();
-    const statsDiv = document.getElementById('statsContainer');
-    
-    if (statsDiv) {
-        statsDiv.innerHTML = `
-            <div class="dashboard-card">
-                <h3>Profiles</h3>
-                <div class="stat-item">
-                    <span>Total Profiles:</span>
-                    <span class="stat-value">${stats.profiles}</span>
-                </div>
-            </div>
-            <div class="dashboard-card">
-                <h3>Generations</h3>
-                <div class="stat-item">
-                    <span>Total Generated:</span>
-                    <span class="stat-value">${stats.history}</span>
-                </div>
-            </div>
-            <div class="dashboard-card">
-                <h3>Storage</h3>
-                <div class="stat-item">
-                    <span>Used:</span>
-                    <span class="stat-value">${stats.storageUsed}</span>
-                </div>
-            </div>
-        `;
+    // --- Instant local counts (work offline, no token needed) ---
+    let localGen = 0;
+    try {
+        const profiles = StorageManager.getAllProfiles() || {};
+        const profEl = document.getElementById('totalProfiles');
+        if (profEl) profEl.textContent = Object.keys(profiles).length;
+    } catch (_) { /* non-fatal */ }
+
+    try {
+        const history = StorageManager.getHistory(1000) || [];
+        localGen = history.length;
+    } catch (_) { /* non-fatal */ }
+    window._localGenCount = localGen;
+
+    // Show the local number immediately so the card is never stuck on 0; the
+    // live GitHub count (below) refines it a moment later.
+    const genEl = document.getElementById('totalGenerated');
+    if (genEl) genEl.textContent = localGen;
+
+    // --- Data repo label (the GitHub source of truth) ---
+    try {
+        const cfg = (window.GitHubRunner && GitHubRunner.getConfig) ? GitHubRunner.getConfig() : null;
+        const repoEl = document.getElementById('githubRepo');
+        if (repoEl && cfg && cfg.owner && cfg.repo) {
+            repoEl.innerHTML = `<a href="https://github.com/${cfg.owner}/${cfg.repo}" target="_blank" rel="noopener">${cfg.owner}/${cfg.repo}</a>`;
+        }
+    } catch (_) { /* non-fatal */ }
+
+    // --- Live, GitHub-backed count (cross-device, not browser storage) ---
+    refreshLiveStats();
+}
+
+// Pull live statistics straight from GitHub instead of trusting only this
+// browser's localStorage. The cloud pipeline commits one file per generation to
+// the public `generated/` folder, so counting that folder is an accurate,
+// cross-device, always-up-to-date tally that needs no extra writes and no token
+// (public repos allow unauthenticated reads; we add the token when present to
+// raise the rate limit).
+async function refreshLiveStats() {
+    const genEl = document.getElementById('totalGenerated');
+    if (!genEl) return;
+    try {
+        const liveGen = await fetchGitHubFileCount('generated', /\.json$/i);
+        const local = window._localGenCount || 0;
+        // GitHub is the cross-device truth; local catches brand-new or non-cloud
+        // runs not committed to the repo. Show whichever is higher.
+        const total = Math.max(liveGen, local);
+        genEl.textContent = total;
+        genEl.title = `${liveGen} generated via the GitHub cloud pipeline (live, cross-device) · ${local} tracked in this browser`;
+    } catch (e) {
+        // Offline / rate-limited / private — keep the local count already shown.
+        console.warn('Live stats unavailable, showing local count:', e.message);
     }
+}
+
+// Count files in a folder of the data repo via the GitHub Contents API.
+async function fetchGitHubFileCount(folder, matchRegex) {
+    const cfg = (window.GitHubRunner && GitHubRunner.getConfig)
+        ? GitHubRunner.getConfig()
+        : { owner: 'rdammala', repo: 'resume-engine-pro' };
+    const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${folder}?ref=${cfg.ref || 'master'}&t=${Date.now()}`;
+    const headers = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    try {
+        const token = (window.GitHubRunner && GitHubRunner.getToken) ? GitHubRunner.getToken() : '';
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+    } catch (_) { /* no token — public read */ }
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error('GitHub contents HTTP ' + res.status);
+    const items = await res.json();
+    if (!Array.isArray(items)) return 0;
+    return items.filter(f => f && f.type === 'file' && (!matchRegex || matchRegex.test(f.name))).length;
 }
 
 // ============================================================================

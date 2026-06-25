@@ -748,5 +748,39 @@ html:not(.js-ready)[data-boot="app"][data-tab="applications"] #applications { di
 initializeApp().finally(() => document.documentElement.classList.add('js-ready'));`,
         lesson: 'In a client-rendered SPA, anything the HTML hard-codes as visible will flash if the real state is decided asynchronously (especially behind a network call). Make the initial-state decision synchronous and pre-paint: read persisted state from localStorage in an inline <head> script and drive the first paint with CSS attribute selectors. Gate that boot CSS on a :not(.js-ready) latch that the app removes once it has applied the true state, so the anti-flash layer never fights normal interaction afterward. Optimistically render the logged-in view from a synchronous signal (a stored token) and let the slower async validation correct the rare invalid case.',
         impact: 'Low - purely cosmetic, but the app now loads straight into the correct page and tab on every refresh with no login/dashboard flash, making it feel instant and native instead of janky.'
+    },
+    {
+        id: 36,
+        title: 'Dashboard Statistics Stuck on 0 (Wrong Element) and Trapped in Browser Storage Instead of Live From GitHub',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '45 min',
+        description: 'The Dashboard (also the landing view) always showed Total Resumes Generated: 0, Profiles Created: 0, and GitHub Data Repo: Not set, no matter how many resumes had been generated or profiles created. The numbers never updated, and what little data existed lived only in this browser, so the counts were neither correct nor consistent across devices.',
+        rootCause: 'Two issues. (1) The app defines updateUI() twice; the second declaration wins and calls updateStats(), but updateStats() wrote its markup into document.getElementById("statsContainer") - an element that does not exist in the Dashboard. The real Dashboard fields have ids #totalGenerated, #totalProfiles and #githubRepo, which nothing ever populated, so they stayed at their hard-coded 0 / Not set. (2) Even the intended counts were sourced purely from localStorage (StorageManager history/profiles), so they reflected only the current browser and could not represent the true, cross-device total.',
+        resolution: 'Rewrote updateStats() to populate the ACTUAL Dashboard elements (#totalProfiles from StorageManager.getAllProfiles(), #githubRepo as a link to owner/repo, and #totalGenerated). For a live, cross-device number it no longer trusts only the browser: refreshLiveStats() + fetchGitHubFileCount() read the public GitHub Contents API and count the files in the repo generated/ folder - the cloud pipeline already commits one <run_id>.json there per generation, making that folder an append-only, always-current tally that needs no extra writes and no token (public repos allow unauthenticated reads; the stored token is attached when present to raise the rate limit). The card shows max(liveGitHubCount, localCount) so brand-new or non-cloud local runs are still reflected, with a tooltip breaking down both. updateStats() now also runs whenever the Dashboard tab is opened, not just at login.',
+        codeExample: `// BROKEN: writes to an element that isn't on the Dashboard -> fields stay 0.
+function updateStats() {
+  const statsDiv = document.getElementById('statsContainer'); // does not exist
+  if (statsDiv) statsDiv.innerHTML = '...';
+}
+
+// FIXED: populate the real fields + pull a LIVE count from GitHub itself.
+function updateStats() {
+  document.getElementById('totalProfiles').textContent =
+      Object.keys(StorageManager.getAllProfiles() || {}).length;
+  refreshLiveStats();                          // GitHub = cross-device truth
+}
+
+async function fetchGitHubFileCount(folder, rx) {
+  const { owner, repo, ref } = GitHubRunner.getConfig();
+  const url = 'https://api.github.com/repos/' + owner + '/' + repo +
+              '/contents/' + folder + '?ref=' + ref + '&t=' + Date.now();
+  const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+  const items = await res.json();              // one file per generation
+  return items.filter(f => f.type === 'file' && rx.test(f.name)).length;
+}`,
+        lesson: 'When a counter is permanently stuck at its initial value, confirm the code is writing to the SAME element the HTML renders - a stale or mismatched id silently no-ops with no error. Beware duplicate function definitions: the last one wins and can quietly replace the version you think is running. And for stats that should be global, do not treat per-browser localStorage as the source of truth; derive them from a shared, durable store. An append-only folder that another process already writes (here, CI committing one file per run) is a perfect zero-extra-write, tokenless, cross-device counter - just list and count it via the public API.',
+        impact: 'Medium - the Dashboard now shows correct, live numbers that update on every visit and reflect generations made from any device, instead of a permanently-zero landing page.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
