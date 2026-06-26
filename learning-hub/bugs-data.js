@@ -898,5 +898,31 @@ loadApplications() {
 }`,
         lesson: 'Never ship real personal data as "sample"/seed content in a public app - placeholder data must be obviously fake or empty. Re-merging defaults on every load is doubly dangerous: it makes the leak sticky and un-deletable. And remember that emptying a seed only fixes NEW users; anyone who already loaded the old build has the data cached in their own storage, so a privacy regression needs a one-time client migration to scrub already-distributed copies, keyed on a stable signature so it never touches data the user added themselves.',
         impact: 'High - a privacy leak: the owner\u2019s real application history (companies, roles, statuses, a sponsorship note) was visible to every visitor. New visitors now get a blank tracker, and already-seeded browsers self-clean on next load.'
+    },
+    {
+        id: 41,
+        title: 'Publishing Created a SECOND Repo on Re-publish and the README Never Got the Live Portfolio Link',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / GitHub',
+        fixTime: '50 min',
+        description: 'A test user reported two problems publishing from another GitHub account: (1) two repositories were created for the same application (one named from a JD heading, "About-the-job", and another with the real role, "AI-Solutions-Automation-Developer"), and (2) the published README never showed the live portfolio link, even after clicking Re-publish or generating again. It worked fine for the project owner, which masked the bug.',
+        rootCause: 'Two issues. (1) publishHistoryEntry computed the repo name fresh on EVERY publish as safeRepoName(resolvedRole). When the first (failed-AI) run had no real title, the JD heading "About the job" leaked through extractJobMeta and became the repo name; a later successful run resolved the real role and so created a SECOND repo. Re-publish never reused the previously-published repo. (2) pagesUrl was only set if GitHubRunner.enablePages() returned truthy — but enabling Pages right after pushing the first file races (the branch was just created), so it returned false, pagesUrl stayed empty, and buildPublishReadme() omitted the whole Live Portfolio section.',
+        resolution: 'publishHistoryEntry now REUSES the already-published repo (item.repoName, else parsed from item.repoUrl) so re-publishing updates the same repo instead of forking a new one, and persists repoName on the history entry. The Pages URL for a project site is deterministic (https://<user>.github.io/<repo>/), so it is now set whenever an index.html is published and written into the README + tracker regardless of the enable call timing; enablePages is still attempted (now with a retry after a short delay) to actually turn Pages on. A new repoNameFor() helper and a JD-heading skip-list in extractJobMeta stop generic banners ("About the job", "Overview", "the role") from ever becoming the repo name — falling back to a candidate-based name instead.',
+        codeExample: `// (1) Re-publish reuses the SAME repo instead of creating a second one.
+const repoName = item.repoName
+  || (item.repoUrl ? item.repoUrl.split('/').filter(Boolean).pop() : '')
+  || repoNameFor(role, baseName);   // never names it from a JD heading
+
+// (2) Pages URL is deterministic — write it regardless of the enable race.
+let pagesUrl = '';
+if (files['index.html']) {
+  pagesUrl = 'https://' + login + '.github.io/' + repoName + '/';
+  let ok = await GitHubRunner.enablePages(login, repoName, 'main');
+  if (!ok) { await sleep(2500); ok = await GitHubRunner.enablePages(login, repoName, 'main'); }
+}
+// README + tracker now always carry the live link.`,
+        lesson: 'Anything that names a remote resource from a re-derived value will duplicate it the moment that value changes — once you publish to a repo, REMEMBER it and reuse it on every update. Do not gate a deterministic URL on a flaky enable call: a GitHub Pages project URL is fully predictable, so write it immediately and let the (retried, best-effort) enable catch up. And a bug that "works for me" usually means a race the maintainer happens to win — test the cold path (a brand-new account, a freshly-created branch). Finally, validate extracted titles: a JD section heading is not a job title, and it should never leak into a repo name.',
+        impact: 'High - re-publishing now updates one repo (no more orphan duplicates), every published package gets the live portfolio link in its README and tracker row, and repos get sensible names even when AI extraction fails.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

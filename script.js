@@ -1654,7 +1654,10 @@ function extractJobMeta(jdText) {
         if (roleLine) title = roleLine;
     }
     if (!title) {
-        title = (lines.find(l => !/\?$/.test(l) && l.length > 3) || 'the role').slice(0, 80);
+        // Last resort: first real line — but skip common JD section HEADINGS so a
+        // banner like "About the job" never becomes the job title (and repo name).
+        const heading = /^(about(\s+the\s+job|\s+us)?|overview|job\s+description|summary|responsibilities|requirements|qualifications|what\s+you|who\s+you|the\s+role|role|company|benefits|compensation)\b/i;
+        title = (lines.find(l => !/\?$/.test(l) && l.length > 3 && !heading.test(l)) || 'the role').slice(0, 80);
     }
 
     // Best-effort company extraction
@@ -2196,6 +2199,19 @@ function safeRepoName(s) {
         .slice(0, 90) || 'application';
 }
 
+// Choose a meaningful repo name. When the resolved "role" is a generic fallback
+// or a leaked JD heading (e.g. "the role", "About the job"), name the repo after
+// the candidate instead so it never becomes a junk repo like "About-the-job".
+function repoNameFor(role, baseName) {
+    const clean = String(role || '').trim();
+    const generic = /^(the\s+role|role|the\s+company|company|about(\s+the\s+job|\s+us)?|job\s+description|overview|application|summary)$/i;
+    if (!clean || generic.test(clean)) {
+        const who = safeRepoName(baseName || 'application');
+        return safeRepoName(`${who}-application`);
+    }
+    return safeRepoName(clean);
+}
+
 function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
         const r = new FileReader();
@@ -2311,8 +2327,13 @@ async function publishHistoryEntry(histId, btnEl) {
         const company = meta.company || item.company || 'Company';
 
         const login = await GitHubRunner.getLogin();
-        const repoName = safeRepoName(role);
-        setMsg(`<p>⏳ Creating repository <code>${escHtml(login)}/${escHtml(repoName)}</code>…</p>`);
+        // Reuse the already-published repo so re-publishing UPDATES the same repo
+        // instead of creating a SECOND one when the resolved title changed between
+        // runs (e.g. a failed AI run named it from a JD heading like "About the job").
+        const repoName = item.repoName
+            || (item.repoUrl ? item.repoUrl.split('/').filter(Boolean).pop() : '')
+            || repoNameFor(role, baseName);
+        setMsg(`<p>⏳ ${item.repoUrl ? 'Updating' : 'Creating'} repository <code>${escHtml(login)}/${escHtml(repoName)}</code>…</p>`);
         await GitHubRunner.ensureRepo(login, repoName, `${role} — application package (resume, cover letter, portfolio)`);
 
         const { files } = await buildPublishFiles(workingProfile, jd, opts, baseName);
@@ -2329,9 +2350,13 @@ async function publishHistoryEntry(histId, btnEl) {
         const repoUrl = `https://github.com/${login}/${repoName}`;
         let pagesUrl = '';
         if (files['index.html']) {
+            // The Pages URL of a project site is deterministic, so set it now and
+            // write it into the README + tracker regardless of how the enable call
+            // races (a freshly-created branch can make the first attempt 404).
+            pagesUrl = `https://${login}.github.io/${repoName}/`;
             setMsg('<p>⏳ Enabling GitHub Pages for the live portfolio…</p>');
-            const ok = await GitHubRunner.enablePages(login, repoName, 'main');
-            if (ok) pagesUrl = `https://${login}.github.io/${repoName}/`;
+            let ok = await GitHubRunner.enablePages(login, repoName, 'main');
+            if (!ok) { await new Promise(r => setTimeout(r, 2500)); ok = await GitHubRunner.enablePages(login, repoName, 'main'); }
         }
 
         // Replace the auto-generated README with one that leads with the live link.
@@ -2363,7 +2388,7 @@ async function publishHistoryEntry(histId, btnEl) {
             showToast('Published, but adding it to the tracker failed: ' + (trackErr && trackErr.message ? trackErr.message : 'unknown error'), 'warning');
         }
 
-        try { StorageManager.updateGeneration(histId, { published: true, repoUrl, pagesUrl }); displayHistory(); } catch (_) {}
+        try { StorageManager.updateGeneration(histId, { published: true, repoUrl, pagesUrl, repoName }); displayHistory(); } catch (_) {}
 
         const pagesLine = pagesUrl
             ? `<li>Live portfolio: <a href="${pagesUrl}" target="_blank" rel="noopener">${pagesUrl}</a> <small>(Pages can take ~1 min to go live)</small></li>`
