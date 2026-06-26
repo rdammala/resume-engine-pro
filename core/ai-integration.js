@@ -87,6 +87,27 @@ const AIIntegration = {
                 ultra: { tokens: 2500, cost: 0 }
             }
         },
+        webllm: {
+            name: 'Browser AI (WebLLM — free, private, runs on your device)',
+            model: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+            free: true,
+            noKey: true,
+            browser: true,
+            costs: { input: 0, output: 0 },
+            modes: {
+                fast: { tokens: 900, cost: 0 },
+                smart: { tokens: 1800, cost: 0 },
+                ultra: { tokens: 2600, cost: 0 }
+            },
+            // Curated free, in-browser models (downloaded once, then cached). All $0.
+            models: [
+                { id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC', label: 'Llama 3.2 · 3B — balanced default (~2 GB)' },
+                { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', label: 'Qwen2.5 · 7B — best quality (~4.5 GB)' },
+                { id: 'Llama-3.1-8B-Instruct-q4f16_1-MLC', label: 'Llama 3.1 · 8B — top quality (~5 GB)' },
+                { id: 'Phi-3.5-mini-instruct-q4f16_1-MLC', label: 'Phi-3.5 mini · 3.8B — fast & capable (~2.2 GB)' },
+                { id: 'gemma-2-2b-it-q4f16_1-MLC', label: 'Gemma 2 · 2B — lightweight (~1.5 GB)' }
+            ]
+        },
         custom: {
             name: 'Custom / Your own provider (OpenAI-compatible)',
             endpoint: '',
@@ -120,6 +141,7 @@ const AIIntegration = {
     isConfigured(provider) {
         if (provider === 'pollinations') return true; // free, no key required
         if (provider === 'ollama') return true; // free local/Codespace server, no key
+        if (provider === 'webllm') return this.webgpuSupported(); // ready only on WebGPU devices
         if (provider === 'custom') {
             const c = this.getCustomConfig();
             return !!(c && c.endpoint);
@@ -162,6 +184,20 @@ const AIIntegration = {
             model: cfg.model || this.providers.ollama.model
         };
     },
+
+    // WebLLM (in-browser) configuration — which model to run on the device.
+    webgpuSupported() {
+        return typeof navigator !== 'undefined' && !!navigator.gpu;
+    },
+    setWebLLMConfig(model) {
+        StorageManager.set('webllmConfig', { model: model || '' }, false);
+    },
+    getWebLLMConfig() {
+        const cfg = StorageManager.get('webllmConfig', false) || {};
+        return { model: cfg.model || this.providers.webllm.model };
+    },
+    // Settable by the UI to show model-download progress (init can pull GBs once).
+    onWebLLMProgress: null,
     
     getConfigured() {
         const configured = {};
@@ -181,7 +217,7 @@ const AIIntegration = {
     // ========================================================================
     
     getCost(provider, mode = 'smart') {
-        if (provider === 'pollinations' || provider === 'custom' || provider === 'ollama') return 0;
+        if (provider === 'pollinations' || provider === 'custom' || provider === 'ollama' || provider === 'webllm') return 0;
         if (!this.providers[provider]) return 0;
         return this.providers[provider].modes[mode]?.cost || 0;
     },
@@ -201,6 +237,9 @@ const AIIntegration = {
         }
         if (provider === 'ollama') {
             return this.tailorWithOllama(resumeData, jdData, mode);
+        }
+        if (provider === 'webllm') {
+            return this.tailorWithWebLLM(resumeData, jdData, mode);
         }
         if (provider === 'custom') {
             return this.tailorWithCustom(resumeData, jdData, mode);
@@ -478,11 +517,57 @@ const AIIntegration = {
     },
 
     // ========================================================================
+    // WEBLLM (in-browser, WebGPU — free, private, no key, no server)
+    // ========================================================================
+
+    async _loadWebLLM() {
+        if (this._webllmMod) return this._webllmMod;
+        // Lazy ESM import so the (large) library only loads when actually used.
+        this._webllmMod = await import('https://esm.run/@mlc-ai/web-llm');
+        return this._webllmMod;
+    },
+
+    async _getWebLLMEngine(model) {
+        const webllm = await this._loadWebLLM();
+        if (this._webllmEngine && this._webllmEngineModel === model) return this._webllmEngine;
+        try { if (this._webllmEngine && this._webllmEngine.unload) await this._webllmEngine.unload(); } catch (_) {}
+        this._webllmEngine = await webllm.CreateMLCEngine(model, {
+            initProgressCallback: (report) => { try { if (this.onWebLLMProgress) this.onWebLLMProgress(report); } catch (_) {} }
+        });
+        this._webllmEngineModel = model;
+        return this._webllmEngine;
+    },
+
+    async tailorWithWebLLM(resumeData, jdData, mode) {
+        if (!this.webgpuSupported()) {
+            throw new Error('Your browser/device has no WebGPU, so Browser AI cannot run here. Use Free AI (Pollinations), Ollama, or a paid API key instead.');
+        }
+        const model = this.getWebLLMConfig().model;
+        const prompt = this.buildTailoringPrompt(resumeData, jdData, mode);
+        const maxTokens = Math.max(1800, this.providers.webllm.modes[mode]?.tokens || 1800);
+        try {
+            const engine = await this._getWebLLMEngine(model);
+            const reply = await engine.chat.completions.create({
+                temperature: 0.4,
+                max_tokens: maxTokens,
+                messages: [
+                    { role: 'system', content: 'You are an expert resume writer and ATS specialist. Respond with ONLY a single valid minified JSON object — no markdown, no code fences, no commentary.' },
+                    { role: 'user', content: prompt }
+                ]
+            });
+            const content = reply?.choices?.[0]?.message?.content
+                ?? (typeof reply === 'string' ? reply : JSON.stringify(reply));
+            return { success: true, provider: 'webllm', cost: 0, tailored: content };
+        } catch (error) {
+            throw new Error(`Browser AI (WebLLM) error: ${error.message}`);
+        }
+    },
+
+    // ========================================================================
     // CUSTOM PROVIDER (user's own OpenAI-compatible endpoint + model + key)
     // ========================================================================
 
-    async tailorWithCustom(resumeData, jdData, mode) {
-        const cfg = this.getCustomConfig();
+    async tailorWithCustom(resumeData, jdData, mode) {        const cfg = this.getCustomConfig();
         if (!cfg || !cfg.endpoint) {
             throw new Error('Custom provider not configured. Add your endpoint, model, and key in Settings.');
         }

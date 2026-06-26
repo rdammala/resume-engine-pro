@@ -467,6 +467,7 @@
                                 <select id="aiProvider" onchange="updateAICost()">
                                     <option value="">None — generate locally (free, no AI)</option>
                                     <option value="pollinations">Free AI (Pollinations — no key needed)</option>
+                                    <option value="webllm">Browser AI (WebLLM — free, private, runs on your device)</option>
                                     <option value="ollama">Ollama / Llama 3 (free — auto-runs in a GitHub cloud runner)</option>
                                     <option value="custom">Custom / Your own AI provider</option>
                                     <option value="openai">OpenAI (GPT-4) — needs your key</option>
@@ -555,6 +556,7 @@
                         <select id="bulkAiProvider" onchange="updateBulkCost()">
                             <option value="">None — generate locally (free, no AI)</option>
                             <option value="pollinations">Free AI (Pollinations — no key needed)</option>
+                            <option value="webllm">Browser AI (WebLLM — free, private, runs on your device)</option>
                             <option value="ollama">Ollama / Llama 3 (free — parallel GitHub cloud runners)</option>
                             <option value="custom">Custom / Your own AI provider</option>
                             <option value="openai">OpenAI — needs your key</option>
@@ -910,9 +912,15 @@
             <h3>③ AI engines — which to pick</h3>
             <ul>
                 <li><strong>Free AI (Pollinations)</strong> — works instantly, <strong>no key</strong>. Good for a quick start.</li>
+                <li><strong>Browser AI (WebLLM)</strong> — runs a real LLM <strong>100% on your device</strong> (WebGPU), <strong>$0</strong> and fully private — nothing leaves your browser, no key, no token, no server. Needs a modern <strong>Chrome/Edge 113+</strong> or <strong>Safari 18+</strong>; the first run downloads the model once (then cached). If your browser can't run WebGPU, you can also use <strong>Ollama</strong> (below) — it's free too. You still publish your resume &amp; portfolio to a new repo in your own GitHub the same way.</li>
                 <li><strong>Ollama / Llama 3 (cloud)</strong> — free, private, runs on a throwaway GitHub runner. Needs a <strong>fork + GitHub token</strong> (see ④).</li>
                 <li><strong>OpenAI / Claude / Gemini / Mistral</strong> — highest quality, <strong>use your own API key</strong> (billed by them).</li>
                 <li><strong>None</strong> — local keyword matching, no AI.</li>
+            </ul>
+            <p style="font-size:0.9rem;opacity:0.92;"><strong>Free models &amp; prices.</strong> Browser AI (WebLLM) and Ollama are both <strong>$0</strong>. Best free picks:</p>
+            <ul style="font-size:0.9rem;opacity:0.92;">
+                <li><strong>WebLLM</strong> — <code>Llama 3.2 · 3B</code> (~2 GB, balanced default), <code>Phi-3.5 mini · 3.8B</code> (~2.2 GB, fast), <code>Gemma 2 · 2B</code> (~1.5 GB, lightweight), <code>Qwen2.5 · 7B</code> (~4.5 GB, <em>best quality</em>), <code>Llama 3.1 · 8B</code> (~5 GB, top quality). All <strong>$0</strong> — you only "pay" a one-time model download + your device's RAM/VRAM.</li>
+                <li><strong>Ollama</strong> — <code>llama3.2</code> (3B, recommended default — fast &amp; reliable on the free runner), <code>qwen2.5:7b</code> (best free quality), <code>phi3.5</code>, <code>gemma2:2b</code>. All <strong>$0</strong> (public repo = unlimited free Actions minutes). Avoid <code>llama3</code> (8B) on the free runner — it can run out of memory.</li>
             </ul>
 
             <h3>④ Create a GitHub token (first-timers, read this)</h3>

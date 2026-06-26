@@ -336,6 +336,36 @@ async function setupCloudFork(btn) {
 }`,
         lesson: 'When a feature requires the user to have their own copy of a repo, do the fork FOR them with their token instead of writing instructions — and reassure on the scary part: a fork runs on the user own free Actions minutes (unlimited for public repos) and can never touch the original owner quota, so there is nothing to clean up. Clarify fork (a repo in their account that can run Actions) vs clone (a local-only copy that cannot). And for first-time GitHub steps, real screenshots beat prose: embed them with an onerror fallback so the page still works before the images are added.',
         impact: 'High — users can stand up the free cloud generator in their own account with one click (no manual fork, no quota fear), and the illustrated token guide removes the biggest first-run blocker.'
+    },
+    {
+        id: 11,
+        title: 'Browser AI (WebLLM) — a Real LLM Running 100% On-Device, Free & Private',
+        category: 'AI / Providers',
+        status: 'Shipped',
+        role: 'Front-End / AI',
+        effort: '90 min',
+        summary: 'Added WebLLM as a new free AI provider that runs a real instruction-tuned LLM entirely inside the browser via WebGPU — $0 cost, fully private (nothing leaves the device), no API key, no GitHub token, and no server. Users pick "Browser AI" in the Generate tab and choose a model (Llama 3.2 3B default, up to Qwen2.5 7B / Llama 3.1 8B) in Settings. The publish-to-GitHub experience is unchanged: WebLLM only tailors the content locally, then the resume & portfolio publish to a new repo in the user own account exactly as before.',
+        motivation: 'The two existing free options each had a catch: Pollinations is a shared endpoint with no privacy guarantee and variable quality, and Ollama-cloud needs a GitHub token + fork and runs a 3B model on a CPU-only runner. Users wanted a genuinely private, higher-quality free option that needs zero setup and never sends their resume anywhere.',
+        solution: 'AIIntegration gained a webllm provider (with a curated model list), webgpuSupported(), get/setWebLLMConfig(), and tailorWithWebLLM() which lazy-imports @mlc-ai/web-llm from a CDN, creates/caches an MLCEngine for the chosen model, and calls the OpenAI-compatible chat.completions.create() locally. isConfigured(webllm) returns whether WebGPU exists, and getCost returns 0. The Generate/bulk flows surface a live model-download progress card via an onWebLLMProgress hook, and Settings renders a model picker with WebGPU status. If WebGPU is missing, the error and UI explicitly steer users to Pollinations or Ollama (also free).',
+        codeExample: `// Lazy-load the library + cache an engine per model, then tailor locally.
+async tailorWithWebLLM(resumeData, jdData, mode) {
+  if (!this.webgpuSupported())
+    throw new Error('No WebGPU here \u2014 use Free AI (Pollinations), Ollama, or a paid key.');
+  const model  = this.getWebLLMConfig().model;
+  const engine = await this._getWebLLMEngine(model);   // downloads once, then cached
+  const reply  = await engine.chat.completions.create({
+    temperature: 0.4,
+    max_tokens: Math.max(1800, this.providers.webllm.modes[mode].tokens),
+    messages: [
+      { role: 'system', content: 'Respond with ONLY a single valid minified JSON object.' },
+      { role: 'user',   content: this.buildTailoringPrompt(resumeData, jdData, mode) }
+    ]
+  });
+  return { success: true, provider: 'webllm', cost: 0,
+           tailored: reply.choices[0].message.content };
+}`,
+        lesson: 'WebGPU + WebLLM make it possible to run a capable 3B\u20138B LLM with zero backend and zero cost while keeping the user data on their machine \u2014 a strong default for a privacy-first static app. Two practical lessons: (1) the first run downloads gigabytes, so a visible progress callback is essential or it looks frozen; cache the engine so later runs are instant. (2) Always provide a graceful fallback path in both the thrown error and the UI \u2014 not every browser/device exposes WebGPU \u2014 and name the concrete alternatives (Pollinations, Ollama) so users are never stuck.',
+        impact: 'High \u2014 a new best-in-class free option: better and more private than the shared Pollinations endpoint, and no token/fork friction like Ollama-cloud, while the GitHub publish flow stays identical.'
     }
 ];
 

@@ -2664,6 +2664,15 @@ async function generateSingle() {
             if (statusContent) statusContent.innerHTML = '<p>⏳ Building your documents...</p>';
         } else if (provider && window.AIIntegration && AIIntegration.isConfigured(provider)) {
             if (statusContent) statusContent.innerHTML = '<p>🤖 Tailoring with AI...</p>';
+            if (provider === 'webllm') {
+                AIIntegration.onWebLLMProgress = (report) => {
+                    if (!statusContent) return;
+                    const pct = report && typeof report.progress === 'number' ? Math.round(report.progress * 100) : null;
+                    const txt = (report && report.text) ? report.text : 'Loading Browser AI model...';
+                    statusContent.innerHTML = `<p>🧠 Browser AI: ${txt}${pct !== null ? ` (${pct}%)` : ''}</p>`
+                        + `<p class="muted" style="font-size:12px">First run downloads the model once (cached after) — this can take a minute on the first generation.</p>`;
+                };
+            }
             try {
                 const r = await tailorProfileWithAI(profile, jdText, provider, mode);
                 workingProfile = r.profile;
@@ -2672,6 +2681,8 @@ async function generateSingle() {
             } catch (e) {
                 console.warn('AI tailoring failed, using local:', e.message);
                 showToast('AI tailoring failed — generating locally instead', 'warning');
+            } finally {
+                if (provider === 'webllm') AIIntegration.onWebLLMProgress = null;
             }
             if (statusContent) statusContent.innerHTML = '<p>⏳ Building your documents...</p>';
         }
@@ -2891,6 +2902,13 @@ async function generateBulk() {
 
     // ---- Paid / Pollinations / local: build resume PDFs sequentially.
     const useAI = provider && window.AIIntegration && AIIntegration.isConfigured(provider);
+    if (useAI && provider === 'webllm') {
+        AIIntegration.onWebLLMProgress = (report) => {
+            const pct = report && typeof report.progress === 'number' ? Math.round(report.progress * 100) : null;
+            const txt = (report && report.text) ? report.text : 'Loading Browser AI model...';
+            setMsg(`<p>🧠 Browser AI: ${txt}${pct !== null ? ` (${pct}%)` : ''}</p><p style="font-size:12px;opacity:.8">First run downloads the model once (cached after).</p>`);
+        };
+    }
     const linkWrap = document.createElement('div');
     linkWrap.className = 'download-section';
     let done = 0;
@@ -2923,6 +2941,8 @@ async function generateBulk() {
         console.error('Bulk generation error:', error);
         setMsg(`<p>❌ Bulk generation failed: ${escHtml(error.message)}</p>`);
         showToast('Bulk generation failed: ' + error.message, 'error');
+    } finally {
+        if (provider === 'webllm' && window.AIIntegration) AIIntegration.onWebLLMProgress = null;
     }
 }
 
@@ -2956,6 +2976,14 @@ function updateAICost() {
             : '<p>⚠️ Custom provider not configured yet. Add your endpoint &amp; key in the <strong>Settings</strong> tab.</p>';
         return;
     }
+    if (provider === 'webllm') {
+        const ok = window.AIIntegration && AIIntegration.webgpuSupported && AIIntegration.webgpuSupported();
+        const m = (window.AIIntegration && AIIntegration.getWebLLMConfig) ? AIIntegration.getWebLLMConfig().model : '';
+        box.innerHTML = ok
+            ? `<p>✅ <strong>Browser AI (WebLLM)</strong> — runs <strong>100% on your device</strong> via WebGPU. $0.00 cost, fully private (nothing leaves your browser). Model: <code>${m}</code>. The first generation downloads the model once (cached after).</p>`
+            : '<p>⚠️ <strong>Browser AI (WebLLM)</strong> needs a WebGPU browser (Chrome/Edge 113+, or Safari 18+). This browser doesn\u2019t support it — use <strong>Free AI (Pollinations)</strong>, <strong>Ollama</strong>, or a paid key instead.</p>';
+        return;
+    }
     box.innerHTML = `<p>Estimated AI cost: <strong>$${cost.toFixed(4)}</strong> per resume (${mode}).` +
         (configured ? '' : ' <em>No API key set — add it in Settings, or it will generate locally for free.</em>') + '</p>';
 }
@@ -2965,7 +2993,7 @@ function updateAICost() {
 function refreshGenerationModeLabels(provider) {
     const sel = document.getElementById('generationMode');
     if (!sel) return;
-    const free = !provider || provider === 'pollinations' || provider === 'custom' || provider === 'ollama';
+    const free = !provider || provider === 'pollinations' || provider === 'custom' || provider === 'ollama' || provider === 'webllm';
     const base = {
         fast: 'Fast (Quick keyword matching)',
         smart: 'Smart (Full tailoring)',
@@ -3001,6 +3029,10 @@ function updateBulkCost() {
     }
     if (provider === 'custom') {
         box.innerHTML = `${count} job(s) via your <strong>custom AI provider</strong> — billed by your own account.`;
+        return;
+    }
+    if (provider === 'webllm') {
+        box.innerHTML = `${count} job(s) × <strong>Browser AI (WebLLM)</strong> — $0.00, runs privately on your device. They generate one after another in your browser.`;
         return;
     }
     const cost = (window.AIIntegration && AIIntegration.getBulkCost) ? AIIntegration.getBulkCost(provider, count, 'smart') : 0;
@@ -3093,6 +3125,27 @@ function renderAISettings() {
     html += `<div class="ai-provider-card">
         <h4>${escHtml(providers.pollinations.name)}</h4>
         <p>✅ Ready to use — no account or API key required. Just pick <strong>Free AI</strong> in the Generate tab.</p>
+    </div>`;
+
+    // Browser AI (WebLLM) — runs a real LLM 100% on the user's device via WebGPU.
+    // No key, no server, no cost; the user just chooses which model to run.
+    const wll = AIIntegration.getWebLLMConfig();
+    const webgpuOk = AIIntegration.webgpuSupported && AIIntegration.webgpuSupported();
+    const wllOptions = (providers.webllm.models || [])
+        .map(m => `<option value="${escHtml(m.id)}" ${m.id === wll.model ? 'selected' : ''}>${escHtml(m.label)}</option>`)
+        .join('');
+    html += `<div class="ai-provider-card ai-provider-card--wide">
+        <h4>${escHtml(providers.webllm.name)} ${webgpuOk ? '✅' : '⚠️'}</h4>
+        <p>Runs a real LLM <strong>entirely on your device</strong> in the browser (WebGPU) — <strong>$0 cost</strong>, fully private (nothing leaves your machine), no API key, no GitHub token, no server. Pick it as <strong>Browser AI</strong> in the Generate tab; you still publish your resume &amp; portfolio to a new repo in your GitHub the same way.</p>
+        ${webgpuOk
+            ? '<p style="font-size:0.85rem;opacity:0.9;">✅ Your browser supports WebGPU. The first generation downloads the chosen model once (then it\u2019s cached for instant reuse). Bigger models = better quality but larger download &amp; more RAM/VRAM.</p>'
+            : '<p style="font-size:0.85rem;color:#b45309;">⚠️ This browser doesn\u2019t expose WebGPU. Use <strong>Chrome/Edge 113+</strong> or <strong>Safari 18+</strong> on a reasonably modern device. Otherwise use <strong>Free AI (Pollinations)</strong> or <strong>Ollama</strong> — both are also free.</p>'}
+        <div class="form-group">
+            <label>Model (all free, $0)</label>
+            <select id="webllmModel">${wllOptions}</select>
+        </div>
+        <button class="btn btn-secondary" onclick="saveWebLLMConfig()">Save Browser AI Model</button>
+        <small>Recommended: <code>Llama 3.2 · 3B</code> for a fast, balanced default (~2 GB). For the best quality pick <code>Qwen2.5 · 7B</code> (~4.5 GB) or <code>Llama 3.1 · 8B</code> (~5 GB) if you have the RAM/VRAM.</small>
     </div>`;
 
     // Key-based providers (use your own account/token)
@@ -3205,6 +3258,18 @@ function saveCustomAIConfig() {
     AIIntegration.setCustomConfig(endpoint, model, key);
     showToast('Custom AI provider saved', 'success');
     renderAISettings();
+}
+
+function saveWebLLMConfig() {
+    const model = document.getElementById('webllmModel')?.value;
+    if (!model) {
+        showToast('Pick a model first', 'warning');
+        return;
+    }
+    AIIntegration.setWebLLMConfig(model);
+    showToast('Browser AI model saved — ' + model, 'success');
+    renderAISettings();
+    if (typeof updateAICost === 'function') updateAICost();
 }
 
 function saveOllamaCloudConfig() {

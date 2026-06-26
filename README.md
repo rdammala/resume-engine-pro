@@ -16,7 +16,7 @@ Resume Engine Pro is a comprehensive, browser-based resume and portfolio generat
 **Key Features:**
 - ✅ Upload and parse existing resumes (PDF, DOCX, TXT)
 - ✅ Intelligent AI-powered resume tailoring for job descriptions
-- ✅ Multi-AI provider support (OpenAI, Claude, Gemini, Mistral, Ollama)
+- ✅ Multi-AI provider support (OpenAI, Claude, Gemini, Mistral, Ollama, WebLLM)
 - ✅ Bulk resume generation (5+ at once)
 - ✅ Beautiful portfolio website templates
 - ✅ GitHub-based storage (no external cloud costs)
@@ -44,6 +44,7 @@ Resume Engine Pro can tailor your résumé with several different engines. You p
 | Provider | Model | Cost / résumé* | Strengths | Watch-outs |
 |---|---|---|---|---|
 | **None (local)** | keyword matching | **$0** | Instant, fully offline, totally private | No real tailoring — just matches JD keywords |
+| **Browser AI (WebLLM)** | `Llama 3.2 3B` (default) | **$0** | Real LLM running **100% on your device** (WebGPU); fully private, no key/token/server | Needs Chrome/Edge 113+ or Safari 18+; first run downloads the model once; uses your RAM/VRAM |
 | **Ollama (cloud)** | `llama3.2` (3B) | **$0** | Free, private, runs on a throwaway GitHub runner; fast (~2–4 min) | 3B model → weaker at nuanced company/JD extraction |
 | **Pollinations** | OpenAI-compatible | **$0** | Free, **no API key**, decent quality | Shared free endpoint — slower/variable, no privacy guarantee |
 | **OpenAI** | GPT‑4 | ~$0.03 | Best overall writing, reasoning & ATS polish | Most expensive; needs your key |
@@ -70,6 +71,22 @@ The Ollama path runs entirely free inside an ephemeral GitHub Actions runner (**
 **Rule of thumb:** start with `llama3.2` for fast, dependable runs. If the summary, bullets, or the extracted company/title aren't sharp enough, switch to `qwen2.5:7b` — it reads the job description more carefully at the cost of a bit more time. Stay at or below ~7B parameters so the job fits the free runner's memory.
 
 > 💡 The cloud generator is tuned with `num_ctx: 8192` and `num_predict: 2048` so the full résumé + JD fit in context and the model has room to produce 4–6 quantified bullets per role and 14–18 JD-aligned skills, regardless of which model you choose.
+
+### Browser AI (WebLLM) models — free, on your device
+
+WebLLM runs a real LLM **entirely inside your browser** via **WebGPU** — **$0**, fully private (nothing ever leaves your machine), no API key, no GitHub token, no server. Pick **Browser AI** in **Generate → AI Provider** and choose a model in **Settings → Browser AI (WebLLM)**. The first generation downloads the chosen model once, then it's cached for instant reuse. You still publish your resume & portfolio to a new repo in your own GitHub exactly the same way.
+
+| Model | Size (download) | Speed | Quality | Verdict |
+|---|---|---|---|---|
+| **`Llama-3.2-3B-Instruct`** | ~2 GB | ⚡ Fast | Good | ✅ **Default** — best balance of speed, size & quality |
+| **`Phi-3.5-mini-instruct`** (3.8B) | ~2.2 GB | ⚡ Fast | Good | ✅ Snappy & capable; great on lighter machines |
+| **`gemma-2-2b-it`** (2B) | ~1.5 GB | ⚡⚡ Fastest | OK+ | ✅ Lightweight — smallest download, lowest RAM |
+| **`Qwen2.5-7B-Instruct`** | ~4.5 GB | 🚶 Moderate | Better | ✅ **Best free quality** — sharpest JD/company reading & ATS wording |
+| **`Llama-3.1-8B-Instruct`** | ~5 GB | 🐢 Slower | Better | ✅ Top quality if you have the RAM/VRAM (8 GB+ recommended) |
+
+**Price for every WebLLM and Ollama model above: $0.** Your only "cost" with WebLLM is a one-time model download and your device's memory; with Ollama it's a couple of free GitHub Actions minutes (unlimited on this public repo). **Requirements:** WebLLM needs a WebGPU browser (**Chrome/Edge 113+**, **Safari 18+**) and a reasonably modern device. No WebGPU? Use **Ollama** or **Free AI (Pollinations)** — also free.
+
+**Best free results overall:** for the highest quality at $0, use **WebLLM `Qwen2.5-7B`** (on a capable device) or **Ollama `qwen2.5:7b`** (in the cloud). For the fastest free start, use **WebLLM `Llama-3.2-3B`** or **Pollinations**.
 
 ## 📚 Learning Hub
 
