@@ -62,8 +62,8 @@ const GitHubRunner = {
 
     _hint(status) {
         if (status === 401) return 'Your GitHub token is missing, expired, or invalid.';
-        if (status === 403) return 'Token lacks permission (needs Actions + Contents read/write on this repo).';
-        if (status === 404) return 'Workflow or repo not found — make sure ollama-resume.yml is pushed and the owner/repo are correct in Settings.';
+        if (status === 403) return 'Token lacks permission — needs Actions + Contents (Read & write), and Administration (Read & write) to fork/create. Use a fine-grained token with Resource owner = your account and Repository access = All repositories.';
+        if (status === 404) return 'Workflow or repo not found. Check that the owner/repo in Settings → Ollama point to YOUR fork, and that Actions are enabled on it — click "Verify cloud setup" (a fresh fork has Actions disabled until enabled).';
         if (status === 422) return 'Invalid inputs, or the workflow has no workflow_dispatch trigger on the target branch yet.';
         return '';
     },
