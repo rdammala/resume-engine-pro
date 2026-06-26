@@ -2229,6 +2229,44 @@ audio {
 .mc-sec { margin-top: 0.7rem; }
 .mc-foot { margin: 0.7rem 0 0; color: var(--text-muted); font-size: 0.76rem; line-height: 1.4; }
 
+/* Learning resources list (missing-skill → free links) */
+.learn-box { margin-top: 0.7rem; }
+.learn-box > summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #7dd3fc;
+    padding: 0.2rem 0;
+}
+.learn-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.learn-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+    padding: 0.4rem 0;
+    border-top: 1px solid var(--border);
+}
+.learn-list li:first-child { border-top: none; }
+.learn-kw {
+    font-weight: 700;
+    min-width: 140px;
+    text-transform: capitalize;
+}
+.learn-links { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.learn-links a {
+    font-size: 0.74rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(100, 200, 255, 0.1);
+    border: 1px solid var(--border);
+    color: #9fd3ff;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.learn-links a:hover { background: rgba(100, 200, 255, 0.22); }
+.result-card { border-color: rgba(100, 200, 255, 0.45); }
+
 
 .modal.active {
     display: flex;

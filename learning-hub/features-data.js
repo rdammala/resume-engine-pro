@@ -388,8 +388,29 @@ function computeJDMatch(profile, jdText) {
   return { score, matched, missing, total: keywords.length };
 }`,
         lesson: 'When an automated step (parsing, scoring) can silently under-deliver, surface its output to the user instead of hiding it — a visible "here is exactly what we read" panel turns a confusing blank result into an obvious, fixable one. A cheap keyword-overlap heuristic delivers most of the perceived value of an "ATS score" with zero backend, as long as the UI is honest that it is a heuristic and warns against keyword-stuffing skills you do not actually have.',
-        impact: 'High \u2014 eliminates the "did my upload even work?" confusion, prevents blank-résumé surprises, and gives users actionable, JD-specific guidance (the exact missing keywords) before they spend a generation.'
-    }
+        impact: 'High \u2014 eliminates the "did my upload even work?" confusion, prevents blank-résumé surprises, and gives users actionable, JD-specific guidance (the exact missing keywords) before they spend a generation.'    },
+    {
+        id: 13,
+        title: 'Learn-the-Gap: Free Learning Resources + Post-Generation Score Card & Downloadable Plan',
+        category: 'UX / Career Growth',
+        status: 'Shipped',
+        role: 'Front-End',
+        effort: '95 min',
+        summary: 'Turned the JD gap analysis into an action plan. The match card now links each missing skill to free learning resources (beginner videos, full "zero-to-hero" courses, freeCodeCamp, docs) via always-valid search URLs. After generating, a result score card rates the tailored r\u00e9sum\u00e9 against the JD on the portal, lists the remaining gaps with learning links, and offers a one-click "Download learning plan (.md)" \u2014 a Markdown learning tracker. Nothing is persisted unless the user downloads it (or later commits it to their repo).',
+        motivation: 'Knowing which keywords are missing is useful, but users then asked "where do I actually learn these?" and "how good is the r\u00e9sum\u00e9 I just generated?". They wanted growth guidance and a keepable record \u2014 without the app silently storing anything.',
+        solution: 'Added learningLinksFor(keyword) returning SEARCH URLs (YouTube beginner + full course, freeCodeCamp, Google docs) so links never go stale or hallucinate a specific video. learningListHtml() renders them; renderMatchCard() embeds them in a collapsible section. After buildDocumentsFromProfile, resultScoreCardHtml(workingProfile, jdText) scores the TAILORED r\u00e9sum\u00e9, shows remaining gaps + learning links, and stashes window._lastLearningPlan. buildLearningPlanMarkdown() produces a Markdown table; downloadLearningPlan() Blob-downloads it on demand. Privacy-first: no storage unless the user explicitly downloads.',
+        codeExample: `// Always-valid free resources (search URLs, never stale/hallucinated).
+function learningLinksFor(keyword) {
+  const q = encodeURIComponent(keyword);
+  return [
+    { label: '\u25b6 Beginner video',     url: 'https://www.youtube.com/results?search_query=' + q + '+tutorial+for+beginners' },
+    { label: '\u25b6 Full course (0\u2192hero)', url: 'https://www.youtube.com/results?search_query=' + q + '+full+course+free' },
+    { label: '\ud83d\udcf0 freeCodeCamp',       url: 'https://www.freecodecamp.org/news/search/?query=' + q },
+    { label: '\ud83d\udd0e Docs & guides',      url: 'https://www.google.com/search?q=' + encodeURIComponent(keyword + ' tutorial documentation') }
+  ];
+}`,
+        lesson: 'Diagnose-then-prescribe beats diagnose-only: pairing each gap with a concrete, free way to close it makes the tool feel like a coach, not just a scanner. Prefer search URLs over specific links for any auto-generated resource list \u2014 they stay valid forever and avoid recommending dead or wrong content. And honour "don\u2019t save my data": compute on the fly, keep the artifact in memory, and only persist when the user clicks download.',
+        impact: 'High \u2014 closes the loop from "what\u2019s missing" to "here\u2019s how to learn it," scores the actual generated r\u00e9sum\u00e9, and gives users a portable Markdown learning tracker \u2014 all with zero server-side storage.'    }
 ];
 
 console.log("FEATURES array loaded with", window.FEATURES.length, "features");

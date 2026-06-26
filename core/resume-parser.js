@@ -52,30 +52,49 @@ const ResumeParser = {
     },
     
     async parseDOCX(file) {
-        // DOCX parsing requires JSZip library
+        // DOCX parsing requires JSZip library. We extract text directly from the
+        // document XML with a namespace-proof regex pass — DOM CSS selectors like
+        // 'w\\:p' are unreliable across browsers for namespaced XML and silently
+        // returned nothing for some Word files.
         const arrayBuffer = await file.arrayBuffer();
         const zip = new JSZip();
         const zipData = await zip.loadAsync(arrayBuffer);
-        const xmlContent = await zipData.file('word/document.xml').async('string');
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
-        const paragraphs = xmlDoc.querySelectorAll('w\\:p');
-        let text = '';
-        
-        paragraphs.forEach(p => {
-            const runs = p.querySelectorAll('w\\:r');
-            let paragraphText = '';
-            runs.forEach(r => {
-                const textElements = r.querySelectorAll('w\\:t');
-                textElements.forEach(t => {
-                    paragraphText += t.textContent;
-                });
-            });
-            text += paragraphText + '\n';
-        });
-        
+        const docFile = zipData.file('word/document.xml');
+        if (!docFile) {
+            throw new Error('This does not look like a valid Word .docx (no document.xml). If it is an older .doc, re-save it as .docx, PDF, or TXT.');
+        }
+        const xmlContent = await docFile.async('string');
+        const text = this.docxXmlToText(xmlContent);
+        if (!text.trim()) {
+            throw new Error('No readable text found in this Word file — it may be image-only or empty. Try exporting it to PDF or TXT.');
+        }
         return this.extractFromText(text);
     },
+
+    // Convert raw WordprocessingML into plain text. Paragraph/row/break tags
+    // become newlines, tabs/cells become spaces, all other tags are stripped,
+    // and XML entities are decoded.
+    docxXmlToText(xml) {
+        return String(xml || '')
+            .replace(/<w:p\b[^>]*\/>/g, '\n')   // empty paragraphs
+            .replace(/<\/w:p>/g, '\n')
+            .replace(/<w:br\b[^>]*\/?>/g, '\n')
+            .replace(/<\/w:tr>/g, '\n')
+            .replace(/<w:tab\b[^>]*\/?>/g, '\t')
+            .replace(/<\/w:tc>/g, ' ')
+            .replace(/<[^>]+>/g, '')            // drop every remaining tag
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'")
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+            .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    },
+
     
     extractFromText(text) {
         const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
