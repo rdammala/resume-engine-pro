@@ -2399,6 +2399,7 @@ async function publishHistoryEntry(histId, btnEl) {
                 <li>Repository: <a href="${repoUrl}" target="_blank" rel="noopener">${repoUrl}</a></li>
                 ${pagesLine}
             </ol>
+            ${pagesUrl ? '<p class="cloud-error-cost">🌐 This repo is <strong>public</strong>, which is what makes your portfolio live. If you switch it to <strong>Private</strong>, the live link will stop working — GitHub Pages needs a public repo on the free plan. Keep it public to share your portfolio.</p>' : ''}
         </div>`);
         showToast('Published to GitHub and added to the tracker', 'success');
     } catch (e) {
