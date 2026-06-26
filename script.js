@@ -1634,6 +1634,29 @@ function safeFileName(name) {
 }
 
 // Normalize a stored profile so experience/education/skills are always arrays
+// Does a profile actually contain résumé material to build/tailor from? A
+// profile with only a name + contact info produces a blank resume no matter
+// which AI runs, because the AI is (correctly) told never to fabricate a career.
+function profileHasResumeContent(profile) {
+    if (!profile) return false;
+    const hasSummary = !!(profile.summary && String(profile.summary).trim());
+    const skills = Array.isArray(profile.skills) ? profile.skills
+        : (typeof profile.skills === 'string' ? profile.skills.split(',').map(s => s.trim()).filter(Boolean) : []);
+    const exp = Array.isArray(profile.experience) ? profile.experience
+        : (typeof profile.experience === 'string' && profile.experience.trim() ? [profile.experience] : []);
+    const edu = Array.isArray(profile.education) ? profile.education
+        : (typeof profile.education === 'string' && profile.education.trim() ? [profile.education] : []);
+    const hasRaw = !!(profile.rawText && String(profile.rawText).trim().length > 80);
+    return hasSummary || skills.length > 0 || exp.length > 0 || edu.length > 0 || hasRaw;
+}
+
+function emptyProfileMessage(profile) {
+    const nm = (profile && (profile.displayName || profile.name)) || 'This profile';
+    return `⚠️ <strong>${escHtml(nm)} has no résumé content yet</strong> — only a name/contact details. `
+        + `There's nothing to tailor, so the resume comes out blank no matter which AI is used (the AI is instructed never to invent a work history). `
+        + `Add your <strong>summary, skills, and experience</strong> in the <strong>Profile</strong> tab (or upload a résumé the app can read as text), then generate again.`;
+}
+
 function normalizeProfile(profile) {
     const p = { ...profile };
     if (typeof p.skills === 'string') {
@@ -2588,6 +2611,16 @@ async function generateSingle() {
         showToast('Selected profile not found', 'error');
         return;
     }
+    // No résumé material → blank output regardless of AI. Stop early with a
+    // clear, actionable message instead of producing an empty PDF.
+    if (!profileHasResumeContent(profile)) {
+        const statusBox = document.getElementById('generationStatus');
+        const statusContent = document.getElementById('statusContent');
+        if (statusBox) statusBox.style.display = 'block';
+        if (statusContent) statusContent.innerHTML = `<p>${emptyProfileMessage(profile)}</p>`;
+        showToast('This profile has no résumé content — add your experience/skills first', 'warning');
+        return;
+    }
     let jdText = (document.getElementById('jdText')?.value || '').trim();
     const jobUrl = (document.getElementById('jdUrl')?.value || '').trim();
     if (!jdText && !jobUrl) {
@@ -2900,6 +2933,13 @@ async function generateBulk() {
     const statusContent = document.getElementById('bulkStatusContent');
     if (statusBox) statusBox.style.display = 'block';
     const setMsg = (html) => { if (statusContent) statusContent.innerHTML = html; };
+
+    // No résumé material → every resume would be blank. Stop with a clear note.
+    if (!profileHasResumeContent(profile)) {
+        setMsg(`<p>${emptyProfileMessage(profile)}</p>`);
+        showToast('This profile has no résumé content — add your experience/skills first', 'warning');
+        return;
+    }
 
     const provider = document.getElementById('bulkAiProvider')?.value;
     const baseName = safeFileName(profile.displayName || profile.name);
