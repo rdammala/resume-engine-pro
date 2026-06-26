@@ -530,6 +530,17 @@ const AIIntegration = {
     async _getWebLLMEngine(model) {
         const webllm = await this._loadWebLLM();
         if (this._webllmEngine && this._webllmEngineModel === model) return this._webllmEngine;
+        // A device can expose navigator.gpu yet still have no usable adapter
+        // (e.g. GPU blocklisted, headless, or disabled) — catch that early with
+        // a clear message instead of a cryptic engine-internal failure.
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                throw new Error('No compatible WebGPU adapter is available on this device (the GPU may be disabled or blocklisted).');
+            }
+        } catch (e) {
+            throw new Error(e.message || 'WebGPU adapter request failed.');
+        }
         try { if (this._webllmEngine && this._webllmEngine.unload) await this._webllmEngine.unload(); } catch (_) {}
         this._webllmEngine = await webllm.CreateMLCEngine(model, {
             initProgressCallback: (report) => { try { if (this.onWebLLMProgress) this.onWebLLMProgress(report); } catch (_) {} }

@@ -1356,6 +1356,39 @@ function closeModal(id) {
     if (modal) modal.style.display = 'none';
 }
 
+// When an AI provider fails mid-generation, ask the user how to proceed instead
+// of silently falling back to the (content-less) local generator. Returns a
+// Promise resolving to 'pollinations' | 'ollama' | 'local'.
+function chooseAIFallback(failedProvider, errorMsg) {
+    return new Promise((resolve) => {
+        const hasOllama = !!(window.GitHubRunner && GitHubRunner.hasToken());
+        const niceName = failedProvider === 'webllm' ? 'Browser AI (WebLLM)'
+            : failedProvider === 'pollinations' ? 'Free AI (Pollinations)'
+            : (failedProvider || 'The selected AI');
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);';
+        overlay.innerHTML = `
+            <div style="max-width:520px;width:92%;background:#16161f;border:1px solid #2a2a3a;border-radius:14px;padding:22px 24px;color:#e8e8f0;box-shadow:0 12px 40px rgba(0,0,0,.5);">
+                <h3 style="margin:0 0 8px;color:#ffcf5c;">⚠️ ${escHtml(niceName)} couldn't tailor this resume</h3>
+                <p style="margin:0 0 6px;font-size:13px;opacity:.85;">It would otherwise generate locally with little or no tailored content. How would you like to continue?</p>
+                ${errorMsg ? `<p style="margin:0 0 14px;font-size:12px;opacity:.7;word-break:break-word;"><code>${escHtml(String(errorMsg).slice(0, 240))}</code></p>` : ''}
+                <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">
+                    <button data-choice="pollinations" class="btn btn-primary" style="width:100%;text-align:left;">⚡ Use Free AI (Pollinations) — recommended, no key, runs now</button>
+                    ${hasOllama ? '<button data-choice="ollama" class="btn btn-secondary" style="width:100%;text-align:left;">☁️ Use Ollama (free GitHub cloud runner) — your token is set</button>' : ''}
+                    <button data-choice="local" class="btn btn-secondary" style="width:100%;text-align:left;">📄 Generate locally without AI (basic, may be sparse)</button>
+                </div>
+                <p style="margin:14px 0 0;font-size:11px;opacity:.6;">Tip: Browser AI needs WebGPU (Chrome/Edge 113+ or Safari 18+) and downloads the model on first use. Pollinations always works without any setup.</p>
+            </div>`;
+        const done = (choice) => { try { overlay.remove(); } catch (_) {} resolve(choice); };
+        overlay.addEventListener('click', (ev) => {
+            const btn = ev.target.closest('button[data-choice]');
+            if (btn) { done(btn.getAttribute('data-choice')); return; }
+            if (ev.target === overlay) done('local');
+        });
+        document.body.appendChild(overlay);
+    });
+}
+
 // ============================================================================
 // PROFILE MANAGEMENT HANDLERS
 // ============================================================================
@@ -2679,8 +2712,33 @@ async function generateSingle() {
                 aiUsed = true;
                 aiCost = r.cost;
             } catch (e) {
-                console.warn('AI tailoring failed, using local:', e.message);
-                showToast('AI tailoring failed — generating locally instead', 'warning');
+                console.error('AI tailoring failed:', e);
+                if (provider === 'webllm') AIIntegration.onWebLLMProgress = null;
+                const choice = await chooseAIFallback(provider, e && e.message);
+                if (choice === 'pollinations') {
+                    if (statusContent) statusContent.innerHTML = '<p>⚡ Retrying with Free AI (Pollinations)…</p>';
+                    try {
+                        const r2 = await tailorProfileWithAI(profile, jdText, 'pollinations', mode);
+                        workingProfile = r2.profile;
+                        aiUsed = true;
+                        aiCost = r2.cost;
+                        showToast('Tailored with Free AI (Pollinations)', 'success');
+                    } catch (e2) {
+                        console.error('Pollinations fallback failed:', e2);
+                        showToast('Free AI fallback failed too — generating locally', 'warning');
+                    }
+                } else if (choice === 'ollama') {
+                    try {
+                        workingProfile = await runOllamaInCloud(profile, jdText, statusContent, histId);
+                        aiUsed = true;
+                        showToast('Tailored with Ollama (cloud runner)', 'success');
+                    } catch (e2) {
+                        console.warn('Ollama fallback still running/failed:', e2.message);
+                        showToast('Ollama cloud job started — track it in History', 'warning');
+                    }
+                } else {
+                    showToast('Generating locally without AI tailoring', 'warning');
+                }
             } finally {
                 if (provider === 'webllm') AIIntegration.onWebLLMProgress = null;
             }
@@ -2901,7 +2959,8 @@ async function generateBulk() {
     }
 
     // ---- Paid / Pollinations / local: build resume PDFs sequentially.
-    const useAI = provider && window.AIIntegration && AIIntegration.isConfigured(provider);
+    let useAI = provider && window.AIIntegration && AIIntegration.isConfigured(provider);
+    let activeProvider = provider;
     if (useAI && provider === 'webllm') {
         AIIntegration.onWebLLMProgress = (report) => {
             const pct = report && typeof report.progress === 'number' ? Math.round(report.progress * 100) : null;
@@ -2918,10 +2977,23 @@ async function generateBulk() {
             let workingProfile = profile;
             if (useAI) {
                 try {
-                    const r = await tailorProfileWithAI(profile, jobs[i].jd, provider, 'smart');
+                    const r = await tailorProfileWithAI(profile, jobs[i].jd, activeProvider, 'smart');
                     workingProfile = r.profile;
                 } catch (e) {
-                    console.warn(`AI tailoring failed for job ${i + 1}, using local:`, e.message);
+                    console.error(`AI tailoring failed for job ${i + 1} (${activeProvider}):`, e);
+                    // Auto-fall back to Free AI (Pollinations) for the rest of the
+                    // batch so we never silently produce empty/sparse resumes.
+                    if (activeProvider !== 'pollinations') {
+                        showToast(`${activeProvider} failed — switching this batch to Free AI (Pollinations)`, 'warning');
+                        activeProvider = 'pollinations';
+                        if (provider === 'webllm' && window.AIIntegration) AIIntegration.onWebLLMProgress = null;
+                        try {
+                            const r2 = await tailorProfileWithAI(profile, jobs[i].jd, 'pollinations', 'smart');
+                            workingProfile = r2.profile;
+                        } catch (e2) {
+                            console.warn(`Pollinations fallback failed for job ${i + 1}:`, e2.message);
+                        }
+                    }
                 }
             }
             const matched = matchSkillsToJD(normalizeProfile(workingProfile), jobs[i].jd);
