@@ -1628,50 +1628,131 @@ function loadProfileData() {
 // EXTRACTION TRANSPARENCY + JD MATCH SCORING
 // ============================================================================
 
-// Common words to ignore when pulling "keywords" out of a job description.
-const JD_STOPWORDS = new Set(('a an and are as at be by for from has have in into is it its of on or our so that the their them then they this to up us use used using was we were what when which who will with you your able about across all also any been being both can could day each end etc every few get good great help here high how just key like make many may more most much must need new not now off one only other out over per plus role same see set should since some such team teams than these those through time very want well work years year job role roles position positions candidate candidates applicant strong knowledge experience experiences ability responsibilities requirements qualifications preferred required must-have nice including include includes within without across based able skills skill').split(/\s+/));
+// Generic / HR-boilerplate words that are NOT real skills. Anything here is
+// excluded from keyword extraction so the match score reflects ACTUAL skills &
+// tools, not filler like "salary", "eligible", "company", or "responsibilities".
+const JD_STOPWORDS = new Set((`
+a an and are as at be by for from has have in into is it its of on or our so that the their them then they this to up us use used using was we were what when which who will with you your able about across all also any been being both can could day each end etc every few get good great help here high how just key like make many may more most much must need new now off one only other out over per plus same see set should since some such than these those through time very want well work years year
+job jobs role roles position positions title titles candidate candidates applicant applicants hire hiring join joining apply applying career careers opportunity opportunities employment employer employee employees staff team teams department
+responsibilities responsibility requirements requirement qualifications qualification preferred required must nice mandatory essential desired duties duty
+salary salaries compensation comp pay paid base bonus equity stock benefit benefits perk perks insurance medical dental vision disability life 401k pto vacation holiday holidays leave wellness reimbursement allowance eligible eligibility offer offers package range
+company companies organization organizations business businesses corporation enterprise firm employerof mission vision values culture diverse diversity inclusion inclusive equal opportunity eeo veteran veterans gender race religion disability accommodation accommodations sexual orientation protected applicants background check authorized authorization visa sponsorship relocation remote hybrid onsite location locations office
+senior junior lead principal mid level entry associate manager director head chief vp president officer intern
+drive drives driven driving ensure ensures ensuring ensured deliver delivers delivered delivering provide provides provided providing support supports supported supporting maintain maintains maintained build builds building create creates created develop develops developed developing design designs designed lead leads leading manage manages managed perform performs performed performance execute executes work working collaborate collaborates collaboration communicate communication partner partnering engage drive own owns owned responsible accountable
+release releases practice practices practising process processes engineer engineers engineering developer developers professional professionals individual people person stakeholder stakeholders customer customers client clients user users partner partners vendor vendors
+strong excellent solid proven demonstrated effective efficient successful passionate motivated detail oriented self starter fast paced dynamic ability abilities skill skills knowledge expertise experience experiences understanding familiarity proficiency proficient competency competencies including include includes within without based able related various multiple several following able
+day end full part time week month year daily weekly monthly annually
+`).trim().split(/\s+/));
 
-// Pull the most salient keywords out of a JD (tech terms, tools, nouns).
-function jdMatchKeywords(jdText, limit) {
-    const freq = new Map();
-    const tokens = (String(jdText || '').toLowerCase().match(/[a-z][a-z0-9+#.\-/]{1,}/g) || []);
-    for (let t of tokens) {
-        t = t.replace(/^[.+#/\-]+|[.+#/\-]+$/g, '');
-        if (t.length < 3 || t.length > 30) continue;
-        if (JD_STOPWORDS.has(t)) continue;
-        if (/^\d+$/.test(t)) continue;
-        freq.set(t, (freq.get(t) || 0) + 1);
-    }
-    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit || 28).map(e => e[0]);
+// Recognised real skills / tools / methods. Anything matching here is always a
+// keyword (and gets a strong score boost) even if it appears only once.
+const SKILL_LEXICON = new Set((`
+python java javascript typescript golang rust ruby php scala kotlin swift perl bash powershell shell sql nosql c c++ c# .net dotnet node nodejs react angular vue svelte nextjs django flask spring springboot rails laravel express fastapi graphql rest grpc soap
+aws azure gcp cloud ec2 s3 lambda eks aks gke vpc iam cloudformation rds dynamodb cosmosdb bigquery redshift snowflake databricks
+kubernetes k8s docker containers containerization helm terraform ansible puppet chef pulumi packer vagrant openshift istio
+ci cd cicd jenkins gitlab github actions argocd circleci travis bamboo teamcity
+devops sre observability monitoring logging tracing prometheus grafana datadog splunk elk elasticsearch kibana logstash newrelic appdynamics opentelemetry
+linux unix windows networking dns tcp http tls ssl load balancer firewall vpn proxy nginx apache
+git svn mercurial agile scrum kanban jira confluence safe lean waterfall
+microservices serverless eventdriven messaging kafka rabbitmq activemq sqs sns pubsub eventhub servicebus
+postgresql mysql mariadb mongodb cassandra redis memcached oracle sqlserver sqlite couchbase neo4j
+machinelearning ml ai deeplearning nlp tensorflow pytorch keras scikit pandas numpy spark hadoop hive airflow etl
+incident automation orchestration deployment infrastructure pipeline pipelines reliability scalability availability resilience latency throughput uptime sla slo sli mttr rca rootcause postmortem oncall paging
+security cybersecurity encryption authentication authorization oauth saml sso rbac compliance soc2 gdpr hipaa pci vulnerability penetration siem zerotrust
+api sdk cli ide vscode intellij eclipse webpack babel vite npm yarn maven gradle nuget
+html css sass tailwind bootstrap figma ux ui accessibility responsive
+data analytics visualization tableau powerbi looker dbt warehouse lakehouse governance
+testing unit integration e2e selenium cypress playwright junit pytest mocha jest tdd bdd
+salesforce sap servicenow workday dynamics sharepoint
+bicep cloudformation arm gitops cost optimization finops
+`).trim().split(/\s+/).filter(Boolean));
+
+function _escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// Strip the parts of a JD that never describe skills (benefits, comp, EEO, etc.)
+// so they don't pollute keyword extraction.
+function stripJDBoilerplate(jdText) {
+    let t = String(jdText || '');
+    const cut = /(^|\n)\s*(compensation|salary|pay\s+range|base\s+pay|benefits|perks|what\s+we\s+offer|why\s+(join|work)|equal\s+(employment\s+)?opportunity|eeo|we\s+are\s+an\s+equal|reasonable\s+accommodation|to\s+all\s+recruitment\s+agencies|legal|disclaimer)\b/i;
+    const m = t.match(cut);
+    // Only trim a trailing boilerplate block (these sections are almost always at the end).
+    if (m && m.index > t.length * 0.45) t = t.slice(0, m.index);
+    return t;
 }
 
-// Build the set of normalized tokens present in a profile's résumé content.
-function profileTokenSet(profile) {
+// Pull the most salient REAL keywords (skills, tools, tech, methods) out of a
+// JD — unigrams plus meaningful two-word phrases — ranked by relevance.
+function jdMatchKeywords(jdText, limit) {
+    const text = stripJDBoilerplate(jdText);
+    const words = (text.toLowerCase().match(/[a-z][a-z0-9+#.\-/]{1,}/g) || [])
+        .map(t => t.replace(/^[.+#/\-]+|[.+#/\-]+$/g, ''))
+        .filter(t => t.length >= 2 && t.length <= 30 && !/^\d+$/.test(t));
+
+    const scored = new Map();
+    const add = (k, s) => scored.set(k, (scored.get(k) || 0) + s);
+
+    // Unigrams
+    const uni = new Map();
+    for (const t of words) { if (t.length >= 3) uni.set(t, (uni.get(t) || 0) + 1); }
+    for (const [t, f] of uni) {
+        if (JD_STOPWORDS.has(t)) continue;
+        let s = 0;
+        if (SKILL_LEXICON.has(t)) s = 8 + f;                 // known skill → strong
+        else if (/[+#/]/.test(t) || /\d/.test(t)) s = 4 + f; // tech-looking (c#, ci/cd, s3, k8s)
+        else {
+            // Unknown plain word: only keep if it appears Capitalized in the
+            // source (likely a proper tool/product) — else it's generic filler.
+            const capRe = new RegExp('\\b' + _escapeRe(t[0].toUpperCase() + t.slice(1)) + '\\b');
+            if (capRe.test(text) && f >= 1) s = 1 + f * 0.5; else continue;
+        }
+        add(t, s);
+    }
+
+    // Bigrams (e.g. "site reliability", "incident management", "data factory")
+    for (let i = 0; i < words.length - 1; i++) {
+        const a = words[i], b = words[i + 1];
+        if (a.length < 3 || b.length < 3) continue;
+        if (JD_STOPWORDS.has(a) || JD_STOPWORDS.has(b)) continue;
+        const phrase = a + ' ' + b;
+        const meaningful = SKILL_LEXICON.has(a) || SKILL_LEXICON.has(b) || /[+#/\d]/.test(a + b);
+        const titleRe = new RegExp('\\b' + _escapeRe(a[0].toUpperCase() + a.slice(1)) + '\\s+' + _escapeRe(b[0].toUpperCase() + b.slice(1)) + '\\b');
+        if (meaningful || titleRe.test(text)) add(phrase, 3);
+    }
+
+    // Prefer phrases & higher scores; de-dupe unigrams already covered by a phrase.
+    const ranked = [...scored.entries()].sort((x, y) => y[1] - x[1]).map(e => e[0]);
+    const out = [];
+    for (const k of ranked) {
+        if (out.length >= (limit || 24)) break;
+        out.push(k);
+    }
+    return out;
+}
+
+// Lowercased, normalized résumé text used for keyword matching.
+function profileResumeText(profile) {
     const p = normalizeProfile(profile);
     const parts = [
         p.summary || '',
         (p.skills || []).join(' '),
         (p.experience || []).map(e => `${e.position || e.title || ''} ${e.company || ''} ${e.description || ''}`).join(' '),
         (p.education || []).map(e => (typeof e === 'string' ? e : (e.degree || e.school || ''))).join(' '),
-        (p.certifications || []).join ? (p.certifications || []).join(' ') : '',
-        profile && profile.rawText || ''
+        Array.isArray(p.certifications) ? p.certifications.join(' ') : '',
+        (profile && profile.rawText) || ''
     ];
-    const set = new Set();
-    const tokens = parts.join(' ').toLowerCase().match(/[a-z][a-z0-9+#.\-/]{1,}/g) || [];
-    for (let t of tokens) {
-        t = t.replace(/^[.+#/\-]+|[.+#/\-]+$/g, '');
-        if (t.length >= 2) set.add(t);
-    }
-    return set;
+    return parts.join(' \n ').toLowerCase().replace(/\s+/g, ' ');
 }
 
 // Compare a profile against a JD and return a keyword-overlap match score.
 function computeJDMatch(profile, jdText) {
     const keywords = jdMatchKeywords(jdText);
-    const resumeSet = profileTokenSet(profile);
+    const resumeText = profileResumeText(profile);
     const matched = [], missing = [];
     for (const k of keywords) {
-        if (resumeSet.has(k)) matched.push(k); else missing.push(k);
+        const present = k.includes(' ')
+            ? resumeText.includes(k)
+            : new RegExp('\\b' + _escapeRe(k) + '\\b').test(resumeText);
+        if (present) matched.push(k); else missing.push(k);
     }
     const total = keywords.length;
     const score = total ? Math.round((matched.length / total) * 100) : 0;
@@ -1848,7 +1929,7 @@ function resultScoreCardHtml(profile, jdText) {
             <div class="mc-head">
                 <div class="mc-title">📊 Your generated résumé vs this JD</div>
                 <div class="mc-sub" style="color:${col};">${verdict}</div>
-                <div class="mc-meta">${m.matched.length} of ${m.total} key terms covered after AI tailoring.</div>
+                <div class="mc-meta">${m.matched.length} of ${m.total} key skills/terms from the job are in your résumé.</div>
             </div>
         </div>
         ${m.missing.length ? `<div class="mc-sec"><div class="mc-label">📈 Still missing — close these gaps to grow into the role:</div><div class="chips">${m.missing.map(k => `<span class="chip chip-miss">${escHtml(k)}</span>`).join('')}</div></div>
@@ -1927,6 +2008,21 @@ function escHtml(str) {
 
 function safeFileName(name) {
     return (name || 'Resume').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'Resume';
+}
+
+// Return ALL of the candidate's skills, but with the JD-matched ones first (so
+// an ATS sees the most relevant skills up top). We never DROP skills — the old
+// behaviour of showing only the handful that matched made résumés look thin.
+function prioritizedSkills(allSkills, matched, cap) {
+    const all = (allSkills || []).map(s => String(s).trim()).filter(Boolean);
+    if (!all.length) return [];
+    const seen = new Set();
+    const dedup = all.filter(s => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+    if (!matched || !matched.length) return dedup.slice(0, cap || 30);
+    const matchedLower = new Set(matched.map(m => String(m).toLowerCase()));
+    const hit = dedup.filter(s => matchedLower.has(s.toLowerCase()));
+    const rest = dedup.filter(s => !matchedLower.has(s.toLowerCase()));
+    return [...hit, ...rest].slice(0, cap || 30);
 }
 
 // Normalize a stored profile so experience/education/skills are always arrays
@@ -2036,7 +2132,7 @@ function extractJobMeta(jdText) {
 function buildResumeDocBlob(profile, matched) {
     const p = normalizeProfile(profile);
     const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).map(escHtml).join(' &nbsp;|&nbsp; ');
-    const skills = (matched && matched.length ? matched : p.skills);
+    const skills = prioritizedSkills(p.skills, matched);
     const body = `
         <h1 style="text-align:center;margin:0;font-family:Calibri,sans-serif;">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
         <p style="text-align:center;font-size:10pt;color:#555;font-family:Calibri,sans-serif;">${contact}</p>
@@ -2102,7 +2198,7 @@ function buildResumePdfBlob(profile, matched) {
 
             if (p.summary) { heading('Summary'); writeBlock(p.summary, 10, '#333333', 4); }
 
-            const skills = (matched && matched.length ? matched : p.skills);
+            const skills = prioritizedSkills(p.skills, matched);
             if (skills.length) { heading('Core Skills'); writeBlock(skills.join('  -  '), 10, '#333333', 4); }
 
             if (p.experience.length) {

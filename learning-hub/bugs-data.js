@@ -924,5 +924,30 @@ if (files['index.html']) {
 // README + tracker now always carry the live link.`,
         lesson: 'Anything that names a remote resource from a re-derived value will duplicate it the moment that value changes — once you publish to a repo, REMEMBER it and reuse it on every update. Do not gate a deterministic URL on a flaky enable call: a GitHub Pages project URL is fully predictable, so write it immediately and let the (retried, best-effort) enable catch up. And a bug that "works for me" usually means a race the maintainer happens to win — test the cold path (a brand-new account, a freshly-created branch). Finally, validate extracted titles: a JD section heading is not a job title, and it should never leak into a repo name.',
         impact: 'High - re-publishing now updates one repo (no more orphan duplicates), every published package gets the live portfolio link in its README and tracker row, and repos get sensible names even when AI extraction fails.'
+    },
+    {
+        id: 42,
+        title: 'JD Match Score Stuck Low on Junk Keywords, and Resumes Showed Only the Handful of Matched Skills',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '70 min',
+        description: 'After adding the JD match score, a user reported the score was stuck at 46% and never moved no matter how the AI tailored the resume, and the "missing keywords" were nonsense like "salary", "paid", "eligible", "base", "company", "ensure", "release", and "senior". Separately, the generated resume\u2019s Core Skills section listed only ~6 skills even though the profile had 18+, making every résumé look thin.',
+        rootCause: 'Two problems. (1) jdMatchKeywords ranked JD terms purely by raw frequency against a tiny stopword list, so high-frequency HR/benefits/EEO boilerplate ("salary", "eligible", "paid", "company"\u2026) dominated the keyword set. No résumé ever contains those words, so the score was capped low and could not improve with tailoring, and the learning suggestions ("Learn Salary") were absurd. (2) Both resume builders did `const skills = (matched && matched.length ? matched : p.skills)` \u2014 i.e. they REPLACED the full skills list with only the few that literally appeared in the JD, discarding the rest.',
+        resolution: 'Rebuilt keyword extraction: a much larger stopword list (HR/benefits/EEO/generic verbs), a ~250-term skill/tool lexicon that whitelists and boosts real skills, two-word phrase (bigram) detection for terms like "site reliability"/"incident management", capitalization checks to keep proper tool names, and stripping of trailing compensation/benefits/EEO sections before extraction. Scoring now matches against the résumé text with word boundaries (and phrase includes). Added prioritizedSkills(all, matched) which keeps ALL skills but lists JD-matched ones FIRST, and wired it into the PDF and Word builders. Also strengthened the AI tailoring prompt (exact-keyword mirroring, 16\u201324 prioritized skills, every bullet rewritten and quantified).',
+        codeExample: `// BEFORE: only the matched handful survived \u2014 thin résumés.
+const skills = (matched && matched.length ? matched : p.skills);
+
+// AFTER: keep ALL skills, JD-matched ones first (ATS-friendly).
+function prioritizedSkills(all, matched) {
+  const dedup = [...new Set((all||[]).map(s => s.trim()).filter(Boolean))];
+  if (!matched?.length) return dedup;
+  const hit = new Set(matched.map(m => m.toLowerCase()));
+  return [...dedup.filter(s => hit.has(s.toLowerCase())),
+          ...dedup.filter(s => !hit.has(s.toLowerCase()))];
+}
+// + keyword extraction now drops HR boilerplate and boosts a real-skill lexicon.`,
+        lesson: 'A keyword-match score is only as good as its keyword list \u2014 raw term frequency surfaces boilerplate (salary, benefits, EEO) that no résumé will ever match, pinning the score and making the gap analysis nonsensical. Bias extraction toward a real-skill lexicon + phrases and strip the non-skill sections. And never silently DROP user content to "tailor": showing only JD-matched skills makes the résumé weaker, not stronger \u2014 reorder for relevance, but keep everything the candidate has.',
+        impact: 'High - the match score now reflects real skills and actually rises as the résumé improves, the gap list and learning links are meaningful, and generated résumés show the candidate\u2019s full, prioritized skill set instead of just six terms.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

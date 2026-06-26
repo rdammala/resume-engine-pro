@@ -663,19 +663,19 @@ const AIIntegration = {
 
         return `You are a world-class resume writer and ATS (Applicant Tracking System) optimization specialist. ${modeNote}
 
-GOAL: Produce a NEW, polished, ATS-optimized resume for the candidate, specifically targeted at the JOB DESCRIPTION below. Do not simply echo the input — actively rewrite it.
+GOAL: Produce a NEW, substantially REWRITTEN, ATS-optimized resume tailored to the JOB DESCRIPTION (JD) below. You must transform the input, not echo it. A reviewer should immediately see that the summary, skills, and every bullet were rewritten to mirror this specific job.
 
-HOW TO OPTIMIZE FOR ATS AND RECRUITERS:
-- Mirror the exact terminology, hard skills, tools, and keywords used in the job description (only where the candidate genuinely has that experience).
-- Rewrite the professional summary into 3-4 punchy sentences that position the candidate for THIS role, leading with their strongest, most relevant value.
-- Rewrite each experience bullet to be achievement-oriented: strong action verb first, quantified impact (numbers, %, scale) where the source supports it, and aligned to the job's responsibilities.
-- Prioritize and reorder skills so the most JD-relevant ones come first; include synonyms/variants the ATS may scan for.
-- Stay truthful: use only the candidate's real employers, titles, dates, and accomplishments from the data below. Never fabricate.
+NON-NEGOTIABLE RULES FOR A HIGH ATS SCORE:
+1. KEYWORD COVERAGE: Extract the concrete hard skills, tools, technologies, certifications, and domain terms from the JD. For every one the candidate genuinely has (per their data/raw text below), use the JD's EXACT wording (e.g. if the JD says "CI/CD", write "CI/CD", not "continuous integration"). Maximise truthful overlap with the JD.
+2. SKILLS LIST: Return 16-24 skills, ordered with the most JD-relevant first. Include the candidate's real skills PLUS obvious synonyms/variants and closely-adjacent tools they clearly use (e.g. if they list Kubernetes, you may add "Helm", "Docker" only if the raw text supports it). Do NOT invent unrelated skills.
+3. SUMMARY: Write a fresh 3-4 sentence summary that names the target role/domain, leads with the candidate's single strongest selling point for THIS job, and embeds 4-6 of the JD's top keywords naturally.
+4. EXPERIENCE BULLETS: Rewrite EVERY bullet to be achievement-first — strong action verb, what was done, and a QUANTIFIED result (numbers, %, scale, time, money) wherever the source supports it. Reframe each role toward the JD's responsibilities. Each role MUST have 4-6 bullets; never output a single-bullet role.
+5. TRUTHFULNESS: Use only the candidate's real employers, titles, dates, and accomplishments. Never fabricate jobs, degrees, or skills the data does not support. Rephrasing and reframing are encouraged; inventing facts is forbidden.
 
 CANDIDATE STRUCTURED DATA (JSON):
 ${JSON.stringify(structured)}
 
-CANDIDATE FULL RESUME TEXT (authoritative source — extract any details missing from the structured data):
+CANDIDATE FULL RESUME TEXT (authoritative source — mine this for skills/metrics missing from the structured data):
 """
 ${rawText}
 """
@@ -686,13 +686,13 @@ ${jdData}
 """
 
 Respond with ONE valid minified JSON object and NOTHING else — no markdown, no code fences, no commentary. Use EXACTLY these keys:
-{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized professional summary, plain text, no line breaks","skills":["14-18 prioritized, JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ...","Automated ... saving 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to 3x traffic at 99.95% uptime"]}]}
+{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized professional summary, plain text, no line breaks","skills":["16-24 prioritized, JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ...","Automated ... saving 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to 3x traffic at 99.95% uptime"]}]}
 
 Rules:
 - "summary" must be a single plain-text string with NO newline characters.
 - Escape any double quotes inside strings; never use raw newlines inside strings.
 - Order experience most-recent first; each role MUST have 4-6 strong, quantified bullets — a single-bullet role is unacceptable.
-- "skills" must contain at least 14 entries.
+- "skills" must contain at least 16 entries, JD-relevant ones first.
 - For "job_title"/"company", read the JOB DESCRIPTION; use "" if genuinely unclear and never guess a benefit or perk as the company.
 - Return ONLY the JSON object.`;
     },
