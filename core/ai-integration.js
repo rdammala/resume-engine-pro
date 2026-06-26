@@ -556,8 +556,11 @@ const AIIntegration = {
         const model = this.getWebLLMConfig().model;
         const prompt = this.buildTailoringPrompt(resumeData, jdData, mode);
         const maxTokens = Math.max(1800, this.providers.webllm.modes[mode]?.tokens || 1800);
-        try {
+        const runOnce = async () => {
             const engine = await this._getWebLLMEngine(model);
+            // Inference produces no progress events, so tell the UI we've moved
+            // past the download/load phase and are now actually writing.
+            try { if (this.onWebLLMProgress) this.onWebLLMProgress({ progress: 1, text: 'Model ready — writing your tailored resume now…', phase: 'generating' }); } catch (_) {}
             const reply = await engine.chat.completions.create({
                 temperature: 0.4,
                 max_tokens: maxTokens,
@@ -566,10 +569,28 @@ const AIIntegration = {
                     { role: 'user', content: prompt }
                 ]
             });
-            const content = reply?.choices?.[0]?.message?.content
+            return reply?.choices?.[0]?.message?.content
                 ?? (typeof reply === 'string' ? reply : JSON.stringify(reply));
+        };
+        try {
+            const content = await runOnce();
             return { success: true, provider: 'webllm', cost: 0, tailored: content };
         } catch (error) {
+            // A failed run can leave the cached engine in a disposed/broken state
+            // (common on Intel iGPUs) — drop it so a retry rebuilds cleanly, and
+            // retry once for transient "disposed / device lost" errors.
+            this._webllmEngine = null;
+            this._webllmEngineModel = null;
+            if (/dispos|destroy|device.*lost|lost.*device/i.test(error.message || '')) {
+                try {
+                    const content = await runOnce();
+                    return { success: true, provider: 'webllm', cost: 0, tailored: content };
+                } catch (e2) {
+                    this._webllmEngine = null;
+                    this._webllmEngineModel = null;
+                    throw new Error(`Browser AI (WebLLM) error: ${e2.message}`);
+                }
+            }
             throw new Error(`Browser AI (WebLLM) error: ${error.message}`);
         }
     },

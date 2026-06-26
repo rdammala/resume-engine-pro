@@ -788,7 +788,11 @@ function displayHistory() {
                     actionsCell = dl + ` <button class="action-btn" title="Publish to GitHub & add to tracker" onclick="publishHistoryEntry('${item.id}', this)">📤 Publish</button>`;
                 }
             } else if (status === 'in-progress' || status === 'failed') {
-                actionsCell = `<button class="action-btn" title="Re-check the cloud run" onclick="recheckHistoryEntry('${item.id}', this)">🔄 Re-check</button>`;
+                if (item.provider === 'ollama') {
+                    actionsCell = `<button class="action-btn" title="Re-check the cloud run" onclick="recheckHistoryEntry('${item.id}', this)">🔄 Re-check</button>`;
+                } else {
+                    actionsCell = `<button class="action-btn" title="This ran in your browser — re-generate it from the Generate tab" onclick="recheckHistoryEntry('${item.id}', this)">ℹ️ Why?</button>`;
+                }
             }
         }
         return `<tr>
@@ -2450,6 +2454,17 @@ async function publishHistoryEntry(histId, btnEl) {
 async function recheckHistoryEntry(histId, btnEl) {
     const item = (StorageManager.getHistory(100) || []).find(h => h.id === histId);
     if (!item) { showToast('Could not find that generation', 'error'); return; }
+    // Only Ollama runs execute as a background GitHub cloud job that can be
+    // re-checked. Browser AI (WebLLM), Pollinations, paid and local runs all
+    // happen synchronously in this tab — there is nothing running to poll, so
+    // re-checking would "do nothing". Tell the user clearly and offer a retry.
+    if (item.provider !== 'ollama') {
+        const label = item.status === 'failed' ? 'already finished as failed' : 'runs entirely in this browser tab';
+        const note = `This was an in-browser request (${providerLabel(item.provider)}), not a background cloud job, so it ${label} — there's nothing to re-check. `
+            + `Re-generate it from the Generate tab; if Browser AI keeps failing on your device, pick Free AI (Pollinations) which always works without setup.`;
+        showToast(note, 'warning');
+        return;
+    }
     if (!(window.GitHubRunner && GitHubRunner.hasToken())) {
         showToast('Add a GitHub token in Settings → Ollama first', 'warning');
         return;
@@ -2700,6 +2715,11 @@ async function generateSingle() {
             if (provider === 'webllm') {
                 AIIntegration.onWebLLMProgress = (report) => {
                     if (!statusContent) return;
+                    if (report && report.phase === 'generating') {
+                        statusContent.innerHTML = `<p>✍️ Browser AI is writing your tailored resume now…</p>`
+                            + `<p class="muted" style="font-size:12px">This runs entirely on your device and can take ~30s–2 min. Please keep this tab open.</p>`;
+                        return;
+                    }
                     const pct = report && typeof report.progress === 'number' ? Math.round(report.progress * 100) : null;
                     const txt = (report && report.text) ? report.text : 'Loading Browser AI model...';
                     statusContent.innerHTML = `<p>🧠 Browser AI: ${txt}${pct !== null ? ` (${pct}%)` : ''}</p>`
@@ -2963,6 +2983,10 @@ async function generateBulk() {
     let activeProvider = provider;
     if (useAI && provider === 'webllm') {
         AIIntegration.onWebLLMProgress = (report) => {
+            if (report && report.phase === 'generating') {
+                setMsg(`<p>✍️ Browser AI is writing this resume now…</p><p style="font-size:12px;opacity:.8">Runs on your device — ~30s–2 min each. Keep this tab open.</p>`);
+                return;
+            }
             const pct = report && typeof report.progress === 'number' ? Math.round(report.progress * 100) : null;
             const txt = (report && report.text) ? report.text : 'Loading Browser AI model...';
             setMsg(`<p>🧠 Browser AI: ${txt}${pct !== null ? ` (${pct}%)` : ''}</p><p style="font-size:12px;opacity:.8">First run downloads the model once (cached after).</p>`);
