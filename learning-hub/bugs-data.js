@@ -971,5 +971,29 @@ else if (outcome === 'success-norebuild') showToast('Marked Success — open His
 else                           showToast('Ready to download in the Generate tab', 'success');`,
         lesson: 'A function that mutates state must report what it actually did — never let a caller assume success and fire a notification that contradicts the very row it just updated. Return an outcome and toast on it. And before declaring an AI/cloud result a failure, try to salvage it: small local models routinely wrap valid content in prose, so a tolerant parser recovers most "bad JSON" cases that a strict JSON.parse rejects.',
         impact: 'High - notifications now always match the History card, recoverable cloud output yields downloadable documents instead of a false failure, and genuinely broken runs show an honest, actionable message.'
+    },
+    {
+        id: 44,
+        title: 'AI Replaced the Real Employer with the Hiring Company ("Docusign") and Used "Mon YYYY" Placeholder Dates',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / Prompt',
+        fixTime: '60 min',
+        description: 'A user tailoring to a DocuSign job got a generated résumé where every experience entry listed "Senior Site Reliability Engineer - Docusign, Remote" with dates "Mon YYYY - Mon YYYY". Their real employer (Microsoft Corporation, Redmond WA, May 2021 - Present) was gone and one real job had been split into several fabricated DocuSign roles. The rewritten bullets were good, but the work history was fabricated.',
+        rootCause: 'Two prompt issues plus no guardrail. (1) The model conflated the TARGET (hiring) company from the job description with the candidate\u2019s employer, so it stamped "Docusign" onto every role. (2) The JSON schema example literally contained "dates":"Mon YYYY - Mon YYYY", and the weak 3B model echoed that placeholder verbatim. (3) Nothing on the client validated the model\u2019s experience output, so fabricated employers and placeholder dates flowed straight into the résumé/portfolio.',
+        resolution: 'Hardened the prompts (both the in-app provider prompt and the Ollama cloud prompt): an explicit rule that company/role/location/dates are copied VERBATIM from the candidate and that the JD\u2019s hiring company is the target you apply TO, never an employer; placeholder dates ("Mon YYYY") are banned (use "" if unknown); the schema example is now labelled ILLUSTRATIVE with "replace with the candidate\u2019s REAL values". Added a client-side reconcileExperience() guardrail applied to BOTH the inline and Ollama-cloud paths: when role counts match it keeps the candidate\u2019s real employer/title/dates and adopts only the rewritten bullets; a single real employer absorbs all rewritten bullets (models love to split one job into many); otherwise it strips any experience whose company is the hiring company and removes placeholder ("YYYY") dates.',
+        codeExample: `// Guardrail: real employer/title/dates win; only bullets come from the model.
+function reconcileExperience(aiExp, originalExp, hiringCompany) {
+  const ai = (aiExp||[]).map(normalizeAIExperience);
+  const orig = (originalExp||[]).map(normalizeAIExperience);
+  const isHiring = c => { const h=norm(hiringCompany), x=norm(c); return h && x && (x.includes(h)||h.includes(x)); };
+  if (orig.length && orig.length === ai.length)          // 1:1 → keep real headers
+    return orig.map((o,i) => ({ ...o, description: ai[i].description || o.description }));
+  if (orig.length === 1)                                  // one real job, many fake → merge
+    return [{ ...orig[0], description: ai.map(a=>a.description).filter(Boolean).join('\\n') }];
+  return ai.map(a => ({ ...a, company: isHiring(a.company)?'':a.company, year: /yyyy/i.test(a.year)?'':a.year }));
+}`,
+        lesson: 'Never put a literal placeholder ("Mon YYYY") in a few-shot schema example — weak models copy examples verbatim. Label examples as illustrative and tell the model to substitute real data. And for anything an LLM must NOT change (employer, dates, identity), do not rely on the prompt alone: enforce it in code. The hiring company in a JD is a classic source of hallucination because it is the most prominent company name in the context — explicitly fence it off from the work-history fields.',
+        impact: 'High - tailored résumés keep the candidate\u2019s real employers, titles and dates while still benefiting from rewritten, JD-aligned bullets; the JD\u2019s hiring company can no longer masquerade as a past employer, and placeholder dates never reach the document.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

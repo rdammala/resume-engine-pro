@@ -2294,11 +2294,12 @@ async function tailorProfileWithAI(profile, jdText, provider, mode) {
     } else if (typeof aiData.skills === 'string' && aiData.skills.trim()) {
         tailored.skills = aiData.skills.split(',').map(s => s.trim()).filter(Boolean);
     }
-    // Experience: normalize the model's shape into what the builders expect
+    // Experience: keep the candidate's REAL employers/titles/dates, adopt only
+    // the model's rewritten bullets (prevents fabricated employers like the JD's
+    // hiring company, and placeholder dates).
     if (Array.isArray(aiData.experience) && aiData.experience.length) {
-        const mapped = aiData.experience.map(normalizeAIExperience)
-            .filter(e => e.position || e.company || e.description);
-        if (mapped.length) tailored.experience = mapped;
+        const reconciled = reconcileExperience(aiData.experience, profile.experience, aiData.company || aiData.job_company);
+        if (reconciled && reconciled.length) tailored.experience = reconciled;
     }
     return { profile: tailored, cost: result.cost || 0, usedAI: true };
 }
@@ -2372,6 +2373,53 @@ function normalizeAIExperience(exp) {
     return { position, company, year, description };
 }
 
+// SAFEGUARD: weak models sometimes put the JOB's hiring company as the
+// candidate's employer (e.g. "Docusign") and copy placeholder dates ("Mon
+// YYYY") straight from the prompt example. Reconcile the model's rewritten
+// bullets with the candidate's REAL employers/titles/dates so the work history
+// is never fabricated — only the bullet text is refined.
+function reconcileExperience(aiExperience, originalExperience, hiringCompany) {
+    const ai = (aiExperience || []).map(normalizeAIExperience)
+        .filter(e => e.position || e.company || e.description);
+    if (!ai.length) return null;
+    const orig = (originalExperience || []).map(normalizeAIExperience)
+        .filter(e => e.position || e.company || e.description);
+    const cleanYear = (y) => /yyyy|mm\s*\/\s*yyyy|xx/i.test(String(y || '')) ? '' : String(y || '').trim();
+    const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const h = norm(hiringCompany);
+    const isHiring = (company) => { const c = norm(company); return !!(c && h && (c.includes(h) || h.includes(c))); };
+
+    // Same number of roles → keep the candidate's REAL employer/title/dates and
+    // adopt only the rewritten bullets.
+    if (orig.length && orig.length === ai.length) {
+        return orig.map((o, i) => ({
+            position: o.position || ai[i].position,
+            company: o.company || (isHiring(ai[i].company) ? '' : ai[i].company),
+            year: o.year || cleanYear(ai[i].year),
+            description: ai[i].description || o.description
+        }));
+    }
+    // Exactly one real employer → all rewritten bullets belong under it (the
+    // model often splits one job into several fake roles).
+    if (orig.length === 1) {
+        const bullets = ai.map(a => a.description).filter(Boolean).join('\n');
+        return [{
+            position: orig[0].position || ai[0].position,
+            company: orig[0].company || (isHiring(ai[0].company) ? '' : ai[0].company),
+            year: orig[0].year || cleanYear(ai[0].year),
+            description: bullets || orig[0].description
+        }];
+    }
+    // Otherwise sanitize the model's roles: never show the hiring company as the
+    // employer, and drop placeholder dates.
+    return ai.map(a => ({
+        position: a.position,
+        company: isHiring(a.company) ? '' : a.company,
+        year: cleanYear(a.year),
+        description: a.description
+    }));
+}
+
 // ============================================================================
 // OLLAMA CLOUD PIPELINE (free, ephemeral GitHub Actions runner)
 // ----------------------------------------------------------------------------
@@ -2423,9 +2471,8 @@ function mergeTailored(profile, aiData) {
         tailored.skills = aiData.skills.map(s => String(s).trim()).filter(Boolean);
     }
     if (aiData && Array.isArray(aiData.experience) && aiData.experience.length) {
-        const mapped = aiData.experience.map(normalizeAIExperience)
-            .filter(e => e.position || e.company || e.description);
-        if (mapped.length) tailored.experience = mapped;
+        const reconciled = reconcileExperience(aiData.experience, profile.experience, aiData.company || aiData.job_company);
+        if (reconciled && reconciled.length) tailored.experience = reconciled;
     }
     // Carry the model's education too (it was previously dropped, so AI-tailored
     // resumes/portfolios lost their schooling). Accept an array or a string.

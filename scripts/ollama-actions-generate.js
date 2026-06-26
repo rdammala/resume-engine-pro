@@ -47,7 +47,12 @@ QUALITY BAR (non-negotiable):
     * contain a QUANTIFIED result wherever the source supports it (%, $, time saved, scale, headcount, uptime, MTTR, throughput),
     * name concrete technologies/methods relevant to the JD,
     * be a single line under ~28 words, no trailing period required.
-  Order roles most-recent first. Do NOT merge multiple roles. Keep the candidate's real employers, titles, and dates.
+  Order roles most-recent first. Do NOT merge multiple roles.
+- PRESERVE WORK HISTORY EXACTLY — DO NOT FABRICATE EMPLOYERS OR DATES:
+    * "company", "role", "location", and "dates" MUST be copied VERBATIM from the candidate's resume. Only the bullet "details" may be rewritten.
+    * The company named in the JOB DESCRIPTION is the TARGET you are applying TO — it is NEVER the candidate's employer. Never list the hiring company as a place the candidate worked.
+    * Keep the candidate's real employer names, titles, and exact dates (e.g. "May 2021 - Present"). If a date is genuinely unknown, use "" — NEVER output placeholders like "Mon YYYY", "MM/YYYY", or "XX".
+    * Do not invent new jobs, do not split one real job into multiple employers, and do not merge separate employers.
 - EDUCATION & CERTS: include real degrees/certifications if present.
 - TRUTHFULNESS: use only the candidate's real employers, titles, dates and accomplishments. Never invent employers or metrics that are not implied by the source. If a number is not supported, write a strong qualitative bullet instead.
 - Also extract the target job's title and the hiring company from the JOB DESCRIPTION into "job_title" and "company" (best-effort; use "" if genuinely unclear — never guess a benefit or perk as the company).
@@ -62,12 +67,13 @@ TARGET JOB DESCRIPTION:
 ${jdText}
 """
 
-Respond with ONE valid minified JSON object and NOTHING else (no markdown, no code fences, no commentary). Use EXACTLY these keys:
-{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized summary, plain text, no line breaks","skills":["14-18 prioritized JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ... on time","Automated ... reducing manual toil by 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to handle 3x traffic with 99.95% uptime"]}],"education":["degree, institution, year"]}
+Respond with ONE valid minified JSON object and NOTHING else (no markdown, no code fences, no commentary). Use EXACTLY these keys (the experience values shown are ILLUSTRATIVE — replace them with the candidate's REAL employer, title, and dates; never echo the placeholders):
+{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized summary, plain text, no line breaks","skills":["14-18 prioritized JD-aligned skills"],"experience":[{"role":"the candidate's ACTUAL job title","company":"the candidate's ACTUAL employer (never the hiring company)","location":"the candidate's real city, ST","dates":"the candidate's real dates, e.g. May 2021 - Present","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ... on time","Automated ... reducing manual toil by 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to handle 3x traffic with 99.95% uptime"]}],"education":["degree, institution, year"]}
 
 HARD REQUIREMENTS:
 - Each "details" array MUST contain 4 to 6 bullets. A single-bullet role is unacceptable.
 - "skills" MUST contain at least 14 entries.
+- Inside each experience entry, "company"/"role"/"dates" are the CANDIDATE's real values copied verbatim — the hiring company must NEVER appear there, and never output placeholder dates like "Mon YYYY".
 - Escape any double quotes inside strings; never use raw newline characters inside strings.
 - Return ONLY the JSON object.`;
 }

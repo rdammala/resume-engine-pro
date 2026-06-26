@@ -670,7 +670,12 @@ NON-NEGOTIABLE RULES FOR A HIGH ATS SCORE:
 2. SKILLS LIST: Return 16-24 skills, ordered with the most JD-relevant first. Include the candidate's real skills PLUS obvious synonyms/variants and closely-adjacent tools they clearly use (e.g. if they list Kubernetes, you may add "Helm", "Docker" only if the raw text supports it). Do NOT invent unrelated skills.
 3. SUMMARY: Write a fresh 3-4 sentence summary that names the target role/domain, leads with the candidate's single strongest selling point for THIS job, and embeds 4-6 of the JD's top keywords naturally.
 4. EXPERIENCE BULLETS: Rewrite EVERY bullet to be achievement-first — strong action verb, what was done, and a QUANTIFIED result (numbers, %, scale, time, money) wherever the source supports it. Reframe each role toward the JD's responsibilities. Each role MUST have 4-6 bullets; never output a single-bullet role.
-5. TRUTHFULNESS: Use only the candidate's real employers, titles, dates, and accomplishments. Never fabricate jobs, degrees, or skills the data does not support. Rephrasing and reframing are encouraged; inventing facts is forbidden.
+5. PRESERVE WORK HISTORY EXACTLY — DO NOT FABRICATE EMPLOYERS OR DATES:
+   - "company", "role", "location", and "dates" MUST be copied VERBATIM from the candidate's data/raw text. Only the bullet "details" may be rewritten.
+   - The company in the JOB DESCRIPTION is the TARGET you are applying TO — it is NEVER the candidate's employer. Never list the hiring company as a place the candidate worked.
+   - Keep the candidate's real employer names, job titles, and exact employment dates (e.g. "May 2021 - Present"). If a date is genuinely unknown, use "" — NEVER output placeholders like "Mon YYYY", "MM/YYYY", or "XX".
+   - Do not invent new jobs, do not split one real job into multiple employers, and do not merge separate employers.
+6. TRUTHFULNESS: Use only the candidate's real employers, titles, dates, and accomplishments. Rephrasing and reframing are encouraged; inventing facts is forbidden.
 
 CANDIDATE STRUCTURED DATA (JSON):
 ${JSON.stringify(structured)}
@@ -685,15 +690,16 @@ TARGET JOB DESCRIPTION:
 ${jdData}
 """
 
-Respond with ONE valid minified JSON object and NOTHING else — no markdown, no code fences, no commentary. Use EXACTLY these keys:
-{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized professional summary, plain text, no line breaks","skills":["16-24 prioritized, JD-aligned skills"],"experience":[{"role":"job title","company":"employer","location":"city, ST","dates":"Mon YYYY - Mon YYYY","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ...","Automated ... saving 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to 3x traffic at 99.95% uptime"]}]}
+Respond with ONE valid minified JSON object and NOTHING else — no markdown, no code fences, no commentary. Use EXACTLY these keys (the experience values shown are ILLUSTRATIVE — replace them with the candidate's REAL employer, title, and dates; never echo the placeholders):
+{"job_title":"the role being applied for","company":"the hiring company","summary":"3-4 sentence ATS-optimized professional summary, plain text, no line breaks","skills":["16-24 prioritized, JD-aligned skills"],"experience":[{"role":"the candidate's ACTUAL job title","company":"the candidate's ACTUAL employer (never the hiring company)","location":"the candidate's real city, ST","dates":"the candidate's real dates, e.g. May 2021 - Present","details":["Architected X using Y, cutting Z by 40%","Led a team of 8 to deliver ...","Automated ... saving 200+ hours/quarter","Reduced MTTR from 45m to 9m by ...","Scaled platform to 3x traffic at 99.95% uptime"]}]}
 
 Rules:
 - "summary" must be a single plain-text string with NO newline characters.
 - Escape any double quotes inside strings; never use raw newlines inside strings.
 - Order experience most-recent first; each role MUST have 4-6 strong, quantified bullets — a single-bullet role is unacceptable.
 - "skills" must contain at least 16 entries, JD-relevant ones first.
-- For "job_title"/"company", read the JOB DESCRIPTION; use "" if genuinely unclear and never guess a benefit or perk as the company.
+- "company"/"role"/"dates" inside each experience entry are the CANDIDATE's real values — copy them verbatim from the data; the hiring company must never appear there, and never output placeholder dates like "Mon YYYY".
+- For the top-level "job_title"/"company", read the JOB DESCRIPTION; use "" if genuinely unclear and never guess a benefit or perk as the company.
 - Return ONLY the JSON object.`;
     },
     
