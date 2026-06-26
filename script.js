@@ -2522,7 +2522,14 @@ async function resumePendingRuns() {
         catch (_) { continue; }
         if (!res) continue;
         if (res.state === 'success') {
-            await finalizeResumedRun(item, res.data);
+            const outcome = await finalizeResumedRun(item, res.data);
+            if (outcome === 'failed') {
+                showToast('An earlier Ollama run finished but returned unusable output — Re-check it, or use Free AI (Pollinations).', 'warning');
+            } else if (outcome === 'success-norebuild') {
+                showToast('An earlier Ollama run finished — open it from History to Publish.', 'success');
+            } else {
+                showToast('Your Ollama cloud resume is ready — open the Generate tab to download', 'success');
+            }
         } else if (res.state === 'failed') {
             try {
                 StorageManager.updateGeneration(item.id, { status: 'failed', error: 'Cloud job concluded ' + (res.conclusion || 'failure') + '. See the Actions logs.' });
@@ -2542,19 +2549,39 @@ function scheduleResumeCheck() {
 
 async function finalizeResumedRun(item, aiData) {
     try {
-        if (!aiData || aiData._raw) {
-            StorageManager.updateGeneration(item.id, { status: 'failed', error: 'Model did not return clean JSON.' });
+        // Salvage messy model output: the 3B cloud model often wraps its JSON in
+        // prose/markdown, so the cloud script commits it as {_raw:"..."}. Try the
+        // tolerant parser to recover structured fields before giving up.
+        if (aiData && aiData._raw) {
+            const salvaged = parseAIResponse(aiData._raw);
+            if (salvaged && (
+                (typeof salvaged.summary === 'string' && salvaged.summary.trim()) ||
+                (Array.isArray(salvaged.skills) && salvaged.skills.length) ||
+                (Array.isArray(salvaged.experience) && salvaged.experience.length)
+            )) {
+                aiData = salvaged;
+            }
+        }
+        const hasContent = aiData && !aiData._raw && (
+            (typeof aiData.summary === 'string' && aiData.summary.trim()) ||
+            (Array.isArray(aiData.skills) && aiData.skills.length) ||
+            (Array.isArray(aiData.experience) && aiData.experience.length)
+        );
+        if (!hasContent) {
+            StorageManager.updateGeneration(item.id, {
+                status: 'failed',
+                error: 'The run finished on GitHub, but the cloud model (Llama 3) returned unusable output (messy JSON) — so there are no documents. Click Re-check to retry, or use Free AI (Pollinations), which is more reliable than the 3B cloud model.'
+            });
             displayHistory();
-            return;
+            return 'failed';
         }
         const profile = item.profileId ? StorageManager.getProfile(item.profileId) : null;
         if (!profile) {
             // Can't rebuild documents without the profile, but the run succeeded and
             // the result is committed in the repo — mark it Success regardless.
-            StorageManager.updateGeneration(item.id, { status: 'success', error: '' });
+            StorageManager.updateGeneration(item.id, { status: 'success', error: 'Run succeeded — open it from History to Publish.' });
             displayHistory();
-            showToast('An earlier Ollama cloud resume finished successfully (see History)', 'success');
-            return;
+            return 'success-norebuild';
         }
         const tailored = mergeTailored(profile, aiData);
         const opts = item.genOpts || { wantResume: true };
@@ -2571,7 +2598,7 @@ async function finalizeResumedRun(item, aiData) {
             status: 'success', error: '', outputs: count, matchedSkills: matched.length, aiUsed: true
         });
         displayHistory();
-        showToast('Your Ollama cloud resume is ready — open the Generate tab to download', 'success');
+        return 'success';
     } catch (e) {
         console.warn('finalizeResumedRun failed:', e.message);
         // The cloud run itself SUCCEEDED (its result is committed in the repo);
@@ -2583,8 +2610,8 @@ async function finalizeResumedRun(item, aiData) {
                 error: 'Run succeeded, but auto-rebuilding the documents failed (' + (e.message || 'error') + '). Use the Publish button or click Re-check to rebuild.'
             });
             displayHistory();
-            showToast('Cloud run succeeded, but rebuilding documents failed — see History', 'warning');
         } catch (_) {}
+        return 'success-norebuild';
     }
 }
 
@@ -2899,8 +2926,14 @@ async function recheckHistoryEntry(histId, btnEl) {
                 if (run.status === 'completed') {
                     if (run.conclusion === 'success') {
                         const data = await GitHubRunner.fetchResult(item.runId);
-                        await finalizeResumedRun(item, data);
-                        showToast('Run completed — flipped to Success', 'success');
+                        const outcome = await finalizeResumedRun(item, data);
+                        if (outcome === 'failed') {
+                            showToast('The run finished on GitHub but the model returned unusable output — see the row. Tip: Free AI (Pollinations) is more reliable.', 'error');
+                        } else if (outcome === 'success-norebuild') {
+                            showToast('Run completed — marked Success. Open it from History to Publish.', 'success');
+                        } else {
+                            showToast('Run completed — your resume is ready to download in the Generate tab', 'success');
+                        }
                     } else {
                         StorageManager.updateGeneration(item.id, { status: 'failed', error: 'Concluded ' + (run.conclusion || 'failure') + '. See the Actions logs.' });
                         displayHistory();
@@ -2923,8 +2956,12 @@ async function recheckHistoryEntry(histId, btnEl) {
         if (!rid) { showToast('Could not parse a run id from the latest run', 'warning'); return; }
         if (!confirm('This entry has no matching run. Import documents from the latest successful run "' + rid + '"?')) return;
         const data = await GitHubRunner.fetchResult(rid);
-        await finalizeResumedRun({ ...item, runId: rid }, data);
-        showToast('Imported the latest successful run', 'success');
+        const outcome = await finalizeResumedRun({ ...item, runId: rid }, data);
+        if (outcome === 'failed') {
+            showToast('That run returned unusable output (messy model JSON) — try regenerating, or use Free AI (Pollinations).', 'error');
+        } else {
+            showToast('Imported the latest successful run', 'success');
+        }
     } catch (e) {
         console.error('Re-check failed:', e);
         showToast('Re-check failed: ' + e.message, 'error');

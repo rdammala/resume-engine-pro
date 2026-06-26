@@ -127,12 +127,37 @@ function extractJson(raw) {
     const a = s.indexOf('{');
     const b = s.lastIndexOf('}');
     const candidate = (a !== -1 && b > a) ? s.slice(a, b + 1) : s;
-    try {
-        return JSON.parse(candidate);
-    } catch (e) {
-        console.error('Model did not return valid JSON; saving raw output for inspection.');
-        return { _raw: raw };
+    const tryParse = (str) => { try { return JSON.parse(str); } catch (_) { return null; } };
+
+    // 1) Straight parse, then 2) strip trailing commas (a very common LLM slip).
+    let obj = tryParse(candidate) || tryParse(candidate.replace(/,\s*([}\]])/g, '$1'));
+    if (obj) return obj;
+
+    // 3) Balanced-brace scan: find the first COMPLETE top-level object, ignoring
+    //    braces inside strings. Handles trailing prose after the JSON.
+    if (a !== -1) {
+        let depth = 0, inStr = false, esc = false;
+        for (let i = a; i < s.length; i++) {
+            const ch = s[i];
+            if (inStr) {
+                if (esc) esc = false;
+                else if (ch === '\\') esc = true;
+                else if (ch === '"') inStr = false;
+            } else if (ch === '"') inStr = true;
+            else if (ch === '{') depth++;
+            else if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                    const seg = s.slice(a, i + 1);
+                    obj = tryParse(seg) || tryParse(seg.replace(/,\s*([}\]])/g, '$1'));
+                    if (obj) return obj;
+                    break;
+                }
+            }
+        }
     }
+    console.error('Model did not return valid JSON; saving raw output for inspection.');
+    return { _raw: raw };
 }
 
 function toMarkdown(r) {

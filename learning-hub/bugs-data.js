@@ -949,5 +949,27 @@ function prioritizedSkills(all, matched) {
 // + keyword extraction now drops HR boilerplate and boosts a real-skill lexicon.`,
         lesson: 'A keyword-match score is only as good as its keyword list \u2014 raw term frequency surfaces boilerplate (salary, benefits, EEO) that no résumé will ever match, pinning the score and making the gap analysis nonsensical. Bias extraction toward a real-skill lexicon + phrases and strip the non-skill sections. And never silently DROP user content to "tailor": showing only JD-matched skills makes the résumé weaker, not stronger \u2014 reorder for relevance, but keep everything the candidate has.',
         impact: 'High - the match score now reflects real skills and actually rises as the résumé improves, the gap list and learning links are meaningful, and generated résumés show the candidate\u2019s full, prioritized skill set instead of just six terms.'
+    },
+    {
+        id: 43,
+        title: 'Ollama Re-check Toasted "Success" While the Card Stayed Failed (and No Files)',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / GitHub',
+        fixTime: '55 min',
+        description: 'An Ollama cloud run finished green on GitHub, but the app showed a "Run completed — flipped to Success" toast WHILE the History row stayed "Failed" with "Model did not return clean JSON", and no documents were available to download. The success notification and the actual card state directly contradicted each other.',
+        rootCause: 'Two problems. (1) In recheckHistoryEntry, the success toast fired UNCONDITIONALLY after finalizeResumedRun returned — but finalizeResumedRun had internally marked the row Failed because the committed result was {_raw:"..."} (the 3B Llama model wrapped its JSON in prose, so the cloud extractJson could not parse it). The caller never inspected the real outcome. (2) finalizeResumedRun treated any _raw envelope as a hard failure with no attempt to recover, so messy-but-recoverable model output produced zero files.',
+        resolution: 'finalizeResumedRun now RETURNS its real outcome ("success" | "success-norebuild" | "failed") and no longer toasts internally; every caller (Re-check, the background monitor, and the import path) toasts based on that return so the message always matches the card. It also SALVAGES _raw output by running the tolerant parseAIResponse over it to recover summary/skills/experience before giving up; only truly unusable output is marked Failed, now with a clear message pointing to Re-check or Free AI (Pollinations). The cloud-side extractJson was also hardened (trailing-comma repair + a balanced-brace scan) so future runs commit clean JSON more often.',
+        codeExample: `// BEFORE: toast always claimed success, even when the row was set to Failed.
+await finalizeResumedRun(item, data);
+showToast('Run completed — flipped to Success', 'success');
+
+// AFTER: act on the real outcome; salvage messy output first.
+const outcome = await finalizeResumedRun(item, data);   // 'success' | 'success-norebuild' | 'failed'
+if (outcome === 'failed')      showToast('Finished, but the model returned unusable output — Re-check or use Free AI', 'error');
+else if (outcome === 'success-norebuild') showToast('Marked Success — open History to Publish', 'success');
+else                           showToast('Ready to download in the Generate tab', 'success');`,
+        lesson: 'A function that mutates state must report what it actually did — never let a caller assume success and fire a notification that contradicts the very row it just updated. Return an outcome and toast on it. And before declaring an AI/cloud result a failure, try to salvage it: small local models routinely wrap valid content in prose, so a tolerant parser recovers most "bad JSON" cases that a strict JSON.parse rejects.',
+        impact: 'High - notifications now always match the History card, recoverable cloud output yields downloadable documents instead of a false failure, and genuinely broken runs show an honest, actionable message.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
