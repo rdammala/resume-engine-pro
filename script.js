@@ -1819,7 +1819,7 @@ function refreshMatchCard() {
     const profile = sel && sel.value ? StorageManager.getProfile(sel.value) : null;
     const jd = (document.getElementById('jdText')?.value || '').trim();
     renderMatchCard(profile, jd);
-    if (typeof renderResumeTemplatePicks === 'function') renderResumeTemplatePicks();
+    if (typeof renderResumeGallery === 'function') renderResumeGallery();
 }
 
 // Show an ATS-style keyword match score + what's missing, so the user can
@@ -3815,18 +3815,83 @@ function populatePortfolioTemplates() {
     if ([...sel.options].some(o => o.value === current)) sel.value = current;
 }
 
-// ---- Résumé document templates: picker, description, and AI "top picks" ----
+// ---- Résumé document templates: VISUAL gallery, description, AI "top picks" ----
+
+// Render a small SVG preview that mirrors a template's real look (header style,
+// accent colour, heading treatment, serif vs sans) — so users pick by sight.
+function resumeTemplateThumb(t) {
+    const ac = t.accent, nm = t.name, hd = t.heading, dv = t.divider;
+    const ff = t.font === 'times' ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
+    const gray = '#c9ced6';
+    const line = (x, y, w, col) => `<rect x="${x}" y="${y}" width="${w}" height="3" rx="1.5" fill="${col || gray}"/>`;
+    let header = '', top = 44;
+    if (t.header === 'band') {
+        header = `<rect x="0" y="0" width="160" height="34" fill="${ac}"/>
+            <text x="80" y="17" text-anchor="middle" font-family="${ff}" font-size="11" font-weight="bold" fill="#ffffff">NAME</text>
+            <rect x="50" y="24" width="60" height="2.5" rx="1.25" fill="#ffffff" opacity="0.75"/>`;
+        top = 46;
+    } else if (t.header === 'left') {
+        header = `<text x="12" y="18" font-family="${ff}" font-size="12" font-weight="bold" fill="${nm}">NAME</text>
+            <rect x="12" y="24" width="74" height="2.5" rx="1.25" fill="${gray}"/>
+            <rect x="12" y="32" width="136" height="2" fill="${dv}"/>`;
+    } else {
+        header = `<text x="80" y="18" text-anchor="middle" font-family="${ff}" font-size="12" font-weight="bold" fill="${nm}">NAME</text>
+            <rect x="45" y="24" width="70" height="2.5" rx="1.25" fill="${gray}"/>
+            <rect x="12" y="32" width="136" height="2" fill="${dv}"/>`;
+    }
+    const section = (label, y) => {
+        const caps = t.headingStyle === 'caps-underline';
+        const txt = caps ? label.toUpperCase() : label;
+        let h;
+        if (t.headingStyle === 'bar') {
+            h = `<rect x="12" y="${y - 7}" width="3" height="9" fill="${ac}"/>
+                 <text x="19" y="${y}" font-family="${ff}" font-size="7.5" font-weight="bold" fill="${hd}">${txt}</text>
+                 <rect x="19" y="${y + 3}" width="129" height="1.4" fill="${dv}"/>`;
+        } else {
+            h = `<text x="12" y="${y}" font-family="${ff}" font-size="7.5" font-weight="bold" fill="${hd}">${txt}</text>
+                 <rect x="12" y="${y + 3}" width="136" height="${caps ? 1.6 : 1.2}" fill="${dv}"/>`;
+        }
+        return h + line(12, y + 10, 130) + line(12, y + 16, 118) + line(12, y + 22, 134);
+    };
+    return `<svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" class="rc-thumb" preserveAspectRatio="xMidYMid meet">
+        <rect x="0.5" y="0.5" width="159" height="209" fill="#ffffff" stroke="#e2e5ea"/>
+        ${header}
+        ${section('Summary', top + 8)}
+        ${section('Skills', top + 56)}
+        ${section('Experience', top + 104)}
+    </svg>`;
+}
+
 function populateResumeTemplates() {
     const sel = document.getElementById('resumeTemplate');
     if (!sel) return;
     let saved = 'classic-ats';
     try { saved = (window.StorageManager && StorageManager.get && StorageManager.get('resumeTemplate')) || 'classic-ats'; } catch (_) {}
-    sel.innerHTML = RESUME_TEMPLATES
-        .map(t => `<option value="${t.id}">${escHtml(t.name)} — ${escHtml(t.tags.join(' · '))}</option>`)
-        .join('');
+    sel.innerHTML = RESUME_TEMPLATES.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
     if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
+    renderResumeGallery();
     renderResumeTemplateDesc();
-    renderResumeTemplatePicks();
+}
+
+function renderResumeGallery() {
+    const box = document.getElementById('resumeTemplateGallery');
+    const sel = document.getElementById('resumeTemplate');
+    if (!box || !sel) return;
+    const selected = sel.value || 'classic-ats';
+    const jd = (document.getElementById('jdText')?.value || '').trim();
+    let profile = null;
+    try { const id = document.getElementById('selectProfile')?.value; profile = id ? StorageManager.getProfile(id) : null; } catch (_) {}
+    const recs = new Set(recommendResumeTemplates(jd, profile));
+    box.innerHTML = RESUME_TEMPLATES.map(t => {
+        const isSel = t.id === selected;
+        const isRec = recs.has(t.id);
+        return `<button type="button" class="resume-card${isSel ? ' selected' : ''}" onclick="selectResumeTemplate('${t.id}')" title="${escHtml(t.desc)}">
+            ${isRec ? '<span class="rc-badge">✨ Top pick</span>' : ''}
+            <span class="rc-thumb-wrap">${resumeTemplateThumb(t)}</span>
+            <span class="rc-name">${escHtml(t.name)}</span>
+            <span class="rc-tags">${escHtml(t.tags.join(' · '))}</span>
+        </button>`;
+    }).join('');
 }
 
 function renderResumeTemplateDesc() {
@@ -3838,35 +3903,26 @@ function renderResumeTemplateDesc() {
     box.innerHTML = `🎨 <strong>${escHtml(t.name)}:</strong> ${escHtml(t.desc)}`;
 }
 
-function renderResumeTemplatePicks() {
-    const box = document.getElementById('resumeTemplatePicks');
-    if (!box) return;
-    const jd = (document.getElementById('jdText')?.value || '').trim();
-    let profile = null;
-    try { const id = document.getElementById('selectProfile')?.value; profile = id ? StorageManager.getProfile(id) : null; } catch (_) {}
-    const picks = recommendResumeTemplates(jd, profile);
-    if (!picks.length) { box.innerHTML = ''; return; }
-    box.innerHTML = `<span class="rp-label">✨ Top picks${jd ? ' for this role' : ''}:</span>`
-        + picks.map(id => { const t = getResumeTemplate(id); return `<button type="button" class="rp-chip" title="${escHtml(t.desc)}" onclick="applyResumeTemplate('${id}')">${escHtml(t.name)}</button>`; }).join('');
-}
-
-function applyResumeTemplate(id) {
+function selectResumeTemplate(id) {
     const sel = document.getElementById('resumeTemplate');
     if (!sel) return;
-    sel.value = id;
-    onResumeTemplateChange();
-    showToast(`Résumé template: ${getResumeTemplate(id).name}`, 'success');
+    if ([...sel.options].some(o => o.value === id)) sel.value = id;
+    try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumeTemplate', id); } catch (_) {}
+    renderResumeGallery();
+    renderResumeTemplateDesc();
 }
 
 function onResumeTemplateChange() {
     const sel = document.getElementById('resumeTemplate');
     if (!sel) return;
     try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumeTemplate', sel.value); } catch (_) {}
+    renderResumeGallery();
     renderResumeTemplateDesc();
 }
 window.populateResumeTemplates = populateResumeTemplates;
+window.renderResumeGallery = renderResumeGallery;
 window.onResumeTemplateChange = onResumeTemplateChange;
-window.applyResumeTemplate = applyResumeTemplate;
+window.selectResumeTemplate = selectResumeTemplate;
 
 function renderAISettings() {
     const container = document.getElementById('aiProvidersSettings');

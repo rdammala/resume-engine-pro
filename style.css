@@ -2267,19 +2267,48 @@ audio {
 .learn-links a:hover { background: rgba(100, 200, 255, 0.22); }
 .result-card { border-color: rgba(100, 200, 255, 0.45); }
 
-/* Résumé template "top picks" chips */
-.resume-picks { margin-top: 0.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
-.resume-picks .rp-label { font-size: 0.78rem; color: var(--text-muted); }
-.resume-picks .rp-chip {
-    font-size: 0.78rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-    background: rgba(100, 200, 255, 0.12);
-    border: 1px solid var(--border);
-    color: #9fd3ff;
-    cursor: pointer;
+/* Résumé template VISUAL gallery (rendered thumbnails, like Word/Docs) */
+.resume-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 0.7rem;
+    margin-top: 0.55rem;
 }
-.resume-picks .rp-chip:hover { background: rgba(100, 200, 255, 0.26); }
+.resume-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.5rem 0.45rem 0.55rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform .08s ease, border-color .1s ease, box-shadow .1s ease;
+}
+.resume-card:hover { transform: translateY(-2px); border-color: rgba(100, 200, 255, 0.55); }
+.resume-card.selected { border-color: #4ade80; box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.4); }
+.rc-thumb-wrap { width: 100%; display: block; }
+.rc-thumb { width: 100%; height: auto; display: block; border-radius: 4px; box-shadow: 0 2px 7px rgba(0, 0, 0, 0.4); }
+.rc-name { font-size: 0.8rem; font-weight: 600; text-align: center; line-height: 1.2; }
+.rc-tags { font-size: 0.66rem; color: var(--text-muted); text-align: center; }
+.rc-badge {
+    position: absolute;
+    top: -8px;
+    right: -6px;
+    background: #1a73e8;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.12rem 0.42rem;
+    border-radius: 999px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+}
+
+/* Résumé template "top picks" chips (legacy) */
+.resume-picks { margin-top: 0.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 
 
 .modal.active {

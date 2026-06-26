@@ -513,10 +513,10 @@
                             </div>
 
                             <div class="form-group">
-                                <label>Résumé Template <span class="optional">(pick a look — like a Word resume gallery)</span></label>
-                                <select id="resumeTemplate" onchange="onResumeTemplateChange()"></select>
+                                <label>Résumé Template <span class="optional">(click a design to pick it)</span></label>
+                                <select id="resumeTemplate" onchange="onResumeTemplateChange()" style="display:none;"></select>
+                                <div id="resumeTemplateGallery" class="resume-gallery"></div>
                                 <div id="resumeTemplateDesc" class="inline-note" style="display:none;"></div>
-                                <div id="resumeTemplatePicks" class="resume-picks"></div>
                             </div>
 
                             <div class="form-group">
