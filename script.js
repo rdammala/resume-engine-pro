@@ -227,6 +227,11 @@ function switchMainTab(tabName) {
             populatePortfolioTemplates();
         }
 
+        // Fill the Résumé Template picker (document styles) + top picks
+        if (tabName === 'generator' && typeof populateResumeTemplates === 'function') {
+            populateResumeTemplates();
+        }
+
         // Render AI provider settings (keys + custom provider) when entering Settings
         if (tabName === 'settings' && typeof renderAISettings === 'function') {
             renderAISettings();
@@ -523,6 +528,10 @@ function selectProfile(id) {
     // Go to the Generate tab, populate the dropdowns, and preselect this profile
     switchMainTab('generator');
     populateProfileSelects(id);
+    // Programmatic selection doesn't fire the <select>'s onchange, so render the
+    // extraction preview + JD match card here too (matches manual selection).
+    if (typeof renderProfilePreview === 'function') renderProfilePreview(currentProfile);
+    if (typeof refreshMatchCard === 'function') refreshMatchCard();
     showToast(`Using profile: ${currentProfile.displayName || currentProfile.name}`, 'success');
 }
 
@@ -1810,6 +1819,7 @@ function refreshMatchCard() {
     const profile = sel && sel.value ? StorageManager.getProfile(sel.value) : null;
     const jd = (document.getElementById('jdText')?.value || '').trim();
     renderMatchCard(profile, jd);
+    if (typeof renderResumeTemplatePicks === 'function') renderResumeTemplatePicks();
 }
 
 // Show an ATS-style keyword match score + what's missing, so the user can
@@ -2128,26 +2138,68 @@ function extractJobMeta(jdText) {
     return { title: title || 'the role', company };
 }
 
+// Resume DOCUMENT templates — distinct visual styles (font, accent colour,
+// header & heading treatment) the user can pick, like a Word resume gallery.
+// All are single-column and ATS-friendly; they differ in look, not structure.
+const RESUME_TEMPLATES = [
+    { id: 'classic-ats', name: 'Classic ATS', desc: 'Clean black & white, single column — maximum ATS compatibility.', tags: ['ATS-safe', 'Any role'], font: 'helvetica', accent: '#111111', name: '#111111', heading: '#111111', divider: '#bbbbbb', header: 'centered', headingStyle: 'underline' },
+    { id: 'modern-blue', name: 'Modern Blue', desc: 'Sans-serif with a crisp blue accent — great for tech & engineering.', tags: ['Modern', 'Engineering'], font: 'helvetica', accent: '#1a73e8', name: '#1a73e8', heading: '#1a73e8', divider: '#1a73e8', header: 'left', headingStyle: 'bar' },
+    { id: 'executive-serif', name: 'Executive Serif', desc: 'Elegant serif for senior, leadership & program roles.', tags: ['Executive', 'Leadership'], font: 'times', accent: '#1f3a5f', name: '#1f2a44', heading: '#1f3a5f', divider: '#1f3a5f', header: 'centered', headingStyle: 'caps-underline' },
+    { id: 'teal-minimal', name: 'Teal Minimal', desc: 'Minimal, airy layout with a calm teal accent.', tags: ['Minimal', 'Modern'], font: 'helvetica', accent: '#0f766e', name: '#0f766e', heading: '#0f766e', divider: '#0f766e', header: 'left', headingStyle: 'underline' },
+    { id: 'slate-band', name: 'Slate Header', desc: 'Bold slate header band with your name in white — clean but striking.', tags: ['Bold', 'Modern'], font: 'helvetica', accent: '#334155', name: '#ffffff', heading: '#334155', divider: '#334155', header: 'band', headingStyle: 'bar' },
+    { id: 'burgundy-pro', name: 'Burgundy Professional', desc: 'Refined serif with a warm burgundy accent — distinctive yet professional.', tags: ['Creative', 'Executive'], font: 'times', accent: '#7b1f3a', name: '#7b1f3a', heading: '#7b1f3a', divider: '#c98aa0', header: 'centered', headingStyle: 'caps-underline' }
+];
+function getResumeTemplate(id) { return RESUME_TEMPLATES.find(t => t.id === id) || RESUME_TEMPLATES[0]; }
+function hexToRgb(hex) {
+    let h = String(hex || '#000000').replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const n = parseInt(h, 16) || 0;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Suggest the 3 most fitting resume templates for a role/JD (cheap heuristic so
+// the user gets "top picks" like a curated gallery instead of guessing).
+function recommendResumeTemplates(jdText, profile) {
+    const text = `${jdText || ''} ${(profile && (profile._aiJobTitle || '')) || ''} ${(profile && profile.title) || ''}`.toLowerCase();
+    const picks = [];
+    const add = (id) => { if (!picks.includes(id) && getResumeTemplate(id).id === id) picks.push(id); };
+    if (/\b(director|vp|head|principal|chief|executive|manager|lead|program)\b/.test(text)) { add('executive-serif'); add('burgundy-pro'); }
+    if (/\b(engineer|developer|sre|devops|software|data|cloud|security|platform|architect)\b/.test(text)) { add('modern-blue'); add('teal-minimal'); }
+    if (/\b(design|creative|brand|marketing|product|ux|ui)\b/.test(text)) { add('teal-minimal'); add('slate-band'); add('burgundy-pro'); }
+    add('classic-ats'); add('modern-blue'); add('slate-band');
+    return picks.slice(0, 3);
+}
+
 // Build a Word-compatible .doc Blob from HTML (docx.js isn't loaded in-browser)
-function buildResumeDocBlob(profile, matched) {
+function buildResumeDocBlob(profile, matched, templateId) {
     const p = normalizeProfile(profile);
+    const t = getResumeTemplate(templateId);
+    const fam = t.font === 'times' ? "Georgia, 'Times New Roman', serif" : "Calibri, Arial, sans-serif";
+    const accent = t.heading;
     const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).map(escHtml).join(' &nbsp;|&nbsp; ');
     const skills = prioritizedSkills(p.skills, matched);
+    const h2 = `font-family:${fam};color:${accent};border-bottom:2px solid ${accent};padding-bottom:2px;margin-bottom:4px;`;
+    const headerBlock = t.header === 'band'
+        ? `<div style="background:${t.accent};padding:16px 18px;text-align:center;">
+               <h1 style="margin:0;color:#ffffff;font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
+               <p style="margin:4px 0 0;color:#e8eef6;font-size:10pt;font-family:${fam};">${contact}</p>
+           </div>`
+        : `<h1 style="text-align:${t.header === 'left' ? 'left' : 'center'};margin:0;color:${t.name};font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
+           <p style="text-align:${t.header === 'left' ? 'left' : 'center'};font-size:10pt;color:#555;font-family:${fam};border-bottom:2px solid ${t.divider};padding-bottom:6px;">${contact}</p>`;
     const body = `
-        <h1 style="text-align:center;margin:0;font-family:Calibri,sans-serif;">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
-        <p style="text-align:center;font-size:10pt;color:#555;font-family:Calibri,sans-serif;">${contact}</p>
-        ${p.summary ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Summary</h2><p style="font-family:Calibri,sans-serif;">${escHtml(p.summary)}</p>` : ''}
-        ${skills.length ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Core Skills</h2><p style="font-family:Calibri,sans-serif;">${skills.map(escHtml).join(' • ')}</p>` : ''}
-        ${p.experience.length ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Experience</h2>${p.experience.map(exp => `
-            <p style="font-family:Calibri,sans-serif;"><strong>${escHtml(exp.position || exp.title || '')}</strong>${exp.company ? ' — ' + escHtml(exp.company) : ''}${exp.year ? ' (' + escHtml(exp.year) + ')' : ''}<br>${escHtml(exp.description || '').replace(/\n/g, '<br>')}</p>`).join('')}` : ''}
-        ${p.education.length ? `<h2 style="border-bottom:1px solid #888;font-family:Calibri,sans-serif;">Education</h2>${p.education.map(e => `<p style="font-family:Calibri,sans-serif;">${escHtml(typeof e === 'string' ? e : (e.degree || e.school || ''))}</p>`).join('')}` : ''}
+        ${headerBlock}
+        ${p.summary ? `<h2 style="${h2}">Summary</h2><p style="font-family:${fam};">${escHtml(p.summary)}</p>` : ''}
+        ${skills.length ? `<h2 style="${h2}">Core Skills</h2><p style="font-family:${fam};">${skills.map(escHtml).join(' &nbsp;•&nbsp; ')}</p>` : ''}
+        ${p.experience.length ? `<h2 style="${h2}">Experience</h2>${p.experience.map(exp => `
+            <p style="font-family:${fam};margin-bottom:8px;"><strong>${escHtml(exp.position || exp.title || '')}</strong>${exp.company ? ' — ' + escHtml(exp.company) : ''}${exp.year ? ' (' + escHtml(exp.year) + ')' : ''}<br>${escHtml(exp.description || '').replace(/\n/g, '<br>')}</p>`).join('')}` : ''}
+        ${p.education.length ? `<h2 style="${h2}">Education</h2>${p.education.map(e => `<p style="font-family:${fam};">${escHtml(typeof e === 'string' ? e : (e.degree || e.school || ''))}</p>`).join('')}` : ''}
     `;
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body>${body}</body></html>`;
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body style="font-family:${fam};">${body}</body></html>`;
     return new Blob(['\ufeff', html], { type: 'application/msword' });
 }
 
 // Build a PDF Blob using jsPDF (reliable browser global: window.jspdf.jsPDF)
-function buildResumePdfBlob(profile, matched) {
+function buildResumePdfBlob(profile, matched, templateId) {
     return new Promise((resolve, reject) => {
         try {
             const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
@@ -2156,6 +2208,7 @@ function buildResumePdfBlob(profile, matched) {
                 return;
             }
             const p = normalizeProfile(profile);
+            const t = getResumeTemplate(templateId);
             const doc = new jsPDFCtor({ unit: 'pt', format: 'letter' });
             const pageW = doc.internal.pageSize.getWidth();
             const pageH = doc.internal.pageSize.getHeight();
@@ -2174,27 +2227,61 @@ function buildResumePdfBlob(profile, matched) {
                 .replace(/\u00A0/g, ' ')
                 .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
 
+            const setCol = (c) => { const [r, g, b] = hexToRgb(c); doc.setTextColor(r, g, b); };
             const ensure = (h) => { if (y + h > pageH - margin) { doc.addPage(); y = margin; } };
-            const writeBlock = (text, size, color, gap) => {
+            const writeBlock = (text, size, color, gap, bold) => {
                 if (!text) return;
+                doc.setFont(t.font, bold ? 'bold' : 'normal');
                 doc.setFontSize(size);
-                doc.setTextColor(color);
+                setCol(color);
                 const lines = doc.splitTextToSize(ascii(text), maxW);
                 lines.forEach(line => { ensure(size + 2); doc.text(line, margin, y); y += size + 3; });
                 y += (gap || 0);
             };
             const heading = (text) => {
-                y += 8; ensure(20);
-                doc.setFontSize(12); doc.setTextColor('#1a73e8');
-                doc.text(ascii(String(text)).toUpperCase(), margin, y); y += 6;
-                doc.setDrawColor('#cccccc'); doc.line(margin, y, pageW - margin, y); y += 12;
+                y += 10; ensure(24);
+                doc.setFont(t.font, 'bold'); doc.setFontSize(12);
+                const label = t.headingStyle === 'caps-underline' ? ascii(text).toUpperCase() : ascii(text);
+                let textX = margin;
+                if (t.headingStyle === 'bar') {
+                    const [ar, ag, ab] = hexToRgb(t.accent);
+                    doc.setFillColor(ar, ag, ab);
+                    doc.rect(margin, y - 9, 4, 12, 'F');
+                    textX = margin + 10;
+                }
+                setCol(t.heading);
+                doc.text(label, textX, y);
+                y += 6;
+                const [dr, dg, db] = hexToRgb(t.divider);
+                doc.setDrawColor(dr, dg, db);
+                doc.setLineWidth(t.headingStyle === 'caps-underline' ? 1 : 0.7);
+                doc.line(t.headingStyle === 'bar' ? textX : margin, y, pageW - margin, y);
+                y += 12;
+                doc.setFont(t.font, 'normal');
             };
 
-            // Header
-            doc.setFontSize(22); doc.setTextColor('#111111');
-            doc.text(ascii(p.displayName || p.name || 'Your Name'), pageW / 2, y, { align: 'center' }); y += 22;
+            const name = ascii(p.displayName || p.name || 'Your Name');
             const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).join('   |   ');
-            if (contact) { doc.setFontSize(9); doc.setTextColor('#555555'); doc.text(ascii(contact), pageW / 2, y, { align: 'center' }); y += 14; }
+
+            // Header (varies by template)
+            if (t.header === 'band') {
+                const bandH = 92;
+                const [ar, ag, ab] = hexToRgb(t.accent);
+                doc.setFillColor(ar, ag, ab);
+                doc.rect(0, 0, pageW, bandH, 'F');
+                doc.setFont(t.font, 'bold'); doc.setFontSize(24); doc.setTextColor(255, 255, 255);
+                doc.text(name, pageW / 2, 48, { align: 'center' });
+                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9.5); doc.setTextColor(232, 238, 246); doc.text(ascii(contact), pageW / 2, 70, { align: 'center' }); }
+                y = bandH + 24;
+            } else {
+                const align = t.header === 'left' ? 'left' : 'center';
+                const nx = t.header === 'left' ? margin : pageW / 2;
+                doc.setFont(t.font, 'bold'); doc.setFontSize(23); setCol(t.name);
+                doc.text(name, nx, y, { align }); y += 20;
+                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9); doc.setTextColor(90, 90, 90); doc.text(ascii(contact), nx, y, { align }); y += 12; }
+                const [dr, dg, db] = hexToRgb(t.divider);
+                doc.setDrawColor(dr, dg, db); doc.setLineWidth(1.2); doc.line(margin, y, pageW - margin, y); y += 6;
+            }
 
             if (p.summary) { heading('Summary'); writeBlock(p.summary, 10, '#333333', 4); }
 
@@ -2205,7 +2292,7 @@ function buildResumePdfBlob(profile, matched) {
                 heading('Experience');
                 p.experience.forEach(exp => {
                     const head = [exp.position || exp.title, exp.company].filter(Boolean).join(' - ');
-                    if (head) writeBlock(head + (exp.year ? `  (${exp.year})` : ''), 11, '#000000', 1);
+                    if (head) writeBlock(head + (exp.year ? `  (${exp.year})` : ''), 11, '#111111', 1, true);
                     if (exp.description) writeBlock(exp.description, 10, '#333333', 4);
                 });
             }
@@ -2518,9 +2605,9 @@ async function buildDocumentsFromProfile(workingProfile, jdText, baseName, opts,
     const matched = matchSkillsToJD(normalizeProfile(workingProfile), jdText);
     let count = 0;
     if (opts.wantResume) {
-        const pdfBlob = await buildResumePdfBlob(workingProfile, matched);
+        const pdfBlob = await buildResumePdfBlob(workingProfile, matched, opts.resumeTemplate);
         addDownloadLink(downloadLinks, pdfBlob, `${baseName}_Resume.pdf`, 'Resume (PDF)');
-        const docBlob = buildResumeDocBlob(workingProfile, matched);
+        const docBlob = buildResumeDocBlob(workingProfile, matched, opts.resumeTemplate);
         addDownloadLink(downloadLinks, docBlob, `${baseName}_Resume.doc`, 'Resume (Word)');
         count++;
     }
@@ -2753,8 +2840,8 @@ async function buildPublishFiles(workingProfile, jdText, opts, baseName) {
     const matched = matchSkillsToJD(normalizeProfile(workingProfile), jdText);
     const files = {};
     if (opts.wantResume) {
-        files[`${baseName}_Resume.pdf`] = await buildResumePdfBlob(workingProfile, matched);
-        files[`${baseName}_Resume.doc`] = buildResumeDocBlob(workingProfile, matched);
+        files[`${baseName}_Resume.pdf`] = await buildResumePdfBlob(workingProfile, matched, opts.resumeTemplate);
+        files[`${baseName}_Resume.doc`] = buildResumeDocBlob(workingProfile, matched, opts.resumeTemplate);
     }
     if (opts.wantCover) {
         files[`${baseName}_CoverLetter.doc`] = buildCoverLetterDocBlob(workingProfile, meta.title, meta.company, jdText);
@@ -3124,6 +3211,7 @@ async function generateSingle() {
     const wantPortfolio = document.getElementById('genPortfolio')?.checked;
     const wantJobDetails = document.getElementById('genJobDetails')?.checked;
     const template = document.getElementById('portfolioTemplate')?.value || 'minimalist';
+    const resumeTemplate = document.getElementById('resumeTemplate')?.value || 'classic-ats';
 
     const statusBox = document.getElementById('generationStatus');
     const statusContent = document.getElementById('statusContent');
@@ -3166,6 +3254,7 @@ async function generateSingle() {
                     wantPortfolio: !!wantPortfolio,
                     wantJobDetails: !!wantJobDetails,
                     template,
+                    resumeTemplate,
                     jobUrl
                 }
             });
@@ -3276,7 +3365,7 @@ async function generateSingle() {
 
         const { count: builtCount, matched } = await buildDocumentsFromProfile(
             workingProfile, jdText, baseName,
-            { wantResume, wantCover, wantPortfolio, wantJobDetails, template, jobUrl },
+            { wantResume, wantCover, wantPortfolio, wantJobDetails, template, resumeTemplate, jobUrl },
             downloadLinks
         );
         count = builtCount;
@@ -3539,7 +3628,7 @@ async function generateBulk() {
                 }
             }
             const matched = matchSkillsToJD(normalizeProfile(workingProfile), jobs[i].jd);
-            const pdfBlob = await buildResumePdfBlob(workingProfile, matched);
+            const pdfBlob = await buildResumePdfBlob(workingProfile, matched, document.getElementById('resumeTemplate')?.value);
             addDownloadLink(linkWrap, pdfBlob, `${baseName}_Resume_${i + 1}.pdf`, `Resume #${i + 1} (PDF)`);
             done++;
         }
@@ -3725,6 +3814,59 @@ function populatePortfolioTemplates() {
     sel.innerHTML = html;
     if ([...sel.options].some(o => o.value === current)) sel.value = current;
 }
+
+// ---- Résumé document templates: picker, description, and AI "top picks" ----
+function populateResumeTemplates() {
+    const sel = document.getElementById('resumeTemplate');
+    if (!sel) return;
+    let saved = 'classic-ats';
+    try { saved = (window.StorageManager && StorageManager.get && StorageManager.get('resumeTemplate')) || 'classic-ats'; } catch (_) {}
+    sel.innerHTML = RESUME_TEMPLATES
+        .map(t => `<option value="${t.id}">${escHtml(t.name)} — ${escHtml(t.tags.join(' · '))}</option>`)
+        .join('');
+    if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
+    renderResumeTemplateDesc();
+    renderResumeTemplatePicks();
+}
+
+function renderResumeTemplateDesc() {
+    const sel = document.getElementById('resumeTemplate');
+    const box = document.getElementById('resumeTemplateDesc');
+    if (!sel || !box) return;
+    const t = getResumeTemplate(sel.value);
+    box.style.display = 'block';
+    box.innerHTML = `🎨 <strong>${escHtml(t.name)}:</strong> ${escHtml(t.desc)}`;
+}
+
+function renderResumeTemplatePicks() {
+    const box = document.getElementById('resumeTemplatePicks');
+    if (!box) return;
+    const jd = (document.getElementById('jdText')?.value || '').trim();
+    let profile = null;
+    try { const id = document.getElementById('selectProfile')?.value; profile = id ? StorageManager.getProfile(id) : null; } catch (_) {}
+    const picks = recommendResumeTemplates(jd, profile);
+    if (!picks.length) { box.innerHTML = ''; return; }
+    box.innerHTML = `<span class="rp-label">✨ Top picks${jd ? ' for this role' : ''}:</span>`
+        + picks.map(id => { const t = getResumeTemplate(id); return `<button type="button" class="rp-chip" title="${escHtml(t.desc)}" onclick="applyResumeTemplate('${id}')">${escHtml(t.name)}</button>`; }).join('');
+}
+
+function applyResumeTemplate(id) {
+    const sel = document.getElementById('resumeTemplate');
+    if (!sel) return;
+    sel.value = id;
+    onResumeTemplateChange();
+    showToast(`Résumé template: ${getResumeTemplate(id).name}`, 'success');
+}
+
+function onResumeTemplateChange() {
+    const sel = document.getElementById('resumeTemplate');
+    if (!sel) return;
+    try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumeTemplate', sel.value); } catch (_) {}
+    renderResumeTemplateDesc();
+}
+window.populateResumeTemplates = populateResumeTemplates;
+window.onResumeTemplateChange = onResumeTemplateChange;
+window.applyResumeTemplate = applyResumeTemplate;
 
 function renderAISettings() {
     const container = document.getElementById('aiProvidersSettings');

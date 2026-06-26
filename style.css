@@ -2267,6 +2267,20 @@ audio {
 .learn-links a:hover { background: rgba(100, 200, 255, 0.22); }
 .result-card { border-color: rgba(100, 200, 255, 0.45); }
 
+/* Résumé template "top picks" chips */
+.resume-picks { margin-top: 0.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.resume-picks .rp-label { font-size: 0.78rem; color: var(--text-muted); }
+.resume-picks .rp-chip {
+    font-size: 0.78rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(100, 200, 255, 0.12);
+    border: 1px solid var(--border);
+    color: #9fd3ff;
+    cursor: pointer;
+}
+.resume-picks .rp-chip:hover { background: rgba(100, 200, 255, 0.26); }
+
 
 .modal.active {
     display: flex;

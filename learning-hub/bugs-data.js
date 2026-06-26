@@ -995,5 +995,25 @@ function reconcileExperience(aiExp, originalExp, hiringCompany) {
 }`,
         lesson: 'Never put a literal placeholder ("Mon YYYY") in a few-shot schema example — weak models copy examples verbatim. Label examples as illustrative and tell the model to substitute real data. And for anything an LLM must NOT change (employer, dates, identity), do not rely on the prompt alone: enforce it in code. The hiring company in a JD is a classic source of hallucination because it is the most prominent company name in the context — explicitly fence it off from the work-history fields.',
         impact: 'High - tailored résumés keep the candidate\u2019s real employers, titles and dates while still benefiting from rewritten, JD-aligned bullets; the JD\u2019s hiring company can no longer masquerade as a past employer, and placeholder dates never reach the document.'
+    },
+    {
+        id: 45,
+        title: '"Use" Button Skipped the Extraction Preview & Match Card on the Generate Tab',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '10 min',
+        description: 'Clicking "Use" on a freshly created profile navigated to the Generate tab and selected the profile in the dropdown, but the extraction preview and JD match card did not appear. Selecting the same profile manually from the dropdown worked fine.',
+        rootCause: 'selectProfile() set the dropdown value programmatically via populateProfileSelects(id). Setting a <select>\u2019s .value in code does NOT fire its onchange handler, so loadProfileData() (which calls renderProfilePreview() + refreshMatchCard()) never ran. Manual selection worked only because the user interaction fired onchange.',
+        resolution: 'After preselecting the profile, selectProfile() now explicitly calls renderProfilePreview(currentProfile) and refreshMatchCard() \u2014 mirroring exactly what the onchange path does \u2014 so the preview and match/score cards render identically whether the profile is chosen via the "Use" button or the dropdown.',
+        codeExample: `function selectProfile(id) {
+  currentProfile = StorageManager.getProfile(id);
+  switchMainTab('generator');
+  populateProfileSelects(id);          // sets <select>.value but does NOT fire onchange
+  renderProfilePreview(currentProfile); // so render the preview...
+  refreshMatchCard();                   // ...and the match card ourselves
+}`,
+        lesson: 'Programmatically setting an input\u2019s value never triggers its change/input events. Any UI that a handler builds on selection must be invoked explicitly after a code-driven set (or dispatch a synthetic change event) \u2014 don\u2019t assume the listener will run.',
+        impact: 'Medium - the "Use" shortcut now gives the same immediate feedback (extraction preview + match score) as manual selection, so users can confirm their new profile and its JD fit right away.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

@@ -410,7 +410,35 @@ function learningLinksFor(keyword) {
   ];
 }`,
         lesson: 'Diagnose-then-prescribe beats diagnose-only: pairing each gap with a concrete, free way to close it makes the tool feel like a coach, not just a scanner. Prefer search URLs over specific links for any auto-generated resource list \u2014 they stay valid forever and avoid recommending dead or wrong content. And honour "don\u2019t save my data": compute on the fly, keep the artifact in memory, and only persist when the user clicks download.',
-        impact: 'High \u2014 closes the loop from "what\u2019s missing" to "here\u2019s how to learn it," scores the actual generated r\u00e9sum\u00e9, and gives users a portable Markdown learning tracker \u2014 all with zero server-side storage.'    }
+        impact: 'High \u2014 closes the loop from "what\u2019s missing" to "here\u2019s how to learn it," scores the actual generated r\u00e9sum\u00e9, and gives users a portable Markdown learning tracker \u2014 all with zero server-side storage.'    },
+    {
+        id: 14,
+        title: 'Résumé Template Gallery + AI "Top Picks" (Pick a Look, Like Word\u2019s Resume Gallery)',
+        category: 'UX / Output Quality',
+        status: 'Shipped',
+        role: 'Front-End',
+        effort: '120 min',
+        summary: 'Replaced the single hard-coded résumé layout with a gallery of six distinct, professionally-styled templates (font + accent colour + header & heading treatment), plus a role-aware "Top picks" suggester so users do not have to guess. The chosen template drives both the PDF and Word outputs, persists across sessions, and flows through single, bulk, publish, and Ollama-cloud rebuilds.',
+        motivation: 'A user said the main reason they came to an AI résumé tool was to get help with wording, styling, colour, and \u2014 crucially \u2014 to CHOOSE from a variety of résumé templates (like opening Microsoft Word\u2019s resume gallery). The app only ever produced one fixed black-and-white layout, and the AI even mimicked the uploaded résumé\u2019s plain look. There was no design choice at all.',
+        solution: 'Added a RESUME_TEMPLATES config (Classic ATS, Modern Blue, Executive Serif, Teal Minimal, Slate Header band, Burgundy Professional) \u2014 each with font (helvetica/times), accent/name/heading/divider colours, a header style (centered / left / colour band) and a heading style (underline / accent bar / caps-underline). buildResumePdfBlob (jsPDF) and buildResumeDocBlob (Word HTML) were refactored to render any template via a hexToRgb helper and per-style header/heading drawing. A new picker in Step 4 shows each template\u2019s name, tags and description; recommendResumeTemplates(jd, profile) surfaces three clickable "Top picks" based on role keywords. Selection is saved to localStorage and threaded through opts.resumeTemplate everywhere documents are built.',
+        codeExample: `// One renderer, many looks - header & heading vary by template config.
+const t = getResumeTemplate(templateId);                 // {font, accent, header, headingStyle, ...}
+if (t.header === 'band') {                                // colour band w/ white name
+  const [r,g,b] = hexToRgb(t.accent);
+  doc.setFillColor(r,g,b); doc.rect(0,0,pageW,92,'F');
+  doc.setTextColor(255,255,255); doc.text(name, pageW/2, 48, {align:'center'});
+}
+// "Top picks" suggester (curated shortlist, like a Word gallery)
+function recommendResumeTemplates(jd, profile) {
+  const text = (jd + ' ' + (profile && profile._aiJobTitle || '')).toLowerCase();
+  const picks = [];
+  if (/director|vp|head|principal|executive|manager|lead|program/.test(text)) picks.push('executive-serif','burgundy-pro');
+  if (/engineer|developer|sre|devops|cloud|data/.test(text)) picks.push('modern-blue','teal-minimal');
+  return [...new Set([...picks,'classic-ats'])].slice(0,3);
+}`,
+        lesson: 'When users compare you to a tool they already know (Word\u2019s resume gallery), give them that mental model directly: a visible gallery of named, described, tagged choices beats one "smart" default. Keep the structure identical and ATS-safe across templates \u2014 vary only the presentation (font, colour, header) \u2014 so design freedom never costs parseability. And reduce choice paralysis the way the user asked: surface a curated 3 "top picks" for their role instead of dumping 50 options.',
+        impact: 'High \u2014 users can now choose a résumé look that fits the role (and get guided picks), the AI output is no longer a single plain layout, and the selected design carries through every output path including the published GitHub repo.'
+    }
 ];
 
 console.log("FEATURES array loaded with", window.FEATURES.length, "features");
