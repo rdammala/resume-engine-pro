@@ -343,6 +343,7 @@
                             <label>Detected Skills <small style="display:inline;color:var(--text-muted)">(comma-separated — edit to add/remove)</small></label>
                             <textarea id="uploadSkills" rows="2" placeholder="Skills detected in your resume will appear here"></textarea>
                         </div>
+                        <div id="extractionPreview" class="extraction-preview" style="display:none;"></div>
                     </div>
 
                     <!-- Manual Entry Method -->
@@ -439,6 +440,7 @@
                                 <option value="">-- Select a profile --</option>
                             </select>
                             <button class="btn btn-secondary" onclick="switchMainTab('profiles'); openProfileCreation();">Create New Profile</button>
+                            <div id="profilePreview" class="profile-preview" style="display:none;"></div>
                         </div>
 
                         <!-- Step 2: Job Description & Link -->
@@ -455,8 +457,9 @@
                             </div>
                             <div class="form-group">
                                 <label>Job Description <span class="optional">(optional — paste the full text for the best tailoring)</span></label>
-                                <textarea id="jdText" placeholder="Paste the job description here..." rows="8"></textarea>
+                                <textarea id="jdText" placeholder="Paste the job description here..." rows="8" oninput="refreshMatchCard()"></textarea>
                             </div>
+                            <div id="matchCard" class="match-card" style="display:none;"></div>
                         </div>
 
                         <!-- Step 3: AI Configuration -->

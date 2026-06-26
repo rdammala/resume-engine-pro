@@ -366,6 +366,29 @@ async tailorWithWebLLM(resumeData, jdData, mode) {
 }`,
         lesson: 'WebGPU + WebLLM make it possible to run a capable 3B\u20138B LLM with zero backend and zero cost while keeping the user data on their machine \u2014 a strong default for a privacy-first static app. Two practical lessons: (1) the first run downloads gigabytes, so a visible progress callback is essential or it looks frozen; cache the engine so later runs are instant. (2) Always provide a graceful fallback path in both the thrown error and the UI \u2014 not every browser/device exposes WebGPU \u2014 and name the concrete alternatives (Pollinations, Ollama) so users are never stuck.',
         impact: 'High \u2014 a new best-in-class free option: better and more private than the shared Pollinations endpoint, and no token/fork friction like Ollama-cloud, while the GitHub publish flow stays identical.'
+    },
+    {
+        id: 12,
+        title: 'Extraction Transparency + JD Match Score & Gap Analysis',
+        category: 'UX / Trust',
+        status: 'Shipped',
+        role: 'Front-End',
+        effort: '110 min',
+        summary: 'Made résumé parsing and job-fit visible. After an upload, an extraction card shows exactly what was read (a ✅/⚠️ status, summary/skills/experience/education counts, and the raw extracted text). In the Generate tab, selecting a profile renders a content preview, and pasting a JD shows an ATS-style match score (a colour ring %), the matched keywords, and the missing keywords to add — so users finally know whether the parser worked and how well their résumé fits the job before generating.',
+        motivation: 'Users could not tell if a résumé upload actually extracted anything — the parser silently pulled a few lines, and a sparse profile produced a blank résumé with no explanation. They also had no signal about how well a profile matched a given job. Two users in a row hit blank output because their uploads only yielded contact info, with no feedback that extraction had effectively failed.',
+        solution: 'Added jdMatchKeywords() (stopword-filtered keyword frequency over the JD), profileTokenSet() (normalised tokens from summary + skills + experience + education + rawText), and computeJDMatch() returning {score, matched, missing}. renderExtractionPreview() runs right after parsing; renderProfilePreview() runs on profile select; renderMatchCard() runs on profile select, JD input (oninput), and JD fetch. A conic-gradient ring visualises the score with red/amber/green thresholds. Everything is a pure client-side heuristic — no API calls — and the copy reminds users never to add skills they do not have.',
+        codeExample: `// ATS-style keyword overlap between a résumé and a job description.
+function computeJDMatch(profile, jdText) {
+  const keywords  = jdMatchKeywords(jdText);      // top JD terms, stopwords removed
+  const resumeSet = profileTokenSet(profile);     // tokens from all résumé fields
+  const matched = [], missing = [];
+  for (const k of keywords) (resumeSet.has(k) ? matched : missing).push(k);
+  const score = keywords.length
+    ? Math.round(matched.length / keywords.length * 100) : 0;
+  return { score, matched, missing, total: keywords.length };
+}`,
+        lesson: 'When an automated step (parsing, scoring) can silently under-deliver, surface its output to the user instead of hiding it — a visible "here is exactly what we read" panel turns a confusing blank result into an obvious, fixable one. A cheap keyword-overlap heuristic delivers most of the perceived value of an "ATS score" with zero backend, as long as the UI is honest that it is a heuristic and warns against keyword-stuffing skills you do not actually have.',
+        impact: 'High \u2014 eliminates the "did my upload even work?" confusion, prevents blank-résumé surprises, and gives users actionable, JD-specific guidance (the exact missing keywords) before they spend a generation.'
     }
 ];
 

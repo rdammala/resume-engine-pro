@@ -1459,10 +1459,12 @@ async function handleResumeUpload(event) {
 
         const label = parsedResumeProfile.name || file.name;
         showToast(`Resume parsed: ${label}. Review the fields below, then click "Save Profile".`, 'success');
+        renderExtractionPreview(parsedResumeProfile);
     } catch (error) {
         console.error('Resume parse error:', error);
         parsedResumeProfile = null;
         showToast('Could not parse resume: ' + error.message, 'error');
+        renderExtractionPreview(null, error.message);
     } finally {
         setTimeout(() => {
             if (progress) progress.style.display = 'none';
@@ -1550,6 +1552,8 @@ function clearProfileForm() {
     });
     const fileInput = document.getElementById('resumeFile');
     if (fileInput) fileInput.value = '';
+    const exPrev = document.getElementById('extractionPreview');
+    if (exPrev) { exPrev.style.display = 'none'; exPrev.innerHTML = ''; }
 }
 
 // ============================================================================
@@ -1616,7 +1620,186 @@ function loadProfileData() {
     } else {
         currentProfile = null;
     }
+    renderProfilePreview(currentProfile);
+    refreshMatchCard();
 }
+
+// ============================================================================
+// EXTRACTION TRANSPARENCY + JD MATCH SCORING
+// ============================================================================
+
+// Common words to ignore when pulling "keywords" out of a job description.
+const JD_STOPWORDS = new Set(('a an and are as at be by for from has have in into is it its of on or our so that the their them then they this to up us use used using was we were what when which who will with you your able about across all also any been being both can could day each end etc every few get good great help here high how just key like make many may more most much must need new not now off one only other out over per plus role same see set should since some such team teams than these those through time very want well work years year job role roles position positions candidate candidates applicant strong knowledge experience experiences ability responsibilities requirements qualifications preferred required must-have nice including include includes within without across based able skills skill').split(/\s+/));
+
+// Pull the most salient keywords out of a JD (tech terms, tools, nouns).
+function jdMatchKeywords(jdText, limit) {
+    const freq = new Map();
+    const tokens = (String(jdText || '').toLowerCase().match(/[a-z][a-z0-9+#.\-/]{1,}/g) || []);
+    for (let t of tokens) {
+        t = t.replace(/^[.+#/\-]+|[.+#/\-]+$/g, '');
+        if (t.length < 3 || t.length > 30) continue;
+        if (JD_STOPWORDS.has(t)) continue;
+        if (/^\d+$/.test(t)) continue;
+        freq.set(t, (freq.get(t) || 0) + 1);
+    }
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit || 28).map(e => e[0]);
+}
+
+// Build the set of normalized tokens present in a profile's résumé content.
+function profileTokenSet(profile) {
+    const p = normalizeProfile(profile);
+    const parts = [
+        p.summary || '',
+        (p.skills || []).join(' '),
+        (p.experience || []).map(e => `${e.position || e.title || ''} ${e.company || ''} ${e.description || ''}`).join(' '),
+        (p.education || []).map(e => (typeof e === 'string' ? e : (e.degree || e.school || ''))).join(' '),
+        (p.certifications || []).join ? (p.certifications || []).join(' ') : '',
+        profile && profile.rawText || ''
+    ];
+    const set = new Set();
+    const tokens = parts.join(' ').toLowerCase().match(/[a-z][a-z0-9+#.\-/]{1,}/g) || [];
+    for (let t of tokens) {
+        t = t.replace(/^[.+#/\-]+|[.+#/\-]+$/g, '');
+        if (t.length >= 2) set.add(t);
+    }
+    return set;
+}
+
+// Compare a profile against a JD and return a keyword-overlap match score.
+function computeJDMatch(profile, jdText) {
+    const keywords = jdMatchKeywords(jdText);
+    const resumeSet = profileTokenSet(profile);
+    const matched = [], missing = [];
+    for (const k of keywords) {
+        if (resumeSet.has(k)) matched.push(k); else missing.push(k);
+    }
+    const total = keywords.length;
+    const score = total ? Math.round((matched.length / total) * 100) : 0;
+    return { score, matched, missing, total };
+}
+
+function scoreColor(score) {
+    if (score >= 70) return '#2ea043';
+    if (score >= 45) return '#d29922';
+    return '#e5534b';
+}
+
+// Show the user EXACTLY what the parser pulled from their résumé so they can
+// confirm extraction worked (and fix anything that didn't).
+function renderProfilePreview(profile) {
+    const box = document.getElementById('profilePreview');
+    if (!box) return;
+    if (!profile) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const p = normalizeProfile(profile);
+    const has = profileHasResumeContent(profile);
+    const skills = p.skills || [];
+    const exp = p.experience || [];
+    const edu = p.education || [];
+    const contact = [p.email, p.phone, p.linkedin, p.github].filter(Boolean);
+    const summary = (p.summary || '').trim();
+    const raw = (profile.rawText || '').trim();
+    const chk = (ok) => ok ? '<span class="px px-ok">✓</span>' : '<span class="px px-no">—</span>';
+
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="pp-head">
+            <strong>${escHtml(p.displayName || p.name || 'Profile')}</strong>
+            ${has ? '<span class="pill pill-ok">✅ Content extracted</span>'
+                  : '<span class="pill pill-warn">⚠️ No résumé content found</span>'}
+        </div>
+        ${contact.length ? `<div class="pp-contact">${contact.map(escHtml).join(' &nbsp;·&nbsp; ')}</div>` : ''}
+        <div class="pp-stats">
+            <span>${chk(!!summary)} Summary</span>
+            <span>${chk(skills.length > 0)} Skills (${skills.length})</span>
+            <span>${chk(exp.length > 0)} Experience (${exp.length})</span>
+            <span>${chk(edu.length > 0)} Education (${edu.length})</span>
+        </div>
+        ${summary ? `<div class="pp-sec"><div class="pp-label">Summary</div><p class="pp-text">${escHtml(summary.slice(0, 360))}${summary.length > 360 ? '…' : ''}</p></div>` : ''}
+        ${skills.length ? `<div class="pp-sec"><div class="pp-label">Skills</div><div class="chips">${skills.slice(0, 30).map(s => `<span class="chip">${escHtml(s)}</span>`).join('')}</div></div>` : ''}
+        ${exp.length ? `<div class="pp-sec"><div class="pp-label">Experience</div>${exp.slice(0, 4).map(e => `<div class="pp-exp"><strong>${escHtml(e.position || e.title || '(role)')}</strong>${e.company ? ' — ' + escHtml(e.company) : ''}<br><span class="pp-muted">${escHtml((e.description || '').split('\n')[0].slice(0, 140))}</span></div>`).join('')}</div>` : ''}
+        ${edu.length ? `<div class="pp-sec"><div class="pp-label">Education</div><p class="pp-text">${edu.slice(0, 4).map(e => escHtml(typeof e === 'string' ? e : (e.degree || e.school || ''))).join('<br>')}</p></div>` : ''}
+        ${!has ? `<p class="pp-empty-note">The parser couldn't read structured content from this résumé (often a scanned/secured PDF or an unusual layout). Add your summary, skills and experience via <strong>Manual Entry</strong>, or upload a text-based PDF/DOCX/TXT.</p>` : ''}
+        ${raw ? `<details class="pp-raw"><summary>View raw extracted text (${raw.length.toLocaleString()} chars)</summary><pre>${escHtml(raw.slice(0, 6000))}${raw.length > 6000 ? '\n…(truncated)' : ''}</pre></details>` : ''}
+    `;
+}
+
+// Re-render the JD match card from the currently selected profile + JD text.
+function refreshMatchCard() {
+    const sel = document.getElementById('selectProfile');
+    const profile = sel && sel.value ? StorageManager.getProfile(sel.value) : null;
+    const jd = (document.getElementById('jdText')?.value || '').trim();
+    renderMatchCard(profile, jd);
+}
+
+// Show an ATS-style keyword match score + what's missing, so the user can
+// strengthen the résumé (or pick a better profile) before generating.
+function renderMatchCard(profile, jdText) {
+    const box = document.getElementById('matchCard');
+    if (!box) return;
+    if (!profile || !jdText || jdText.trim().length < 40) {
+        box.style.display = 'none'; box.innerHTML = '';
+        return;
+    }
+    const m = computeJDMatch(profile, jdText);
+    const col = scoreColor(m.score);
+    const verdict = m.score >= 70 ? 'Strong match' : m.score >= 45 ? 'Partial match — worth strengthening' : 'Weak match — add the missing keywords';
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="mc-top">
+            <div class="mc-ring" style="background:conic-gradient(${col} ${m.score * 3.6}deg, #2a2a3a 0deg);">
+                <div class="mc-ring-inner"><span style="color:${col};">${m.score}%</span></div>
+            </div>
+            <div class="mc-head">
+                <div class="mc-title">Résumé ↔ JD match</div>
+                <div class="mc-sub" style="color:${col};">${verdict}</div>
+                <div class="mc-meta">${m.matched.length} of ${m.total} key terms from the job description are in your résumé.</div>
+            </div>
+        </div>
+        ${m.missing.length ? `<div class="mc-sec"><div class="mc-label">⚠️ Missing keywords — add the ones you genuinely have to improve your score & ATS ranking:</div><div class="chips">${m.missing.map(k => `<span class="chip chip-miss">${escHtml(k)}</span>`).join('')}</div></div>` : ''}
+        ${m.matched.length ? `<div class="mc-sec"><div class="mc-label">✅ Already covered:</div><div class="chips">${m.matched.map(k => `<span class="chip chip-hit">${escHtml(k)}</span>`).join('')}</div></div>` : ''}
+        <p class="mc-foot">This is a keyword-overlap heuristic (like an ATS scan), not a guarantee. AI tailoring will weave in the terms you genuinely have when you Generate. Never add skills you don't actually possess.</p>
+    `;
+}
+window.loadProfileData = loadProfileData;
+window.refreshMatchCard = refreshMatchCard;
+
+// Right after an upload, show what the parser extracted so the user can confirm
+// success (or see clearly that nothing structured was read).
+function renderExtractionPreview(profile, errorMsg) {
+    const box = document.getElementById('extractionPreview');
+    if (!box) return;
+    if (!profile) {
+        box.style.display = 'block';
+        box.innerHTML = `<div class="pp-head"><span class="pill pill-warn">⚠️ Couldn't read this file</span></div>
+            <p class="pp-empty-note">${escHtml(errorMsg || 'Parsing failed.')} Try a text-based PDF/DOCX/TXT (not a scan or a password-protected file), or use <strong>Manual Entry</strong>.</p>`;
+        return;
+    }
+    const p = normalizeProfile(profile);
+    const has = profileHasResumeContent(profile);
+    const skills = p.skills || [];
+    const exp = p.experience || [];
+    const edu = p.education || [];
+    const summary = (p.summary || '').trim();
+    const raw = (profile.rawText || '').trim();
+    const chk = (ok) => ok ? '<span class="px px-ok">✓</span>' : '<span class="px px-no">—</span>';
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="pp-head">
+            ${has ? '<span class="pill pill-ok">✅ Extraction successful</span>'
+                  : '<span class="pill pill-warn">⚠️ Little/no content detected</span>'}
+            <span class="pp-muted">${escHtml(p.name || '')}${p.email ? ' · ' + escHtml(p.email) : ''}${p.phone ? ' · ' + escHtml(p.phone) : ''}</span>
+        </div>
+        <div class="pp-stats">
+            <span>${chk(!!summary)} Summary</span>
+            <span>${chk(skills.length > 0)} Skills (${skills.length})</span>
+            <span>${chk(exp.length > 0)} Experience (${exp.length})</span>
+            <span>${chk(edu.length > 0)} Education (${edu.length})</span>
+        </div>
+        ${!has ? `<p class="pp-empty-note">Only contact details were found. The rest may be a scanned/secured PDF or an unusual layout — switch to <strong>Manual Entry</strong> to type your summary, skills and experience, then Save.</p>` : ''}
+        ${raw ? `<details class="pp-raw" open><summary>View the exact text we read from your file (${raw.length.toLocaleString()} chars)</summary><pre>${escHtml(raw.slice(0, 6000))}${raw.length > 6000 ? '\n…(truncated)' : ''}</pre></details>` : ''}
+    `;
+}
+
 
 // ============================================================================
 // RESUME / COVER LETTER / PORTFOLIO GENERATION (local, no API key required)
@@ -3213,6 +3396,7 @@ async function fetchJDFromURL() {
         if (jdArea) jdArea.value = plain.slice(0, 8000);
         showToast('Job description fetched. Review and edit as needed.', 'success');
         setNote('✓ Fetched — review and edit the text below as needed.', 'ok');
+        refreshMatchCard();
     } catch (error) {
         console.error('JD fetch error:', error);
         showToast('Could not fetch that link (the portal likely blocks it). Paste the JD text instead.', 'error');
