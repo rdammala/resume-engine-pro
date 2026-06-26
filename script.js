@@ -3123,7 +3123,9 @@ function renderAISettings() {
         </div>
         <button class="btn btn-primary" onclick="setupCloudFork(this)">⚡ Auto-create my cloud generator</button>
         <button class="btn btn-secondary" onclick="saveOllamaCloudConfig()">Save Ollama Cloud Settings</button>
+        <button class="btn btn-secondary" onclick="verifyCloudSetup(this)">Verify cloud setup</button>
         ${hasTok ? '<button class="btn btn-secondary" onclick="clearOllamaToken()">Remove Token</button>' : ''}
+        <div id="ollamaSetupStatus" class="inline-note" style="display:none;"></div>
         <small>💸 This repo is <strong>public</strong>, so GitHub Actions minutes are <strong>unlimited &amp; free ($0)</strong>. The runner is temporary and shuts itself down when the job finishes (15-min max) — nothing keeps running, nothing is billed. Requires the <code>ollama-resume.yml</code> workflow (already included). Avoid <code>llama3</code> (8B) — it can run out of memory mid-generation on the free runner; stick with <code>llama3.2</code>.</small>
     </div>`;
 
@@ -3250,6 +3252,42 @@ async function setupCloudFork(btn) {
     }
 }
 window.setupCloudFork = setupCloudFork;
+
+// Explicit "is my fork ready?" check — confirms the workflow exists and Actions
+// are enabled, with a clear inline result the user can trust.
+async function verifyCloudSetup(btn) {
+    if (!window.GitHubRunner) { showToast('GitHub runner module not loaded', 'error'); return; }
+    const pat = document.getElementById('ghPat')?.value.trim();
+    if (pat) GitHubRunner.setToken(pat);
+    if (!GitHubRunner.hasToken()) { showToast('Add your GitHub token first', 'warning'); return; }
+    const cfg = GitHubRunner.getConfig();
+    const owner = (document.getElementById('ghOwner')?.value || '').trim() || cfg.owner;
+    const repo = (document.getElementById('ghRepo')?.value || '').trim() || cfg.repo;
+    const status = document.getElementById('ollamaSetupStatus');
+    const set = (html, kind) => { if (status) { status.style.display = 'block'; status.className = 'inline-note inline-note--' + (kind || 'info'); status.innerHTML = html; } };
+    const orig = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+    set('⏳ Checking your fork…', 'info');
+    try {
+        const [wf, actions] = await Promise.all([
+            GitHubRunner.workflowExists(owner, repo),
+            GitHubRunner.getActionsEnabled(owner, repo)
+        ]);
+        const lines = [];
+        lines.push(wf ? '✓ Workflow present (ollama-resume.yml)' : '✗ Workflow missing — click “⚡ Auto-create my cloud generator” to fork it');
+        lines.push(actions === true ? '✓ Actions enabled' : (actions === false
+            ? `✗ Actions disabled — <a href="https://github.com/${owner}/${repo}/actions" target="_blank" rel="noopener">open the Actions tab</a> and enable workflows`
+            : '… Actions status unknown (your token may not have permission to read it — generation can still work)'));
+        const ok = wf && actions === true;
+        set(`<strong>${escHtml(owner)}/${escHtml(repo)}</strong><br>${lines.join('<br>')}`, ok ? 'ok' : 'warn');
+        showToast(ok ? 'Cloud setup looks good ✓' : 'Cloud setup needs one more step — see the note', ok ? 'success' : 'warning');
+    } catch (e) {
+        set('Could not verify: ' + escHtml(e.message), 'warn');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = orig || 'Verify cloud setup'; }
+    }
+}
+window.verifyCloudSetup = verifyCloudSetup;
 
 }
 

@@ -344,6 +344,29 @@ const GitHubRunner = {
         } catch (_) {
             return false;
         }
+    },
+
+    // Read whether Actions are enabled on a repo (null = unknown / no permission).
+    async getActionsEnabled(owner, name) {
+        try {
+            const res = await this.api(`/repos/${owner}/${name}/actions/permissions`);
+            if (!res.ok) return null;
+            const j = await res.json();
+            return !!j.enabled;
+        } catch (_) {
+            return null;
+        }
+    },
+
+    // Confirm the dispatch workflow actually exists in the target repo.
+    async workflowExists(owner, name) {
+        const wf = this.getConfig().workflow || 'ollama-resume.yml';
+        try {
+            const res = await this.api(`/repos/${owner}/${name}/contents/.github/workflows/${encodeURIComponent(wf)}`);
+            return res.ok;
+        } catch (_) {
+            return false;
+        }
     }
 };
 
