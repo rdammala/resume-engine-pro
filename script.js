@@ -2138,18 +2138,82 @@ function extractJobMeta(jdText) {
     return { title: title || 'the role', company };
 }
 
-// Resume DOCUMENT templates — distinct visual styles (font, accent colour,
-// header & heading treatment) the user can pick, like a Word resume gallery.
-// All are single-column and ATS-friendly; they differ in look, not structure.
-const RESUME_TEMPLATES = [
-    { id: 'classic-ats', name: 'Classic ATS', desc: 'Clean black & white, single column — maximum ATS compatibility.', tags: ['ATS-safe', 'Any role'], font: 'helvetica', accent: '#111111', name: '#111111', heading: '#111111', divider: '#bbbbbb', header: 'centered', headingStyle: 'underline' },
-    { id: 'modern-blue', name: 'Modern Blue', desc: 'Sans-serif with a crisp blue accent — great for tech & engineering.', tags: ['Modern', 'Engineering'], font: 'helvetica', accent: '#1a73e8', name: '#1a73e8', heading: '#1a73e8', divider: '#1a73e8', header: 'left', headingStyle: 'bar' },
-    { id: 'executive-serif', name: 'Executive Serif', desc: 'Elegant serif for senior, leadership & program roles.', tags: ['Executive', 'Leadership'], font: 'times', accent: '#1f3a5f', name: '#1f2a44', heading: '#1f3a5f', divider: '#1f3a5f', header: 'centered', headingStyle: 'caps-underline' },
-    { id: 'teal-minimal', name: 'Teal Minimal', desc: 'Minimal, airy layout with a calm teal accent.', tags: ['Minimal', 'Modern'], font: 'helvetica', accent: '#0f766e', name: '#0f766e', heading: '#0f766e', divider: '#0f766e', header: 'left', headingStyle: 'underline' },
-    { id: 'slate-band', name: 'Slate Header', desc: 'Bold slate header band with your name in white — clean but striking.', tags: ['Bold', 'Modern'], font: 'helvetica', accent: '#334155', name: '#ffffff', heading: '#334155', divider: '#334155', header: 'band', headingStyle: 'bar' },
-    { id: 'burgundy-pro', name: 'Burgundy Professional', desc: 'Refined serif with a warm burgundy accent — distinctive yet professional.', tags: ['Creative', 'Executive'], font: 'times', accent: '#7b1f3a', name: '#7b1f3a', heading: '#7b1f3a', divider: '#c98aa0', header: 'centered', headingStyle: 'caps-underline' }
+// Resume DOCUMENT templates — a large gallery generated from base layout styles
+// × a colour palette (like a Word/Docs resume gallery). All are single-column
+// and ATS-friendly; they differ in look, not structure. NOTE: the name COLOUR
+// lives on `nameColor` (not `name`) so it never collides with the display name.
+const RESUME_STYLES = [
+    { sid: 'classic', sname: 'Classic', font: 'helvetica', header: 'centered', headingStyle: 'underline', tags: ['ATS-safe', 'Any role'] },
+    { sid: 'modern', sname: 'Modern', font: 'helvetica', header: 'left', headingStyle: 'bar', tags: ['Modern', 'Engineering'] },
+    { sid: 'executive', sname: 'Executive', font: 'times', header: 'centered', headingStyle: 'caps-underline', tags: ['Executive', 'Leadership'] },
+    { sid: 'minimal', sname: 'Minimal', font: 'helvetica', header: 'left', headingStyle: 'underline', tags: ['Minimal', 'Clean'] },
+    { sid: 'band', sname: 'Header Band', font: 'helvetica', header: 'band', headingStyle: 'bar', tags: ['Bold', 'Standout'] },
+    { sid: 'elegant', sname: 'Elegant', font: 'times', header: 'centered', headingStyle: 'underline', tags: ['Elegant', 'Serif'] }
 ];
-function getResumeTemplate(id) { return RESUME_TEMPLATES.find(t => t.id === id) || RESUME_TEMPLATES[0]; }
+const RESUME_PALETTE = [
+    { cid: 'charcoal', cname: 'Charcoal', hex: '#1f2937' },
+    { cid: 'navy', cname: 'Navy', hex: '#1f3a5f' },
+    { cid: 'blue', cname: 'Blue', hex: '#1a73e8' },
+    { cid: 'indigo', cname: 'Indigo', hex: '#4f46e5' },
+    { cid: 'teal', cname: 'Teal', hex: '#0f766e' },
+    { cid: 'emerald', cname: 'Emerald', hex: '#059669' },
+    { cid: 'slate', cname: 'Slate', hex: '#475569' },
+    { cid: 'violet', cname: 'Violet', hex: '#7c3aed' },
+    { cid: 'burgundy', cname: 'Burgundy', hex: '#7b1f3a' },
+    { cid: 'crimson', cname: 'Crimson', hex: '#b91c1c' }
+];
+function _mkResumeTemplate(style, color) {
+    const band = style.header === 'band';
+    return {
+        id: `${style.sid}-${color.cid}`,
+        name: `${style.sname} · ${color.cname}`,
+        desc: `${style.sname} layout (${style.font === 'times' ? 'serif' : 'sans-serif'}) with a ${color.cname.toLowerCase()} accent.`,
+        tags: style.tags,
+        sid: style.sid,
+        font: style.font,
+        accent: color.hex,
+        nameColor: band ? '#ffffff' : color.hex,
+        heading: color.hex,
+        divider: color.hex,
+        header: style.header,
+        headingStyle: style.headingStyle
+    };
+}
+const RESUME_TEMPLATES = (() => {
+    const out = [];
+    RESUME_STYLES.forEach(s => RESUME_PALETTE.forEach(c => out.push(_mkResumeTemplate(s, c))));
+    return out;
+})();
+
+// User-built custom template (layout + accent colour), persisted locally.
+let _customResumeTemplate = null;
+function getCustomResumeTemplate() {
+    if (!_customResumeTemplate) {
+        let saved = null;
+        try { saved = window.StorageManager && StorageManager.get && StorageManager.get('customResumeTemplate'); } catch (_) {}
+        _customResumeTemplate = (saved && saved.sid) ? saved : {
+            id: 'custom', name: 'Custom', desc: 'Your custom design.', tags: ['Custom'],
+            sid: 'classic', font: 'helvetica', accent: '#0ea5e9', nameColor: '#0ea5e9',
+            heading: '#0ea5e9', divider: '#0ea5e9', header: 'centered', headingStyle: 'underline'
+        };
+    }
+    _customResumeTemplate.id = 'custom';
+    return _customResumeTemplate;
+}
+function setCustomResumeTemplate(patch) {
+    const next = { ...getCustomResumeTemplate(), ...patch, id: 'custom', name: 'Custom', tags: ['Custom'] };
+    next.nameColor = next.header === 'band' ? '#ffffff' : next.accent;
+    next.heading = next.accent;
+    next.divider = next.accent;
+    _customResumeTemplate = next;
+    try { if (window.StorageManager && StorageManager.set) StorageManager.set('customResumeTemplate', next); } catch (_) {}
+    return next;
+}
+
+function getResumeTemplate(id) {
+    if (id === 'custom') return getCustomResumeTemplate();
+    return RESUME_TEMPLATES.find(t => t.id === id) || RESUME_TEMPLATES[0];
+}
 function hexToRgb(hex) {
     let h = String(hex || '#000000').replace('#', '');
     if (h.length === 3) h = h.split('').map(c => c + c).join('');
@@ -2158,15 +2222,16 @@ function hexToRgb(hex) {
 }
 
 // Suggest the 3 most fitting resume templates for a role/JD (cheap heuristic so
-// the user gets "top picks" like a curated gallery instead of guessing).
+// the user gets badged "top picks" in the gallery instead of guessing).
 function recommendResumeTemplates(jdText, profile) {
     const text = `${jdText || ''} ${(profile && (profile._aiJobTitle || '')) || ''} ${(profile && profile.title) || ''}`.toLowerCase();
     const picks = [];
-    const add = (id) => { if (!picks.includes(id) && getResumeTemplate(id).id === id) picks.push(id); };
-    if (/\b(director|vp|head|principal|chief|executive|manager|lead|program)\b/.test(text)) { add('executive-serif'); add('burgundy-pro'); }
-    if (/\b(engineer|developer|sre|devops|software|data|cloud|security|platform|architect)\b/.test(text)) { add('modern-blue'); add('teal-minimal'); }
-    if (/\b(design|creative|brand|marketing|product|ux|ui)\b/.test(text)) { add('teal-minimal'); add('slate-band'); add('burgundy-pro'); }
-    add('classic-ats'); add('modern-blue'); add('slate-band');
+    const add = (id) => { if (!picks.includes(id) && RESUME_TEMPLATES.some(t => t.id === id)) picks.push(id); };
+    if (/\b(director|vp|head|principal|chief|executive|manager|lead|program)\b/.test(text)) { add('executive-navy'); add('elegant-burgundy'); }
+    if (/\b(engineer|developer|sre|devops|software|data|cloud|security|platform|architect)\b/.test(text)) { add('modern-blue'); add('minimal-teal'); }
+    if (/\b(design|creative|brand|marketing|product|ux|ui)\b/.test(text)) { add('band-violet'); add('modern-indigo'); add('elegant-burgundy'); }
+    if (/\b(finance|account|legal|consult|analyst|operations|audit)\b/.test(text)) { add('executive-navy'); add('classic-charcoal'); }
+    add('classic-charcoal'); add('modern-blue'); add('band-slate');
     return picks.slice(0, 3);
 }
 
@@ -2184,7 +2249,7 @@ function buildResumeDocBlob(profile, matched, templateId) {
                <h1 style="margin:0;color:#ffffff;font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
                <p style="margin:4px 0 0;color:#e8eef6;font-size:10pt;font-family:${fam};">${contact}</p>
            </div>`
-        : `<h1 style="text-align:${t.header === 'left' ? 'left' : 'center'};margin:0;color:${t.name};font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
+        : `<h1 style="text-align:${t.header === 'left' ? 'left' : 'center'};margin:0;color:${t.nameColor};font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
            <p style="text-align:${t.header === 'left' ? 'left' : 'center'};font-size:10pt;color:#555;font-family:${fam};border-bottom:2px solid ${t.divider};padding-bottom:6px;">${contact}</p>`;
     const body = `
         ${headerBlock}
@@ -2276,7 +2341,7 @@ function buildResumePdfBlob(profile, matched, templateId) {
             } else {
                 const align = t.header === 'left' ? 'left' : 'center';
                 const nx = t.header === 'left' ? margin : pageW / 2;
-                doc.setFont(t.font, 'bold'); doc.setFontSize(23); setCol(t.name);
+                doc.setFont(t.font, 'bold'); doc.setFontSize(23); setCol(t.nameColor);
                 doc.text(name, nx, y, { align }); y += 20;
                 if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9); doc.setTextColor(90, 90, 90); doc.text(ascii(contact), nx, y, { align }); y += 12; }
                 const [dr, dg, db] = hexToRgb(t.divider);
@@ -3211,7 +3276,7 @@ async function generateSingle() {
     const wantPortfolio = document.getElementById('genPortfolio')?.checked;
     const wantJobDetails = document.getElementById('genJobDetails')?.checked;
     const template = document.getElementById('portfolioTemplate')?.value || 'minimalist';
-    const resumeTemplate = document.getElementById('resumeTemplate')?.value || 'classic-ats';
+    const resumeTemplate = document.getElementById('resumeTemplate')?.value || 'classic-charcoal';
 
     const statusBox = document.getElementById('generationStatus');
     const statusContent = document.getElementById('statusContent');
@@ -3820,7 +3885,7 @@ function populatePortfolioTemplates() {
 // Render a small SVG preview that mirrors a template's real look (header style,
 // accent colour, heading treatment, serif vs sans) — so users pick by sight.
 function resumeTemplateThumb(t) {
-    const ac = t.accent, nm = t.name, hd = t.heading, dv = t.divider;
+    const ac = t.accent, nm = t.nameColor, hd = t.heading, dv = t.divider;
     const ff = t.font === 'times' ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
     const gray = '#c9ced6';
     const line = (x, y, w, col) => `<rect x="${x}" y="${y}" width="${w}" height="3" rx="1.5" fill="${col || gray}"/>`;
@@ -3865,33 +3930,73 @@ function resumeTemplateThumb(t) {
 function populateResumeTemplates() {
     const sel = document.getElementById('resumeTemplate');
     if (!sel) return;
-    let saved = 'classic-ats';
-    try { saved = (window.StorageManager && StorageManager.get && StorageManager.get('resumeTemplate')) || 'classic-ats'; } catch (_) {}
-    sel.innerHTML = RESUME_TEMPLATES.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+    let saved = 'classic-charcoal';
+    try { saved = (window.StorageManager && StorageManager.get && StorageManager.get('resumeTemplate')) || 'classic-charcoal'; } catch (_) {}
+    sel.innerHTML = RESUME_TEMPLATES.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('')
+        + '<option value="custom">Custom</option>';
     if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
     renderResumeGallery();
     renderResumeTemplateDesc();
+    renderResumeCustomBuilder();
 }
 
 function renderResumeGallery() {
     const box = document.getElementById('resumeTemplateGallery');
     const sel = document.getElementById('resumeTemplate');
     if (!box || !sel) return;
-    const selected = sel.value || 'classic-ats';
+    const selected = sel.value || 'classic-charcoal';
     const jd = (document.getElementById('jdText')?.value || '').trim();
+    const filter = (document.getElementById('resumeTemplateFilter')?.value || '').trim().toLowerCase();
     let profile = null;
     try { const id = document.getElementById('selectProfile')?.value; profile = id ? StorageManager.getProfile(id) : null; } catch (_) {}
     const recs = new Set(recommendResumeTemplates(jd, profile));
-    box.innerHTML = RESUME_TEMPLATES.map(t => {
+    const matches = (t) => !filter || t.name.toLowerCase().includes(filter) || t.tags.join(' ').toLowerCase().includes(filter) || t.sid.includes(filter);
+    const cardHtml = (t, isRec) => {
         const isSel = t.id === selected;
-        const isRec = recs.has(t.id);
         return `<button type="button" class="resume-card${isSel ? ' selected' : ''}" onclick="selectResumeTemplate('${t.id}')" title="${escHtml(t.desc)}">
             ${isRec ? '<span class="rc-badge">✨ Top pick</span>' : ''}
             <span class="rc-thumb-wrap">${resumeTemplateThumb(t)}</span>
             <span class="rc-name">${escHtml(t.name)}</span>
             <span class="rc-tags">${escHtml(t.tags.join(' · '))}</span>
         </button>`;
-    }).join('');
+    };
+    // Recommended first, then the rest — all filtered by the search box.
+    const recommended = RESUME_TEMPLATES.filter(t => recs.has(t.id) && matches(t));
+    const others = RESUME_TEMPLATES.filter(t => !recs.has(t.id) && matches(t));
+    const cust = getCustomResumeTemplate();
+    const custCard = (!filter || 'custom'.includes(filter) || 'build'.includes(filter))
+        ? `<button type="button" class="resume-card${selected === 'custom' ? ' selected' : ''}" onclick="selectResumeTemplate('custom')" title="Build your own design">
+            <span class="rc-badge rc-badge-custom">🎨 Build</span>
+            <span class="rc-thumb-wrap">${resumeTemplateThumb(cust)}</span>
+            <span class="rc-name">Custom</span>
+            <span class="rc-tags">Build your own</span>
+        </button>` : '';
+    box.innerHTML = custCard + recommended.map(t => cardHtml(t, true)).join('') + others.map(t => cardHtml(t, false)).join('');
+}
+
+// Inline builder shown when "Custom" is selected: choose a layout + accent.
+function renderResumeCustomBuilder() {
+    const box = document.getElementById('resumeCustomBuilder');
+    const sel = document.getElementById('resumeTemplate');
+    if (!box || !sel) return;
+    if (sel.value !== 'custom') { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const c = getCustomResumeTemplate();
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="rcb-title">🎨 Build your own</div>
+        <div class="rcb-row"><span class="rcb-label">Layout</span><div class="rcb-opts">${RESUME_STYLES.map(s => `<button type="button" class="rcb-chip${c.sid === s.sid ? ' on' : ''}" onclick="customSetLayout('${s.sid}')">${escHtml(s.sname)}</button>`).join('')}</div></div>
+        <div class="rcb-row"><span class="rcb-label">Accent</span><div class="rcb-opts">${RESUME_PALETTE.map(p => `<button type="button" class="rcb-swatch${c.accent.toLowerCase() === p.hex.toLowerCase() ? ' on' : ''}" style="background:${p.hex}" title="${escHtml(p.cname)}" onclick="customSetColor('${p.hex}')"></button>`).join('')}<label class="rcb-swatch rcb-pick" title="Any colour"><input type="color" value="${c.accent}" oninput="customSetColor(this.value)">+</label></div></div>
+    `;
+}
+
+function customSetLayout(sid) {
+    const s = RESUME_STYLES.find(x => x.sid === sid) || RESUME_STYLES[0];
+    setCustomResumeTemplate({ sid: s.sid, font: s.font, header: s.header, headingStyle: s.headingStyle });
+    selectResumeTemplate('custom');
+}
+function customSetColor(hex) {
+    setCustomResumeTemplate({ accent: hex });
+    selectResumeTemplate('custom');
 }
 
 function renderResumeTemplateDesc() {
@@ -3910,7 +4015,10 @@ function selectResumeTemplate(id) {
     try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumeTemplate', id); } catch (_) {}
     renderResumeGallery();
     renderResumeTemplateDesc();
+    renderResumeCustomBuilder();
 }
+
+function filterResumeTemplates() { renderResumeGallery(); }
 
 function onResumeTemplateChange() {
     const sel = document.getElementById('resumeTemplate');
@@ -3918,9 +4026,14 @@ function onResumeTemplateChange() {
     try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumeTemplate', sel.value); } catch (_) {}
     renderResumeGallery();
     renderResumeTemplateDesc();
+    renderResumeCustomBuilder();
 }
 window.populateResumeTemplates = populateResumeTemplates;
 window.renderResumeGallery = renderResumeGallery;
+window.renderResumeCustomBuilder = renderResumeCustomBuilder;
+window.customSetLayout = customSetLayout;
+window.customSetColor = customSetColor;
+window.filterResumeTemplates = filterResumeTemplates;
 window.onResumeTemplateChange = onResumeTemplateChange;
 window.selectResumeTemplate = selectResumeTemplate;
 

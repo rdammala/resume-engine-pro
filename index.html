@@ -497,38 +497,46 @@
                         <!-- Step 4: Output Options -->
                         <div class="generator-step">
                             <h3>Step 4: What to Generate</h3>
-                            <div class="checkbox-group">
-                                <label class="checkbox">
-                                    <input type="checkbox" id="genResume" checked /> Resume (DOCX + PDF)
-                                </label>
-                                <label class="checkbox">
-                                    <input type="checkbox" id="genCoverLetter" checked /> Cover Letter (DOCX)
-                                </label>
-                                <label class="checkbox">
-                                    <input type="checkbox" id="genPortfolio" checked /> Portfolio (HTML)
-                                </label>
-                                <label class="checkbox">
-                                    <input type="checkbox" id="genJobDetails" checked /> Job Details (Markdown)
-                                </label>
-                            </div>
+                            <div class="step4-cols">
+                                <div class="step4-left">
+                                    <div class="checkbox-group">
+                                        <label class="checkbox">
+                                            <input type="checkbox" id="genResume" checked /> Resume (DOCX + PDF)
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" id="genCoverLetter" checked /> Cover Letter (DOCX)
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" id="genPortfolio" checked /> Portfolio (HTML)
+                                        </label>
+                                        <label class="checkbox">
+                                            <input type="checkbox" id="genJobDetails" checked /> Job Details (Markdown)
+                                        </label>
+                                    </div>
 
-                            <div class="form-group">
-                                <label>Résumé Template <span class="optional">(click a design to pick it)</span></label>
-                                <select id="resumeTemplate" onchange="onResumeTemplateChange()" style="display:none;"></select>
-                                <div id="resumeTemplateGallery" class="resume-gallery"></div>
-                                <div id="resumeTemplateDesc" class="inline-note" style="display:none;"></div>
-                            </div>
+                                    <div class="form-group">
+                                        <label>Portfolio Template:</label>
+                                        <select id="portfolioTemplate">
+                                            <option value="auto">Auto — unique colour per profile (recommended)</option>
+                                        </select>
+                                    </div>
 
-                            <div class="form-group">
-                                <label>Portfolio Template:</label>
-                                <select id="portfolioTemplate">
-                                    <option value="auto">Auto — unique colour per profile (recommended)</option>
-                                </select>
-                            </div>
+                                    <div class="form-group">
+                                        <label>GitHub Data Repo Name:</label>
+                                        <input type="text" id="githubDataRepo" placeholder="resume-engine-data (auto-created if blank)" />
+                                    </div>
+                                </div>
 
-                            <div class="form-group">
-                                <label>GitHub Data Repo Name:</label>
-                                <input type="text" id="githubDataRepo" placeholder="resume-engine-data (auto-created if blank)" />
+                                <div class="step4-right">
+                                    <label>Résumé Template <span class="optional">(click a design — 60+ styles, or build your own)</span></label>
+                                    <input type="text" id="resumeTemplateFilter" class="resume-filter" placeholder="🔎 Search designs — e.g. blue, executive, serif, band…" oninput="filterResumeTemplates()" />
+                                    <select id="resumeTemplate" onchange="onResumeTemplateChange()" style="display:none;"></select>
+                                    <div class="resume-gallery-scroll">
+                                        <div id="resumeTemplateGallery" class="resume-gallery"></div>
+                                    </div>
+                                    <div id="resumeCustomBuilder" class="resume-custom-builder" style="display:none;"></div>
+                                    <div id="resumeTemplateDesc" class="inline-note" style="display:none;"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
