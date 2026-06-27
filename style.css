@@ -2268,6 +2268,7 @@ audio {
 .result-card { border-color: rgba(100, 200, 255, 0.45); }
 
 /* Step 4 two-column layout (file options | résumé template gallery) */
+.generator-step--full { grid-column: 1 / -1; }
 .step4-cols { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.6fr); gap: 1.3rem; align-items: start; }
 @media (max-width: 760px) { .step4-cols { grid-template-columns: 1fr; } }
 .step4-right > label { display: block; margin-bottom: 0.4rem; }
