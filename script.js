@@ -2149,7 +2149,10 @@ const RESUME_STYLES = [
     { sid: 'minimal', sname: 'Minimal', font: 'helvetica', header: 'left', headingStyle: 'underline', tags: ['Minimal', 'Clean'] },
     { sid: 'band', sname: 'Header Band', font: 'helvetica', header: 'band', headingStyle: 'bar', tags: ['Bold', 'Standout'] },
     { sid: 'elegant', sname: 'Elegant', font: 'times', header: 'centered', headingStyle: 'underline', tags: ['Elegant', 'Serif'] },
-    { sid: 'sidebar', sname: 'Sidebar', font: 'helvetica', header: 'sidebar', headingStyle: 'underline', tags: ['Two-column', 'Modern'] }
+    { sid: 'sidebar', sname: 'Sidebar', font: 'helvetica', header: 'sidebar', headingStyle: 'underline', tags: ['Two-column', 'Modern'] },
+    { sid: 'photo', sname: 'Photo Header', font: 'helvetica', header: 'photo', headingStyle: 'underline', tags: ['Photo', 'Personal'] },
+    { sid: 'barsidebar', sname: 'Skill Bars', font: 'helvetica', header: 'barsidebar', headingStyle: 'underline', tags: ['Two-column', 'Skill bars'] },
+    { sid: 'timeline', sname: 'Timeline', font: 'helvetica', header: 'timeline', headingStyle: 'bar', tags: ['Timeline', 'Story'] }
 ];
 const RESUME_PALETTE = [
     { cid: 'charcoal', cname: 'Charcoal', hex: '#1f2937' },
@@ -2221,6 +2224,43 @@ function hexToRgb(hex) {
     const n = parseInt(h, 16) || 0;
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+// Blend two RGB triplets (ratio 0..1 toward `b`). Used for skill-bar tracks.
+function mixRgb(a, b, ratio) {
+    const r = Math.max(0, Math.min(1, ratio));
+    return [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * r));
+}
+
+// ---- Resume density (one global toggle that applies to ANY template) --------
+// 'normal' = comfortable spacing; 'compact' = tighter sizes to fit one page.
+function getResumeDensity() {
+    try { return (window.StorageManager && StorageManager.get && StorageManager.get('resumeDensity')) || 'normal'; } catch (_) { return 'normal'; }
+}
+function setResumeDensity(mode) {
+    const m = mode === 'compact' ? 'compact' : 'normal';
+    try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumeDensity', m); } catch (_) {}
+    return m;
+}
+
+// ---- Optional résumé photo (data URL) used by Photo-Header templates --------
+function getResumePhoto() {
+    try { return (window.StorageManager && StorageManager.get && StorageManager.get('resumePhoto')) || ''; } catch (_) { return ''; }
+}
+function setResumePhoto(dataUrl) {
+    try { if (window.StorageManager && StorageManager.set) StorageManager.set('resumePhoto', dataUrl || ''); } catch (_) {}
+    return dataUrl || '';
+}
+function nameInitials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return ((parts[0][0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+// Pseudo proficiency (0.55..1) for "skills as bars" — top skills score highest,
+// tapering down the list. Deterministic so a profile always renders the same.
+function skillLevels(skills) {
+    const n = skills.length || 1;
+    return skills.map((s, i) => ({ name: s, level: Math.max(0.55, 1 - (i / Math.max(8, n)) * 0.5) }));
+}
 
 // Suggest the 3 most fitting resume templates for a role/JD (cheap heuristic so
 // the user gets badged "top picks" in the gallery instead of guessing).
@@ -2242,19 +2282,31 @@ function buildResumeDocBlob(profile, matched, templateId) {
     const t = getResumeTemplate(templateId);
     const fam = t.font === 'times' ? "Georgia, 'Times New Roman', serif" : "Calibri, Arial, sans-serif";
     const accent = t.heading;
+    const compact = getResumeDensity() === 'compact';
+    const bodyFs = compact ? '10pt' : '11pt';
+    const lh = compact ? '1.2' : '1.4';
+    const h2mt = compact ? '8px' : '14px';
+    const expMb = compact ? '5px' : '8px';
     const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).map(escHtml).join(' &nbsp;|&nbsp; ');
     const skills = prioritizedSkills(p.skills, matched);
-    const h2 = `font-family:${fam};color:${accent};border-bottom:2px solid ${accent};padding-bottom:2px;margin-bottom:4px;`;
+    const h2 = `font-family:${fam};color:${accent};border-bottom:2px solid ${accent};padding-bottom:2px;margin:${h2mt} 0 4px;`;
     const expHtml = (style) => p.experience.map(exp => `
-            <p style="font-family:${fam};margin-bottom:8px;${style || ''}"><strong>${escHtml(exp.position || exp.title || '')}</strong>${exp.company ? ' — ' + escHtml(exp.company) : ''}${exp.year ? ' (' + escHtml(exp.year) + ')' : ''}<br>${escHtml(exp.description || '').replace(/\n/g, '<br>')}</p>`).join('');
+            <p style="font-family:${fam};margin-bottom:${expMb};${style || ''}"><strong>${escHtml(exp.position || exp.title || '')}</strong>${exp.company ? ' — ' + escHtml(exp.company) : ''}${exp.year ? ' (' + escHtml(exp.year) + ')' : ''}<br>${escHtml(exp.description || '').replace(/\n/g, '<br>')}</p>`).join('');
+    const wrap = (inner, m0) => `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body style="font-family:${fam};font-size:${bodyFs};line-height:${lh};${m0 ? 'margin:0;' : ''}">${inner}</body></html>`;
 
-    // Structural two-column (sidebar) layout uses a table.
-    if (t.header === 'sidebar') {
+    // Structural two-column (sidebar / skill-bars) layout uses a table.
+    if (t.header === 'sidebar' || t.header === 'barsidebar') {
         const sideH = `font-family:${fam};color:#ffffff;border-bottom:1px solid rgba(255,255,255,0.6);padding-bottom:2px;margin:10px 0 4px;`;
+        const trk = '#' + mixRgb(hexToRgb(t.accent), [255, 255, 255], 0.32).map(n => n.toString(16).padStart(2, '0')).join('');
+        const skillsHtml = !skills.length ? '' : (t.header === 'barsidebar'
+            ? `<h3 style="${sideH}">Skills</h3>${skillLevels(skills).map(({ name, level }) => `
+                <div style="margin:0 0 7px;"><div style="color:#eef2f8;font-size:9pt;font-family:${fam};margin-bottom:2px;">${escHtml(name)}</div>
+                <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;"><tr><td style="background:${trk};border-radius:3px;"><table cellpadding="0" cellspacing="0" style="width:${Math.round(level * 100)}%;border-collapse:collapse;"><tr><td style="background:#ffffff;font-size:1pt;line-height:6px;border-radius:3px;">&nbsp;</td></tr></table></td></tr></table></div>`).join('')}`
+            : `<h3 style="${sideH}">Skills</h3>${skills.map(s => `<p style="margin:1px 0;color:#eef2f8;font-size:9pt;font-family:${fam};">• ${escHtml(s)}</p>`).join('')}`);
         const sideHtml = `
             <h1 style="margin:0 0 8px;color:#ffffff;font-family:${fam};font-size:18pt;">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
             ${[p.email, p.phone, p.location, p.linkedin].filter(Boolean).map(c => `<p style="margin:2px 0;color:#eef2f8;font-size:9pt;font-family:${fam};">${escHtml(c)}</p>`).join('')}
-            ${skills.length ? `<h3 style="${sideH}">Skills</h3>${skills.map(s => `<p style="margin:1px 0;color:#eef2f8;font-size:9pt;font-family:${fam};">• ${escHtml(s)}</p>`).join('')}` : ''}
+            ${skillsHtml}
             ${p.education.length ? `<h3 style="${sideH}">Education</h3>${p.education.map(e => `<p style="margin:2px 0;color:#eef2f8;font-size:9pt;font-family:${fam};">${escHtml(typeof e === 'string' ? e : (e.degree || e.school || ''))}</p>`).join('')}` : ''}`;
         const mainHtml = `
             ${p.summary ? `<h2 style="${h2}">Summary</h2><p style="font-family:${fam};">${escHtml(p.summary)}</p>` : ''}
@@ -2263,26 +2315,39 @@ function buildResumeDocBlob(profile, matched, templateId) {
             <td style="width:34%;background:${t.accent};padding:16px;vertical-align:top;">${sideHtml}</td>
             <td style="padding:16px 18px;vertical-align:top;">${mainHtml}</td>
         </tr></table>`;
-        const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body style="font-family:${fam};margin:0;">${table}</body></html>`;
-        return new Blob(['\ufeff', html], { type: 'application/msword' });
+        return new Blob(['\ufeff', wrap(table, true)], { type: 'application/msword' });
     }
 
-    const headerBlock = t.header === 'band'
-        ? `<div style="background:${t.accent};padding:16px 18px;text-align:center;">
+    let headerBlock;
+    if (t.header === 'band') {
+        headerBlock = `<div style="background:${t.accent};padding:16px 18px;text-align:center;">
                <h1 style="margin:0;color:#ffffff;font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
                <p style="margin:4px 0 0;color:#e8eef6;font-size:10pt;font-family:${fam};">${contact}</p>
-           </div>`
-        : `<h1 style="text-align:${t.header === 'left' ? 'left' : 'center'};margin:0;color:${t.nameColor};font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
-           <p style="text-align:${t.header === 'left' ? 'left' : 'center'};font-size:10pt;color:#555;font-family:${fam};border-bottom:2px solid ${t.divider};padding-bottom:6px;">${contact}</p>`;
+           </div>`;
+    } else if (t.header === 'photo') {
+        const photo = getResumePhoto();
+        const avatar = photo
+            ? `<img src="${photo}" width="92" height="92" style="width:92px;height:92px;border-radius:50%;border:3px solid ${t.accent};" />`
+            : `<div style="width:92px;height:92px;border-radius:50%;background:${t.accent};color:#ffffff;font-family:${fam};font-size:30pt;font-weight:bold;line-height:92px;text-align:center;margin:0 auto;">${escHtml(nameInitials(p.displayName || p.name))}</div>`;
+        headerBlock = `<div style="text-align:center;margin-bottom:4px;">
+               ${avatar}
+               <h1 style="margin:8px 0 2px;color:${t.nameColor};font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
+               <p style="margin:0;font-size:10pt;color:#555;font-family:${fam};border-bottom:2px solid ${t.divider};padding-bottom:6px;">${contact}</p>
+           </div>`;
+    } else {
+        const align = (t.header === 'left' || t.header === 'timeline') ? 'left' : 'center';
+        headerBlock = `<h1 style="text-align:${align};margin:0;color:${t.nameColor};font-family:${fam};">${escHtml(p.displayName || p.name || 'Your Name')}</h1>
+           <p style="text-align:${align};font-size:10pt;color:#555;font-family:${fam};border-bottom:2px solid ${t.divider};padding-bottom:6px;">${contact}</p>`;
+    }
+    const expStyle = t.header === 'timeline' ? `border-left:3px solid ${accent};padding-left:12px;` : '';
     const body = `
         ${headerBlock}
         ${p.summary ? `<h2 style="${h2}">Summary</h2><p style="font-family:${fam};">${escHtml(p.summary)}</p>` : ''}
         ${skills.length ? `<h2 style="${h2}">Core Skills</h2><p style="font-family:${fam};">${skills.map(escHtml).join(' &nbsp;•&nbsp; ')}</p>` : ''}
-        ${p.experience.length ? `<h2 style="${h2}">Experience</h2>${expHtml()}` : ''}
+        ${p.experience.length ? `<h2 style="${h2}">Experience</h2>${expHtml(expStyle)}` : ''}
         ${p.education.length ? `<h2 style="${h2}">Education</h2>${p.education.map(e => `<p style="font-family:${fam};">${escHtml(typeof e === 'string' ? e : (e.degree || e.school || ''))}</p>`).join('')}` : ''}
     `;
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body style="font-family:${fam};">${body}</body></html>`;
-    return new Blob(['\ufeff', html], { type: 'application/msword' });
+    return new Blob(['\ufeff', wrap(body, false)], { type: 'application/msword' });
 }
 
 // Build a PDF Blob using jsPDF (reliable browser global: window.jspdf.jsPDF)
@@ -2299,7 +2364,10 @@ function buildResumePdfBlob(profile, matched, templateId) {
             const doc = new jsPDFCtor({ unit: 'pt', format: 'letter' });
             const pageW = doc.internal.pageSize.getWidth();
             const pageH = doc.internal.pageSize.getHeight();
-            const margin = 50;
+            // Density: 'compact' shrinks margins, fonts and gaps to fit one page.
+            const compact = getResumeDensity() === 'compact';
+            const cf = compact ? 0.86 : 1;            // font/gap scale factor
+            const margin = compact ? 40 : 50;
             const maxW = pageW - margin * 2;
             let y = margin;
 
@@ -2316,42 +2384,44 @@ function buildResumePdfBlob(profile, matched, templateId) {
 
             const setCol = (c) => { const [r, g, b] = hexToRgb(c); doc.setTextColor(r, g, b); };
             const ensure = (h) => { if (y + h > pageH - margin) { doc.addPage(); y = margin; } };
-            const writeBlock = (text, size, color, gap, bold) => {
+            const writeBlock = (text, size, color, gap, bold, xoff) => {
                 if (!text) return;
+                xoff = xoff || 0;
+                const fs = size * cf;
                 doc.setFont(t.font, bold ? 'bold' : 'normal');
-                doc.setFontSize(size);
+                doc.setFontSize(fs);
                 setCol(color);
-                const lines = doc.splitTextToSize(ascii(text), maxW);
-                lines.forEach(line => { ensure(size + 2); doc.text(line, margin, y); y += size + 3; });
-                y += (gap || 0);
+                const lines = doc.splitTextToSize(ascii(text), maxW - xoff);
+                lines.forEach(line => { ensure(fs + 2); doc.text(line, margin + xoff, y); y += fs + 3 * cf; });
+                y += (gap || 0) * cf;
             };
             const heading = (text) => {
-                y += 10; ensure(24);
-                doc.setFont(t.font, 'bold'); doc.setFontSize(12);
+                y += 10 * cf; ensure(24 * cf);
+                doc.setFont(t.font, 'bold'); doc.setFontSize(12 * cf);
                 const label = t.headingStyle === 'caps-underline' ? ascii(text).toUpperCase() : ascii(text);
                 let textX = margin;
                 if (t.headingStyle === 'bar') {
                     const [ar, ag, ab] = hexToRgb(t.accent);
                     doc.setFillColor(ar, ag, ab);
-                    doc.rect(margin, y - 9, 4, 12, 'F');
+                    doc.rect(margin, y - 9 * cf, 4, 12 * cf, 'F');
                     textX = margin + 10;
                 }
                 setCol(t.heading);
                 doc.text(label, textX, y);
-                y += 6;
+                y += 6 * cf;
                 const [dr, dg, db] = hexToRgb(t.divider);
                 doc.setDrawColor(dr, dg, db);
                 doc.setLineWidth(t.headingStyle === 'caps-underline' ? 1 : 0.7);
                 doc.line(t.headingStyle === 'bar' ? textX : margin, y, pageW - margin, y);
-                y += 12;
+                y += 12 * cf;
                 doc.setFont(t.font, 'normal');
             };
 
             const name = ascii(p.displayName || p.name || 'Your Name');
             const contact = [p.email, p.phone, p.location, p.linkedin].filter(Boolean).join('   |   ');
 
-            // ---- Structural TWO-COLUMN (sidebar) layout ----
-            if (t.header === 'sidebar') {
+            // ---- Structural TWO-COLUMN (sidebar / skill-bars) layout ----
+            if (t.header === 'sidebar' || t.header === 'barsidebar') {
                 const skillsS = prioritizedSkills(p.skills, matched);
                 const [ar, ag, ab] = hexToRgb(t.accent);
                 const sideW = Math.round(pageW * 0.34);
@@ -2381,7 +2451,22 @@ function buildResumePdfBlob(profile, matched, templateId) {
                 doc.splitTextToSize(ascii(name), sideMaxW).forEach(l => { doc.text(l, padIn, sy); sy += 18; });
                 sy += 4;
                 [p.email, p.phone, p.location, p.linkedin].filter(Boolean).forEach(ci => sideText(ci, 8.5, [236, 240, 248], 1.5));
-                if (skillsS.length) { sideHeading('Skills'); skillsS.forEach(s => sideText('- ' + s, 9, [240, 243, 250], 0.5)); }
+                if (skillsS.length) {
+                    sideHeading('Skills');
+                    if (t.header === 'barsidebar') {
+                        const [tr, tg, tb] = mixRgb([ar, ag, ab], [255, 255, 255], 0.3);
+                        skillLevels(skillsS).forEach(({ name: sn, level }) => {
+                            if (sy > pageH - margin - 14) return;
+                            doc.setFont(t.font, 'normal'); doc.setFontSize(8.5); doc.setTextColor(240, 243, 250);
+                            doc.text(ascii(sn).slice(0, 26), padIn, sy); sy += 4;
+                            doc.setFillColor(tr, tg, tb); doc.roundedRect(padIn, sy, sideMaxW, 3.6, 1.8, 1.8, 'F');
+                            doc.setFillColor(255, 255, 255); doc.roundedRect(padIn, sy, sideMaxW * level, 3.6, 1.8, 1.8, 'F');
+                            sy += 11;
+                        });
+                    } else {
+                        skillsS.forEach(s => sideText('- ' + s, 9, [240, 243, 250], 0.5));
+                    }
+                }
                 if (p.education.length) { sideHeading('Education'); p.education.forEach(e => sideText(typeof e === 'string' ? e : (e.degree || e.school || ''), 9, [240, 243, 250], 3)); }
 
                 // Main column (right): summary + experience, flows across pages.
@@ -2417,22 +2502,45 @@ function buildResumePdfBlob(profile, matched, templateId) {
 
             // Header (varies by template)
             if (t.header === 'band') {
-                const bandH = 92;
+                const bandH = (compact ? 78 : 92);
                 const [ar, ag, ab] = hexToRgb(t.accent);
                 doc.setFillColor(ar, ag, ab);
                 doc.rect(0, 0, pageW, bandH, 'F');
-                doc.setFont(t.font, 'bold'); doc.setFontSize(24); doc.setTextColor(255, 255, 255);
-                doc.text(name, pageW / 2, 48, { align: 'center' });
-                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9.5); doc.setTextColor(232, 238, 246); doc.text(ascii(contact), pageW / 2, 70, { align: 'center' }); }
-                y = bandH + 24;
-            } else {
-                const align = t.header === 'left' ? 'left' : 'center';
-                const nx = t.header === 'left' ? margin : pageW / 2;
-                doc.setFont(t.font, 'bold'); doc.setFontSize(23); setCol(t.nameColor);
-                doc.text(name, nx, y, { align }); y += 20;
-                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9); doc.setTextColor(90, 90, 90); doc.text(ascii(contact), nx, y, { align }); y += 12; }
+                doc.setFont(t.font, 'bold'); doc.setFontSize(24 * cf); doc.setTextColor(255, 255, 255);
+                doc.text(name, pageW / 2, bandH * 0.52, { align: 'center' });
+                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9.5 * cf); doc.setTextColor(232, 238, 246); doc.text(ascii(contact), pageW / 2, bandH * 0.76, { align: 'center' }); }
+                y = bandH + 24 * cf;
+            } else if (t.header === 'photo') {
+                // Circular avatar (or initials) above a centered name + contact.
+                const photo = getResumePhoto();
+                const dia = (compact ? 56 : 68);
+                const cx = pageW / 2;
+                const px = cx - dia / 2, py = margin;
+                const [ar, ag, ab] = hexToRgb(t.accent);
+                let drew = false;
+                if (photo) { try { doc.addImage(photo, px, py, dia, dia); drew = true; } catch (_) { drew = false; } }
+                if (drew) {
+                    doc.setDrawColor(ar, ag, ab); doc.setLineWidth(2); doc.rect(px, py, dia, dia);
+                } else {
+                    doc.setFillColor(ar, ag, ab); doc.circle(cx, py + dia / 2, dia / 2, 'F');
+                    doc.setFont(t.font, 'bold'); doc.setFontSize(dia * 0.34); doc.setTextColor(255, 255, 255);
+                    doc.text(nameInitials(p.displayName || p.name), cx, py + dia / 2 + dia * 0.12, { align: 'center' });
+                }
+                y = py + dia + 20 * cf;
+                doc.setFont(t.font, 'bold'); doc.setFontSize(21 * cf); setCol(t.nameColor);
+                doc.text(name, cx, y, { align: 'center' }); y += 17 * cf;
+                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9 * cf); doc.setTextColor(90, 90, 90); doc.text(ascii(contact), cx, y, { align: 'center' }); y += 12 * cf; }
                 const [dr, dg, db] = hexToRgb(t.divider);
-                doc.setDrawColor(dr, dg, db); doc.setLineWidth(1.2); doc.line(margin, y, pageW - margin, y); y += 6;
+                doc.setDrawColor(dr, dg, db); doc.setLineWidth(1.2); doc.line(margin, y, pageW - margin, y); y += 6 * cf;
+            } else {
+                const leftish = (t.header === 'left' || t.header === 'timeline');
+                const align = leftish ? 'left' : 'center';
+                const nx = leftish ? margin : pageW / 2;
+                doc.setFont(t.font, 'bold'); doc.setFontSize(23 * cf); setCol(t.nameColor);
+                doc.text(name, nx, y, { align }); y += 20 * cf;
+                if (contact) { doc.setFont(t.font, 'normal'); doc.setFontSize(9 * cf); doc.setTextColor(90, 90, 90); doc.text(ascii(contact), nx, y, { align }); y += 12 * cf; }
+                const [dr, dg, db] = hexToRgb(t.divider);
+                doc.setDrawColor(dr, dg, db); doc.setLineWidth(1.2); doc.line(margin, y, pageW - margin, y); y += 6 * cf;
             }
 
             if (p.summary) { heading('Summary'); writeBlock(p.summary, 10, '#333333', 4); }
@@ -2442,10 +2550,17 @@ function buildResumePdfBlob(profile, matched, templateId) {
 
             if (p.experience.length) {
                 heading('Experience');
+                const timeline = t.header === 'timeline';
+                const [ar, ag, ab] = hexToRgb(t.accent);
                 p.experience.forEach(exp => {
+                    const startY = y;
                     const head = [exp.position || exp.title, exp.company].filter(Boolean).join(' - ');
-                    if (head) writeBlock(head + (exp.year ? `  (${exp.year})` : ''), 11, '#111111', 1, true);
-                    if (exp.description) writeBlock(exp.description, 10, '#333333', 4);
+                    if (head) writeBlock(head + (exp.year ? `  (${exp.year})` : ''), 11, '#111111', 1, true, timeline ? 14 : 0);
+                    if (exp.description) writeBlock(exp.description, 10, '#333333', 4, false, timeline ? 14 : 0);
+                    if (timeline) {
+                        doc.setFillColor(ar, ag, ab); doc.circle(margin + 3, startY - 3, 2.6, 'F');
+                        if (y > startY) { doc.setDrawColor(ar, ag, ab); doc.setLineWidth(1.1); doc.line(margin + 3, startY, margin + 3, y - 10 * cf); }
+                    }
                 });
             }
 
@@ -3976,17 +4091,22 @@ function resumeTemplateThumb(t) {
     const ff = t.font === 'times' ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
     const gray = '#c9ced6';
     const line = (x, y, w, col) => `<rect x="${x}" y="${y}" width="${w}" height="3" rx="1.5" fill="${col || gray}"/>`;
-    // Structural two-column (sidebar) preview.
-    if (t.header === 'sidebar') {
+    // Structural two-column (sidebar) preview — plain skills OR skills-as-bars.
+    if (t.header === 'sidebar' || t.header === 'barsidebar') {
         const sw = 58;
         const wl = (x, y, w) => `<rect x="${x}" y="${y}" width="${w}" height="2.6" rx="1.3" fill="#ffffff" opacity="0.85"/>`;
+        const bar = (y, lvl) => `<rect x="9" y="${y}" width="42" height="3.4" rx="1.7" fill="#ffffff" opacity="0.3"/>`
+            + `<rect x="9" y="${y}" width="${Math.round(42 * lvl)}" height="3.4" rx="1.7" fill="#ffffff"/>`;
+        const skillsBlock = t.header === 'barsidebar'
+            ? `${bar(62, 0.92)}${bar(70, 0.78)}${bar(78, 0.86)}${bar(86, 0.64)}`
+            : `${wl(9, 62, 42)}${wl(9, 68, 38)}${wl(9, 74, 42)}${wl(9, 80, 32)}`;
         let s = `<rect x="0" y="0" width="${sw}" height="210" fill="${ac}"/>
             <text x="${sw / 2}" y="22" text-anchor="middle" font-family="${ff}" font-size="9" font-weight="bold" fill="#ffffff">NAME</text>
             ${wl(9, 30, 40)}${wl(9, 36, 34)}
             <text x="9" y="56" font-family="${ff}" font-size="6.5" font-weight="bold" fill="#ffffff">SKILLS</text>
-            ${wl(9, 62, 42)}${wl(9, 68, 38)}${wl(9, 74, 42)}${wl(9, 80, 32)}
-            <text x="9" y="100" font-family="${ff}" font-size="6.5" font-weight="bold" fill="#ffffff">EDUCATION</text>
-            ${wl(9, 106, 42)}${wl(9, 112, 34)}`;
+            ${skillsBlock}
+            <text x="9" y="106" font-family="${ff}" font-size="6.5" font-weight="bold" fill="#ffffff">EDUCATION</text>
+            ${wl(9, 112, 42)}${wl(9, 118, 34)}`;
         const mx = sw + 8;
         const sec = (label, y) => `<text x="${mx}" y="${y}" font-family="${ff}" font-size="7.5" font-weight="bold" fill="${hd}">${label}</text>
             <rect x="${mx}" y="${y + 3}" width="${150 - mx}" height="1.3" fill="${dv}"/>
@@ -3994,6 +4114,40 @@ function resumeTemplateThumb(t) {
         return `<svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" class="rc-thumb" preserveAspectRatio="xMidYMid meet">
             <rect x="0.5" y="0.5" width="159" height="209" fill="#ffffff" stroke="#e2e5ea"/>
             ${s}${sec('Summary', 24)}${sec('Experience', 78)}${sec('', 132)}
+        </svg>`;
+    }
+    // Photo header preview — circular avatar above a centered name.
+    if (t.header === 'photo') {
+        const sec = (label, y) => `<text x="12" y="${y}" font-family="${ff}" font-size="7.5" font-weight="bold" fill="${hd}">${label}</text>
+            <rect x="12" y="${y + 3}" width="136" height="1.2" fill="${dv}"/>
+            ${line(12, y + 10, 130)}${line(12, y + 16, 118)}${line(12, y + 22, 134)}`;
+        return `<svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" class="rc-thumb" preserveAspectRatio="xMidYMid meet">
+            <rect x="0.5" y="0.5" width="159" height="209" fill="#ffffff" stroke="#e2e5ea"/>
+            <circle cx="80" cy="24" r="14" fill="${ac}"/>
+            <text x="80" y="28" text-anchor="middle" font-family="${ff}" font-size="9" font-weight="bold" fill="#ffffff">RD</text>
+            <text x="80" y="52" text-anchor="middle" font-family="${ff}" font-size="11" font-weight="bold" fill="${nm}">NAME</text>
+            <rect x="50" y="58" width="60" height="2.5" rx="1.25" fill="${gray}"/>
+            <rect x="12" y="66" width="136" height="2" fill="${dv}"/>
+            ${sec('Summary', 80)}${sec('Skills', 128)}${sec('Experience', 176)}
+        </svg>`;
+    }
+    // Timeline preview — left header with a dotted rail down the experience.
+    if (t.header === 'timeline') {
+        const sec = (label, y, railed) => {
+            const head = `<rect x="12" y="${y - 7}" width="3" height="9" fill="${ac}"/>
+                <text x="19" y="${y}" font-family="${ff}" font-size="7.5" font-weight="bold" fill="${hd}">${label}</text>
+                <rect x="19" y="${y + 3}" width="129" height="1.4" fill="${dv}"/>`;
+            if (!railed) return head + line(19, y + 10, 124) + line(19, y + 16, 110) + line(19, y + 22, 126);
+            const rail = `<rect x="19" y="${y + 9}" width="1.6" height="34" fill="${ac}" opacity="0.5"/>
+                <circle cx="20" cy="${y + 12}" r="2.4" fill="${ac}"/><circle cx="20" cy="${y + 30}" r="2.4" fill="${ac}"/>`;
+            return head + rail + line(28, y + 13, 116) + line(28, y + 19, 104) + line(28, y + 31, 114) + line(28, y + 37, 96);
+        };
+        return `<svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" class="rc-thumb" preserveAspectRatio="xMidYMid meet">
+            <rect x="0.5" y="0.5" width="159" height="209" fill="#ffffff" stroke="#e2e5ea"/>
+            <text x="12" y="18" font-family="${ff}" font-size="12" font-weight="bold" fill="${nm}">NAME</text>
+            <rect x="12" y="24" width="74" height="2.5" rx="1.25" fill="${gray}"/>
+            <rect x="12" y="32" width="136" height="2" fill="${dv}"/>
+            ${sec('Summary', 48, false)}${sec('Experience', 100, true)}
         </svg>`;
     }
     let header = '', top = 44;
@@ -4045,6 +4199,47 @@ function populateResumeTemplates() {
     renderResumeGallery();
     renderResumeTemplateDesc();
     renderResumeCustomBuilder();
+    syncResumeExtraOptsUI();
+}
+
+// Reflect saved density + photo into the Step-4 controls.
+function syncResumeExtraOptsUI() {
+    const dens = getResumeDensity();
+    document.querySelectorAll('input[name="resumeDensity"]').forEach(r => { r.checked = (r.value === dens); });
+    const has = !!getResumePhoto();
+    const st = document.getElementById('resumePhotoStatus');
+    const cl = document.getElementById('resumePhotoClear');
+    if (st) st.innerHTML = has ? '✓ Photo added' : 'Optional — used by Photo Header designs (max 2&nbsp;MB)';
+    if (cl) cl.style.display = has ? '' : 'none';
+}
+
+function setResumeDensityUI(mode) {
+    setResumeDensity(mode);
+    syncResumeExtraOptsUI();
+}
+
+function onResumePhotoPick(event) {
+    const f = event.target.files && event.target.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { showToast('Please choose an image file', 'error'); return; }
+    if (f.size > 2 * 1024 * 1024) { showToast('Photo too large (max 2 MB)', 'error'); event.target.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+        setResumePhoto(reader.result);
+        syncResumeExtraOptsUI();
+        if (getResumeTemplate(document.getElementById('resumeTemplate')?.value).header !== 'photo') {
+            showToast('Photo saved — pick a "Photo Header" design to use it', 'success');
+        } else { showToast('Photo added', 'success'); }
+    };
+    reader.onerror = () => showToast('Could not read that image', 'error');
+    reader.readAsDataURL(f);
+}
+
+function clearResumePhoto() {
+    setResumePhoto('');
+    const i = document.getElementById('resumePhotoInput');
+    if (i) i.value = '';
+    syncResumeExtraOptsUI();
 }
 
 function renderResumeGallery() {
@@ -4143,6 +4338,10 @@ window.customSetColor = customSetColor;
 window.filterResumeTemplates = filterResumeTemplates;
 window.onResumeTemplateChange = onResumeTemplateChange;
 window.selectResumeTemplate = selectResumeTemplate;
+window.setResumeDensityUI = setResumeDensityUI;
+window.onResumePhotoPick = onResumePhotoPick;
+window.clearResumePhoto = clearResumePhoto;
+window.syncResumeExtraOptsUI = syncResumeExtraOptsUI;
 
 function renderAISettings() {
     const container = document.getElementById('aiProvidersSettings');

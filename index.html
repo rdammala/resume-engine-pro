@@ -528,7 +528,7 @@
                                 </div>
 
                                 <div class="step4-right">
-                                    <label>Résumé Template <span class="optional">(click a design — 60+ styles, or build your own)</span></label>
+                                    <label>Résumé Template <span class="optional">(click a design — 100+ styles incl. photo header, skill-bars &amp; timeline, or build your own)</span></label>
                                     <input type="text" id="resumeTemplateFilter" class="resume-filter" placeholder="🔎 Search designs — e.g. blue, executive, serif, band…" oninput="filterResumeTemplates()" />
                                     <select id="resumeTemplate" onchange="onResumeTemplateChange()" style="display:none;"></select>
                                     <div class="resume-gallery-scroll">
@@ -536,6 +536,20 @@
                                     </div>
                                     <div id="resumeCustomBuilder" class="resume-custom-builder" style="display:none;"></div>
                                     <div id="resumeTemplateDesc" class="inline-note" style="display:none;"></div>
+
+                                    <div class="resume-extra-opts">
+                                        <div class="reo-row">
+                                            <span class="reo-label">Density</span>
+                                            <label class="reo-radio"><input type="radio" name="resumeDensity" value="normal" onchange="setResumeDensityUI('normal')" checked /> Comfortable</label>
+                                            <label class="reo-radio"><input type="radio" name="resumeDensity" value="compact" onchange="setResumeDensityUI('compact')" /> Compact (fit 1 page)</label>
+                                        </div>
+                                        <div class="reo-row">
+                                            <span class="reo-label">Photo</span>
+                                            <input type="file" id="resumePhotoInput" class="reo-file" accept="image/*" onchange="onResumePhotoPick(event)" />
+                                            <button type="button" id="resumePhotoClear" class="reo-clear" onclick="clearResumePhoto()" style="display:none;">Remove</button>
+                                            <span id="resumePhotoStatus" class="reo-hint">Optional — used by Photo Header designs (max 2&nbsp;MB)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -2376,6 +2376,29 @@ audio {
 }
 .rcb-pick input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
+/* Density + photo extra options (Step 4) */
+.resume-extra-opts {
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.reo-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.3rem 0; flex-wrap: wrap; }
+.reo-label { font-size: 0.75rem; color: var(--text-muted); min-width: 56px; font-weight: 600; }
+.reo-radio { font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+.reo-file { font-size: 0.74rem; max-width: 230px; }
+.reo-hint { font-size: 0.72rem; color: var(--text-muted); }
+.reo-clear {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(220, 38, 38, 0.12);
+    border: 1px solid rgba(220, 38, 38, 0.4);
+    color: inherit;
+    cursor: pointer;
+}
+
 
 .modal.active {
     display: flex;
