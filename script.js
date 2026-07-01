@@ -4482,7 +4482,7 @@ function renderAISettings() {
         .map(m => `<option value="${escHtml(m.id)}" ${m.id === wll.model ? 'selected' : ''}>${escHtml(m.label)}</option>`)
         .join('');
     html += `<div class="ai-provider-card ai-provider-card--wide">
-        <h4>${escHtml(providers.webllm.name)} <span class="pk-badge pk-free">✓ Free</span> ${webgpuOk ? '✅' : '⚠️'}</h4>
+        <h4>${escHtml(providers.webllm.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
         <p>Runs a real LLM <strong>entirely on your device</strong> in the browser (WebGPU) — <strong>$0 cost</strong>, fully private (nothing leaves your machine), no API key, no GitHub token, no server. Pick it as <strong>Browser AI</strong> in the Generate tab; you still publish your resume &amp; portfolio to a new repo in your GitHub the same way.</p>
         ${webgpuOk
             ? '<p style="font-size:0.85rem;opacity:0.9;">✅ Your browser supports WebGPU. The first generation downloads the chosen model once (then it\u2019s cached for instant reuse). Bigger models = better quality but larger download &amp; more RAM/VRAM.</p>'
