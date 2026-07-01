@@ -2416,7 +2416,8 @@ audio {
 }
 .reo-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.3rem 0; flex-wrap: wrap; }
 .reo-label { font-size: 0.75rem; color: var(--text-muted); min-width: 56px; font-weight: 600; }
-.reo-radio { font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+.reo-radio { font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; white-space: nowrap; }
+.reo-two { display: inline-block; line-height: 1.15; }
 .reo-file { font-size: 0.74rem; max-width: 230px; }
 .reo-hint { font-size: 0.72rem; color: var(--text-muted); }
 .reo-clear {
@@ -2427,6 +2428,20 @@ audio {
     border: 1px solid rgba(220, 38, 38, 0.4);
     color: inherit;
     cursor: pointer;
+}
+
+/* Dark dropdown group headers (portfolio template select) so the bright
+   default optgroup labels don't clash with the dark theme. */
+#portfolioTemplate optgroup {
+    background: #0f1420;
+    color: #8b97a8;
+    font-weight: 700;
+    font-style: normal;
+}
+#portfolioTemplate option {
+    background: #161c28;
+    color: #e6e9ef;
+    font-weight: 400;
 }
 
 
