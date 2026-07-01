@@ -397,6 +397,8 @@ async function handleLogin(token) {
             updateUI();
             // ✅ RESTORE PREVIOUSLY ACTIVE TAB
             restoreActiveTab();
+            // 🧭 First-time users: auto-run the guided tour once.
+            if (typeof maybeStartAppTour === 'function') maybeStartAppTour();
             
             // ✅ VERIFY CONTENT IS VISIBLE
             setTimeout(() => {
@@ -4742,6 +4744,158 @@ async function verifyCloudSetup(btn) {
     }
 }
 window.verifyCloudSetup = verifyCloudSetup;
+
+// ============================================================================
+// FIRST-RUN GUIDED TOUR ("Rae" the guide) — a spotlight + coach-mark walkthrough
+// that points a brand-new user to what to do next. Auto-runs once after the
+// first login; replay anytime via the "🧭 Take a 60-sec tour" button or Help.
+// ============================================================================
+const APP_TOUR_STEPS = [
+    { sel: null, emoji: '👋', title: "Hi, I'm Rae — your guide!",
+      body: "New here? I'll walk you through the whole flow in about a minute. You can leave anytime with <strong>Skip</strong>." },
+    { sel: '#tourStep1', emoji: '📇', title: 'Step 1 — Create your profile',
+      body: 'Upload a résumé (PDF/DOCX/TXT) or type your details once. You reuse this for every job, so you only do it a single time.' },
+    { sel: '#tourStep2', emoji: '✍️', title: 'Step 2 — Generate a tailored résumé',
+      body: 'Paste a job link or description, pick a design, and choose an AI engine. You get a résumé, cover letter and portfolio together.' },
+    { sel: '#aiStatus', emoji: '🤖', title: 'Pick a free AI engine',
+      body: 'Everything here can be <strong>free</strong>. Tip: choose the <strong>🔗 Auto failover chain</strong> and it rotates through free providers automatically so you never get stuck.' },
+    { sel: '#tourStep3', emoji: '🚀', title: 'Step 3 — Publish & track',
+      body: 'Publish a live portfolio to your GitHub and keep every application organized in the tracker.' },
+    { sel: '#settingsBtn', emoji: '⚙️', title: 'Keys & settings live here',
+      body: 'Add AI keys or your GitHub token anytime from Settings. Your keys stay in <strong>your browser only</strong>.' },
+    { sel: null, emoji: '🎉', title: "You're all set!",
+      body: 'Start with <strong>Step 1 — Create your profile</strong>. Want to see this again? Click <strong>🧭 Take a 60-sec tour</strong> on the dashboard.' }
+];
+
+let _tourIndex = 0;
+let _tourEls = null;
+let _tourReposition = null;
+
+function startAppTour() {
+    // Targets live on the dashboard — make sure it's the active tab.
+    try { if (typeof switchMainTab === 'function') switchMainTab('dashboard'); } catch (_) {}
+    endAppTour(true); // clear any prior instance without marking done
+    const overlay = document.createElement('div');
+    overlay.className = 'tour-overlay';
+    overlay.id = 'appTourOverlay';
+    const spot = document.createElement('div');
+    spot.className = 'tour-spot';
+    const bubble = document.createElement('div');
+    bubble.className = 'tour-bubble';
+    overlay.appendChild(spot);
+    overlay.appendChild(bubble);
+    document.body.appendChild(overlay);
+    _tourEls = { overlay, spot, bubble };
+    _tourIndex = 0;
+    _tourReposition = () => positionTourStep();
+    window.addEventListener('resize', _tourReposition);
+    window.addEventListener('scroll', _tourReposition, true);
+    document.addEventListener('keydown', tourKeydown, true);
+    renderTourStep();
+}
+
+function tourKeydown(e) {
+    if (e.key === 'Escape') endAppTour();
+    else if (e.key === 'ArrowRight' || e.key === 'Enter') tourNext();
+    else if (e.key === 'ArrowLeft') tourPrev();
+}
+
+function renderTourStep() {
+    if (!_tourEls) return;
+    const step = APP_TOUR_STEPS[_tourIndex];
+    const last = _tourIndex === APP_TOUR_STEPS.length - 1;
+    const dots = APP_TOUR_STEPS.map((_, i) => `<span class="tour-dot${i === _tourIndex ? ' on' : ''}"></span>`).join('');
+    _tourEls.bubble.innerHTML = `
+        <div class="tour-mascot">${step.emoji}</div>
+        <div class="tour-body">
+            <div class="tour-title">${step.title}</div>
+            <div class="tour-text">${step.body}</div>
+            <div class="tour-foot">
+                <div class="tour-dots">${dots}</div>
+                <div class="tour-btns">
+                    <button type="button" class="tour-skip" onclick="endAppTour()">Skip</button>
+                    ${_tourIndex > 0 ? '<button type="button" class="tour-back" onclick="tourPrev()">Back</button>' : ''}
+                    <button type="button" class="tour-next" onclick="tourNext()">${last ? 'Finish' : 'Next →'}</button>
+                </div>
+            </div>
+        </div>`;
+    positionTourStep();
+}
+
+function positionTourStep() {
+    if (!_tourEls) return;
+    const step = APP_TOUR_STEPS[_tourIndex];
+    const { overlay, spot, bubble } = _tourEls;
+    const pad = 8;
+    const target = step.sel ? document.querySelector(step.sel) : null;
+    if (target) {
+        let r = target.getBoundingClientRect();
+        if (r.top < 70 || r.bottom > window.innerHeight - 40) {
+            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            r = target.getBoundingClientRect();
+        }
+        overlay.style.background = 'transparent';
+        spot.style.display = 'block';
+        spot.style.top = (r.top - pad) + 'px';
+        spot.style.left = (r.left - pad) + 'px';
+        spot.style.width = (r.width + pad * 2) + 'px';
+        spot.style.height = (r.height + pad * 2) + 'px';
+        const bw = bubble.offsetWidth || 320;
+        const bh = bubble.offsetHeight || 180;
+        const below = r.bottom + 14;
+        const placeBelow = below + bh < window.innerHeight - 10;
+        bubble.classList.remove('tour-bubble--center');
+        bubble.style.top = (placeBelow ? below : Math.max(10, r.top - bh - 14)) + 'px';
+        let left = r.left + r.width / 2 - bw / 2;
+        left = Math.max(12, Math.min(left, window.innerWidth - bw - 12));
+        bubble.style.left = left + 'px';
+    } else {
+        overlay.style.background = 'rgba(3,6,20,0.72)';
+        spot.style.display = 'none';
+        bubble.classList.add('tour-bubble--center');
+        bubble.style.top = '';
+        bubble.style.left = '';
+    }
+}
+
+function tourNext() {
+    if (_tourIndex >= APP_TOUR_STEPS.length - 1) { endAppTour(); return; }
+    _tourIndex++;
+    renderTourStep();
+}
+function tourPrev() {
+    if (_tourIndex <= 0) return;
+    _tourIndex--;
+    renderTourStep();
+}
+
+function endAppTour(silent) {
+    if (_tourEls && _tourEls.overlay) _tourEls.overlay.remove();
+    _tourEls = null;
+    if (_tourReposition) {
+        window.removeEventListener('resize', _tourReposition);
+        window.removeEventListener('scroll', _tourReposition, true);
+        _tourReposition = null;
+    }
+    document.removeEventListener('keydown', tourKeydown, true);
+    if (!silent) {
+        try { if (window.StorageManager && StorageManager.set) StorageManager.set('onboardingDone', true); } catch (_) {}
+    }
+}
+
+// Auto-run the tour the first time a user reaches the dashboard after login.
+function maybeStartAppTour() {
+    let done = false;
+    try { done = !!(window.StorageManager && StorageManager.get && StorageManager.get('onboardingDone')); } catch (_) {}
+    if (done) return;
+    setTimeout(() => { try { startAppTour(); } catch (_) {} }, 700);
+}
+
+window.startAppTour = startAppTour;
+window.endAppTour = endAppTour;
+window.tourNext = tourNext;
+window.tourPrev = tourPrev;
+window.maybeStartAppTour = maybeStartAppTour;
 
 }
 

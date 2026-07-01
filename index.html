@@ -227,10 +227,13 @@
                 <h2>Dashboard</h2>
 
                 <!-- Getting started: make the intended flow obvious up front -->
-                <div class="getting-started">
-                    <h3>👋 New here? Get set up in 3 steps</h3>
+                <div class="getting-started" id="gettingStarted">
+                    <div class="gs-head">
+                        <h3>👋 New here? Get set up in 3 steps</h3>
+                        <button class="gs-tour-btn" type="button" onclick="startAppTour()">🧭 Take a 60-sec tour</button>
+                    </div>
                     <div class="gs-steps">
-                        <div class="gs-step">
+                        <div class="gs-step" id="tourStep1">
                             <span class="gs-num">1</span>
                             <div class="gs-body">
                                 <strong>Create a profile</strong>
@@ -238,7 +241,7 @@
                                 <button class="btn btn-primary" onclick="switchMainTab('profiles')">Create Profile</button>
                             </div>
                         </div>
-                        <div class="gs-step">
+                        <div class="gs-step" id="tourStep2">
                             <span class="gs-num">2</span>
                             <div class="gs-body">
                                 <strong>Generate a résumé</strong>
@@ -246,7 +249,7 @@
                                 <button class="btn btn-primary" onclick="switchMainTab('generator')">Generate</button>
                             </div>
                         </div>
-                        <div class="gs-step">
+                        <div class="gs-step" id="tourStep3">
                             <span class="gs-num">3</span>
                             <div class="gs-body">
                                 <strong>Publish &amp; track</strong>
@@ -267,12 +270,6 @@
                         <div id="aiStatus" class="ai-engine-groups">
                             <div class="ai-engine-empty">Loading AI providers…</div>
                         </div>
-                    </div>
-
-                    <div class="dashboard-card">
-                        <h3>Quick Actions</h3>
-                        <button class="btn btn-primary" onclick="switchMainTab('profiles')">Add Profile</button>
-                        <button class="btn btn-primary" onclick="switchMainTab('generator')">Generate Resume</button>
                     </div>
 
                     <div class="dashboard-card">
