@@ -4462,7 +4462,7 @@ function renderAISettings() {
                 <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save</button>
                 ${configured ? `<button class="btn pk-remove" onclick="removeAIProviderKey('${id}')">Remove</button>` : ''}
             </div>
-            <small>${signup ? signup + '<br>' : ''}Stored only in this browser.${opts.paid ? ' <strong>Billed to your own account.</strong>' : ''}</small>
+            <small>${signup ? signup + '<br>' : ''}Stored only in this browser.${opts.paid ? '<br><strong>Billed to your own account.</strong>' : ''}</small>
         </div>`;
     };
 
