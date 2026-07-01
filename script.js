@@ -4507,8 +4507,8 @@ function renderAISettings() {
         html += providerKeyCard(id, { paid: true });
     });
 
-    // ④ Cloud / self-hosted engines.
-    html += `<div class="settings-section-label">④ Cloud &amp; self-hosted</div>`;
+    // ④ Cloud / self-hosted engines (Ollama is free — labelled so it isn't missed).
+    html += `<div class="settings-section-label">④ Free — cloud runner &amp; self-hosted <span class="ssl-note">Ollama runs free in a GitHub cloud runner</span></div>`;
 
     // Ollama (Llama 3) — runs FREE in an ephemeral GitHub Actions cloud runner.
     // No local server: the website dispatches a workflow that installs Ollama,

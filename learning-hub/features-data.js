@@ -535,8 +535,33 @@ function aiKeyAgeLabel(id) {
 // Key input that browsers/password managers won't autofill:
 // <input type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore ...>`,
         lesson: 'CSS grid rows stretch every card to the tallest sibling — use align-items:start (or isolate the tall panel full-width) to stop one growing list from distorting the layout. For secret inputs, autocomplete="off" is not enough; use autocomplete="new-password" plus password-manager opt-out attributes, and always show whether a key is saved and how old it is, because API keys expire on a schedule.',
-        impact: 'High — the dashboard stays balanced as more engines are added, and Settings is now a calm, free-first, step-by-step flow where users can see exactly which keys are saved, how old they are, and remove a mistaken one.'
-    }
+        impact: 'High — the dashboard stays balanced as more engines are added, and Settings is now a calm, free-first, step-by-step flow where users can see exactly which keys are saved, how old they are, and remove a mistaken one.'    },
+    {
+        id: 19,
+        title: 'First-Run Guided Tour ("Rae") — Spotlight Coach-Marks That Show New Users What To Do Next',
+        category: 'UX / Onboarding',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '70 min',
+        summary: 'Added an interactive, first-run guided tour: a friendly mascot ("Rae") with a dimmed spotlight overlay walks a brand-new user through the whole flow one step at a time (Create profile → Generate → pick a free AI engine → Publish & track → where Settings live). It auto-runs once on first login and can be replayed anytime via a "🧭 Take a 60-sec tour" button. Also removed the redundant "Quick Actions" dashboard card that just duplicated the top 3-step box.',
+        motivation: 'Users said there were too many steps and it was hard to follow along on first login — and that the Help/FAQ only helps AFTER you already know the app, not on day one. They asked for something that literally points and says "do this next". Separately, the "Quick Actions" card (Add Profile / Generate) was an exact duplicate of the getting-started 3-step box.',
+        solution: 'Built a dependency-free tour engine (APP_TOUR_STEPS + startAppTour/positionTourStep). A single .tour-spot element uses a huge box-shadow (0 0 0 9999px rgba) to dim the page while cutting a glowing hole around the current target; a coach-mark bubble with a bobbing emoji mascot, title, body, progress dots and Skip/Back/Next is positioned below/above the target and repositioned on scroll/resize. Steps target elements by id (#tourStep1/2/3, #aiStatus, #settingsBtn); welcome/finish steps center on a fully dimmed screen. It switches to the dashboard first so targets exist, supports Esc/arrow keys, persists onboardingDone in localStorage (auto-runs only once), and is re-triggerable from a dashboard button. The duplicate Quick Actions card was deleted.',
+        codeExample: `// Spotlight = one element with a giant box-shadow "hole"; bubble follows target
+// .tour-spot { box-shadow: 0 0 0 9999px rgba(3,6,20,.72), 0 0 22px #38e0ff; }
+function positionTourStep() {
+  const step = APP_TOUR_STEPS[_tourIndex];
+  const t = step.sel ? document.querySelector(step.sel) : null;
+  if (t) {
+    const r = t.getBoundingClientRect();
+    Object.assign(spot.style, { top:(r.top-8)+'px', left:(r.left-8)+'px',
+      width:(r.width+16)+'px', height:(r.height+16)+'px', display:'block' });
+    // place bubble below if it fits, else above; clamp within viewport
+  } else { spot.style.display='none'; bubble.classList.add('tour-bubble--center'); }
+}
+// Auto-run ONCE after first login
+function maybeStartAppTour(){ if(!StorageManager.get('onboardingDone')) setTimeout(startAppTour, 700); }`,
+        lesson: 'For multi-step tools, first-timers need guidance IN CONTEXT, not a static FAQ — a spotlight tour that points at the real UI and says "do this next" beats documentation for onboarding. Gate it behind a one-time flag but always leave a visible replay button. And audit for duplicate entry points: two controls that do the same thing (Quick Actions vs the 3-step box) add cognitive load — delete the redundant one.',
+        impact: 'High — brand-new users are walked through the exact flow on first login instead of guessing among many steps; the tour is replayable on demand, and the dashboard is less cluttered after removing the duplicate Quick Actions card.'    }
 ];
 
 console.log("FEATURES array loaded with", window.FEATURES.length, "features");
