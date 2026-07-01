@@ -438,6 +438,104 @@ function recommendResumeTemplates(jd, profile) {
 }`,
         lesson: 'When users compare you to a tool they already know (Word\u2019s resume gallery), give them that mental model directly: a visible gallery of named, described, tagged choices beats one "smart" default. Keep the structure identical and ATS-safe across templates \u2014 vary only the presentation (font, colour, header) \u2014 so design freedom never costs parseability. And reduce choice paralysis the way the user asked: surface a curated 3 "top picks" for their role instead of dumping 50 options.',
         impact: 'High — users now SEE 70 résumé designs as thumbnails (including a real two-column sidebar layout) or build a custom one, search/scroll them in a compact full-width two-column Step 4, get role-based "Top pick" badges, and the selected design carries through every output path including the published GitHub repo. Also fixed a duplicate `name` key that made template cards display hex colour codes instead of their names.'
+    },
+    {
+        id: 15,
+        title: 'More Résumé Layouts — Photo Header, Skill-Bars Sidebar, Timeline + Compact One-Page Density & Photo Upload',
+        category: 'UX / Output Quality',
+        status: 'Shipped',
+        role: 'Front-End',
+        effort: '110 min',
+        summary: 'Grew the résumé gallery from 70 to ~100 designs by adding three structural layouts — a Photo Header (circular avatar or auto initials), a Skill-Bars Sidebar (skills rendered as proficiency bars), and a Timeline experience layout (accent rail + dots) — plus two global options that apply to ANY template: a Compact one-page density mode and an optional profile photo.',
+        motivation: 'Users wanted the variety a real résumé builder offers: a headshot at the top, a visual skills sidebar, and a way to squeeze a long résumé onto a single page. The engine only had single-header layouts and one fixed spacing.',
+        solution: 'Added three entries to RESUME_STYLES (photo/barsidebar/timeline), each auto-multiplied across the 10-colour palette. Both renderers (jsPDF and Word HTML) learned the new headers: a circular photo/initials block, a sidebar that draws rounded proficiency bars (deterministic skillLevels()), and a per-job accent rail. A getResumeDensity() toggle scales margins, font sizes and gaps by a compact factor across PDF and DOC, and getResumePhoto()/setResumePhoto() persist a data-URL photo (embedded circular in the big preview). New Step-4 controls (Density radios + photo picker) and SVG thumbnails for each layout keep the gallery WYSIWYG.',
+        codeExample: `// One density knob scales the WHOLE document (PDF + DOC)
+const compact = getResumeDensity() === 'compact';
+const cf = compact ? 0.86 : 1;          // font/gap scale factor
+const margin = compact ? 40 : 50;
+
+// Skill "bars" — deterministic pseudo-proficiency, top skills score highest
+function skillLevels(skills) {
+  const n = skills.length || 1;
+  return skills.map((s, i) => ({ name: s, level: Math.max(0.55, 1 - (i / Math.max(8, n)) * 0.5) }));
+}
+
+// Photo header: real avatar if uploaded, else an initials circle
+if (photo) { try { doc.addImage(photo, px, py, dia, dia); drew = true; } catch (_) {} }
+if (!drew) { doc.circle(cx, py + dia/2, dia/2, 'F'); doc.text(nameInitials(name), cx, y, {align:'center'}); }`,
+        lesson: 'Treat "layout" and "density/photo" as orthogonal axes: encode layout in the template config, but read cross-cutting options (density, photo) inside the renderers from storage so you never have to thread them through every call site. Keep placeholders honest — an initials circle when no photo is uploaded communicates the photo layout without shipping a broken image.',
+        impact: 'High — ~100 résumé designs including a headshot header, a visual skill-bars sidebar and a timeline, plus a one-click Compact mode to fit a single page. All flow through the same PDF/Word/publish paths.'
+    },
+    {
+        id: 16,
+        title: 'Big "Zoomed" Live Preview for Résumé Templates (Click or Hover to Enlarge)',
+        category: 'UX',
+        status: 'Shipped',
+        role: 'Front-End',
+        effort: '35 min',
+        summary: 'Added a large live-preview panel above the template gallery. The tiny ~100px cards were hard to judge, so selecting (or even hovering) a card now renders that design at ~270px with its name, tags and description — and embeds your uploaded photo for Photo-Header designs.',
+        motivation: 'A user said the little template tabs were "hard to see" and asked for the selected template to zoom out so they could actually see how it looks before generating.',
+        solution: 'Reused the existing SVG thumbnail renderer at a larger CSS size in a dedicated preview stage. Cards got onmouseenter="previewResumeTemplate(id)" to preview-on-hover; leaving the gallery reverts to the selected template. resumeTemplateThumb() gained an opts.photo path that clips the uploaded data-URL into the avatar circle, so the big preview matches the real output.',
+        codeExample: `// Same SVG renderer, just shown large — hover previews, click locks selection
+function renderResumeTemplatePreview(previewId) {
+  const t = getResumeTemplate(previewId || document.getElementById('resumeTemplate').value);
+  const photo = (t.header === 'photo') ? getResumePhoto() : '';
+  box.innerHTML =
+    '<div class="rtp-head">…name / tags…</div>' +
+    '<div class="rtp-stage">' + resumeTemplateThumb(t, { photo }) + '</div>' +
+    '<div class="rtp-desc">' + t.desc + '</div>';
+}`,
+        lesson: 'When a picker has many small options, give one large "focus" preview that updates on hover — users browse with the mouse and commit with a click. Reusing the same render function for thumbnail AND preview guarantees the preview is truthful and costs almost nothing.',
+        impact: 'Medium-High — picking a résumé design is now confident and WYSIWYG instead of squinting at thumbnails.'
+    },
+    {
+        id: 17,
+        title: 'Automatic Multi-Provider AI Failover Chain (Groq → Gemini → OpenRouter → … → Pollinations)',
+        category: 'AI / Reliability',
+        status: 'Shipped',
+        role: 'Full-Stack',
+        effort: '95 min',
+        summary: 'Added six free-tier, OpenAI-compatible providers (Groq, OpenRouter, Cerebras, Together AI, GitHub Models, Cohere) and a "🔗 Auto failover chain" engine that, on each generation, tries providers in priority order, automatically SKIPS any without a key, and FAILS OVER on rate-limit / quota / server errors — ending on keyless Pollinations so it almost always succeeds.',
+        motivation: 'Free AI tiers cap quickly. A user wanted the resilience of a chain: run one provider until it is rate-limited, then the next, then the next, until the job finishes — without manual switching.',
+        solution: 'One generic tailorWithOpenAICompatible() handles all Bearer-token OpenAI-shaped providers. tailorResumeChain() iterates getFailoverOrder() (chain filtered to configured providers), catching errors; isRetryableError() detects 429 / 5xx / network / "rate limit"/"quota" and moves on. The Generate tab gained an "Auto failover chain" option; Settings groups the free providers with signup links; the used provider is surfaced via a toast.',
+        codeExample: `isRetryableError(err) {
+  const s = err && err.status;
+  if (s === 429 || s === 0 || (typeof s === 'number' && s >= 500)) return true;
+  return /rate limit|quota|too many requests|timeout|unavailable|5\\d\\d|429/i.test((err && err.message) || '');
+},
+async tailorResumeChain(resume, jd, mode, chain) {
+  const order = (chain && chain.length) ? chain : this.getFailoverOrder();
+  let lastErr;
+  for (const id of order) {
+    try { const r = await this.tailorResume(id, resume, jd, mode); r.usedProvider = id; return r; }
+    catch (e) { lastErr = e; continue; }   // skip to the next provider
+  }
+  throw new Error('All providers failed: ' + (lastErr && lastErr.message));
+}`,
+        lesson: 'Design provider integrations around ONE canonical shape (OpenAI chat) so adding an engine is a config row, not new code. Make resilience the default: skip unconfigured providers, treat rate-limit/quota as "try the next one," and always terminate the chain on a keyless free provider so the user never hits a dead end.',
+        impact: 'High — generation keeps working across free-tier caps by rotating engines automatically; users add as many free keys as they like and never manually switch providers.'
+    },
+    {
+        id: 18,
+        title: 'Dashboard & Settings Redesign — Compact AI Engine Chips, Categorized Providers, Key-Age & Saved Indicators',
+        category: 'UX',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '80 min',
+        summary: 'Redesigned the dashboard so the growing AI provider list no longer stretches the Quick Actions and Statistics cards, and rebuilt the Settings AI section into a clear, step-by-step, category-first layout with per-provider saved indicators and key-age hints.',
+        motivation: 'Adding the failover-chain providers made the vertical "AI Status" list tall, which (via CSS grid stretch) inflated the sibling dashboard cards. Settings had also become cluttered with paid providers listed ABOVE free ones, no signal that a key was actually saved, and browser autofill dumping a saved password into the first (OpenAI) key field.',
+        solution: 'The dashboard AI panel is now a full-width card of compact engine "chips" (green/grey status dot, short name, meta) grouped Free / Free-key / Premium / Custom, with align-items:start on the grid so nothing stretches. Settings is ordered free-first with numbered section headers (① Free · ② Free+key · ③ Premium · ④ Cloud), a reusable key card showing a ✓ saved dot and "saved N days ago", a Remove button, and autocomplete="new-password" + anti-manager data attributes so password autofill can no longer land in a key field.',
+        codeExample: `// Shared readiness + "saved N days ago" for BOTH dashboard and settings
+function aiKeyAgeLabel(id) {
+  const s = (StorageManager.getAllAPIKeys() || {})[id];
+  if (!s || !s.savedAt) return '';
+  const days = Math.floor((Date.now() - new Date(s.savedAt)) / 86400000);
+  return days <= 0 ? 'saved today' : 'saved ' + days + ' day' + (days>1?'s':'') + ' ago';
+}
+// Key input that browsers/password managers won't autofill:
+// <input type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore ...>`,
+        lesson: 'CSS grid rows stretch every card to the tallest sibling — use align-items:start (or isolate the tall panel full-width) to stop one growing list from distorting the layout. For secret inputs, autocomplete="off" is not enough; use autocomplete="new-password" plus password-manager opt-out attributes, and always show whether a key is saved and how old it is, because API keys expire on a schedule.',
+        impact: 'High — the dashboard stays balanced as more engines are added, and Settings is now a calm, free-first, step-by-step flow where users can see exactly which keys are saved, how old they are, and remove a mistaken one.'
     }
 ];
 

@@ -1015,5 +1015,85 @@ function reconcileExperience(aiExp, originalExp, hiringCompany) {
 }`,
         lesson: 'Programmatically setting an input\u2019s value never triggers its change/input events. Any UI that a handler builds on selection must be invoked explicitly after a code-driven set (or dispatch a synthetic change event) \u2014 don\u2019t assume the listener will run.',
         impact: 'Medium - the "Use" shortcut now gives the same immediate feedback (extraction preview + match score) as manual selection, so users can confirm their new profile and its JD fit right away.'
+    },
+    {
+        id: 46,
+        title: 'Portfolio Template Dropdown Group Headers Unreadable on the Dark Theme',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '10 min',
+        description: 'In the Portfolio Template <select>, the <optgroup> category headers (Minimalist, Executive, Creative, Tech, …) rendered with a bright/near-white default background that clashed harshly with the app\u2019s dark theme, hurting readability and looking unfinished.',
+        rootCause: 'Native <optgroup> labels are painted by the OS/browser with a default light system background inside the dropdown popup. Nothing in the app styled them, so on a dark UI they stood out as bright bands. The rest of the dropdown (the <option> rows) was already dark, which made the mismatch obvious.',
+        resolution: 'Added explicit CSS for #portfolioTemplate optgroup (dark background #0f1420, muted light label colour, non-italic bold) and #portfolioTemplate option (dark bg, light text) so the group headers blend into the dark theme. Noted that Chrome/Edge on Windows honour optgroup styling; Firefox/Safari restrict native select popups, so the darkening is a progressive enhancement there.',
+        codeExample: `#portfolioTemplate optgroup {
+  background: #0f1420;
+  color: #8b97a8;
+  font-weight: 700;
+  font-style: normal;
+}
+#portfolioTemplate option { background: #161c28; color: #e6e9ef; }`,
+        lesson: 'Native form-control chrome (optgroup labels, option rows, scrollbars) does not inherit your theme by default. On a dark UI, explicitly style optgroup/option — but treat it as progressive enhancement because some browsers lock down native select popups.',
+        impact: 'Low - the portfolio template dropdown now reads cleanly on the dark theme in Chromium browsers instead of showing jarring bright category bands.'
+    },
+    {
+        id: 47,
+        title: 'Compact Density Radio Label Wrapped to Three Ragged Lines',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '5 min',
+        description: 'In the Step-4 résumé options, the "Compact (fit 1 page)" density radio label wrapped awkwardly onto three lines in the narrow column ("Compact" / "(fit" / "1 page)"), looking broken next to the tidy "Comfortable" option.',
+        rootCause: 'The label was a single run of text left to wrap freely inside a narrow flex column, so the browser broke it at arbitrary spaces. There was no control over WHERE the line breaks fell.',
+        resolution: 'Rewrote the label as two intentional lines — "Compact" then "(fits 1 page)" — using an explicit <br> inside a span, and set white-space:nowrap on the radio label so neither line fragments further. Also corrected the copy from "fit" to "fits".',
+        codeExample: `<!-- before: wraps into 3 ragged lines -->
+<label class="reo-radio"><input type="radio" ...> Compact (fit 1 page)</label>
+
+<!-- after: exactly two controlled lines -->
+<label class="reo-radio"><input type="radio" ...> <span class="reo-two">Compact<br>(fits 1 page)</span></label>
+/* .reo-radio { white-space: nowrap; }  .reo-two { display:inline-block; line-height:1.15; } */`,
+        lesson: 'When a short label must break, control it: an explicit <br> plus white-space:nowrap gives predictable, tidy line breaks instead of letting a narrow container fragment text at random spaces.',
+        impact: 'Low - the density toggle now reads as a clean two-line label that lines up with the rest of the options.'
+    },
+    {
+        id: 48,
+        title: 'Tall "AI Status" List Stretched the Quick Actions & Statistics Dashboard Cards',
+        severity: 'medium',
+        status: 'Fixed',
+        role: 'Frontend Developer / UX',
+        fixTime: '45 min',
+        description: 'After the AI failover-chain providers were added, the dashboard\u2019s "AI Status" card became a long vertical list. Because the dashboard cards sit in a CSS grid row, the tall AI card stretched its shorter siblings (Quick Actions, Statistics) to the same height, leaving big empty gaps and a lopsided, "stretchy" dashboard.',
+        rootCause: 'CSS grid defaults to align-items:stretch, so every card in a row grows to match the tallest item in that row. The AI Status card rendered one provider per row (a growing vertical list), so as providers were added it dictated the row height and inflated the other cards.',
+        resolution: 'Made the AI panel a full-width card (grid-column: 1 / -1) rendering compact provider "chips" in a responsive multi-column grid (grouped Free / Free-key / Premium / Custom) instead of a tall single-column list, and set align-items:start on .dashboard-grid so shorter cards keep their natural height. Added a summary pill ("N of M ready") and an Auto-chain footer.',
+        codeExample: `.dashboard-grid { display: grid; align-items: start; }   /* stop stretch */
+.dashboard-card--full { grid-column: 1 / -1; }          /* AI panel spans row */
+.ai-engine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .5rem; }`,
+        lesson: 'A single growing list inside a CSS grid row will silently distort every sibling because grid rows stretch to the tallest item. Either set align-items:start or promote the tall element to its own full-width row — and prefer a compact, wrapping chip grid over an unbounded vertical list for collections that keep growing.',
+        impact: 'Medium - the dashboard stays balanced and professional as more AI engines are added; provider readiness is now scannable at a glance instead of a long list that warped the layout.'
+    },
+    {
+        id: 49,
+        title: 'Browser Password Autofill Saved into the OpenAI API-Key Field (No Saved/Age Indicator)',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'Frontend Developer / Security',
+        fixTime: '40 min',
+        description: 'In Settings, the browser\u2019s password manager autofilled a saved login into the FIRST password field on the page — the OpenAI API-key input — and the user, who had no OpenAI key, could unknowingly save that junk value; the card then showed a ✅ as if a real key existed. There was also no indication of WHICH keys were actually saved or HOW OLD they were (API keys expire on a schedule), and the paid providers (OpenAI, Claude) were listed above the free ones, nudging users toward paid engines.',
+        rootCause: 'The key inputs were plain <input type="password"> with no autocomplete opt-out, so Chrome/1Password/LastPass treated the first one as a login field and autofilled it. "Configured" was inferred purely from key presence with no visible provenance (saved date) or easy way to remove a mistaken value, and the provider ordering put paid engines first.',
+        resolution: 'Rebuilt the AI settings into a free-first, numbered, category layout (① Free · ② Free+key · ③ Premium · ④ Cloud) via a reusable providerKeyCard() helper. Each key input now uses autocomplete="new-password" plus autocorrect/autocapitalize/spellcheck off, a randomized name, and data-lpignore / data-1p-ignore / data-form-type="other" so password managers no longer autofill it. Configured cards show a green "✓ Key saved · saved N days ago" indicator (from the stored savedAt) and a Remove button that calls StorageManager.deleteAPIKey to clear a mistaken key.',
+        codeExample: `<!-- Key input that browsers & password managers will NOT autofill -->
+<input type="password" id="aikey_openai"
+       autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"
+       name="aikey-openai-x8k2q" data-lpignore="true" data-1p-ignore data-form-type="other" />
+
+// "saved N days ago" from the stored timestamp (keys expire on a schedule)
+function aiKeyAgeLabel(id){
+  const s = (StorageManager.getAllAPIKeys()||{})[id];
+  if(!s||!s.savedAt) return '';
+  const d = Math.floor((Date.now()-new Date(s.savedAt))/86400000);
+  return d<=0?'saved today':('saved '+d+' day'+(d>1?'s':'')+' ago');
+}`,
+        lesson: 'autocomplete="off" does not stop modern password managers — use autocomplete="new-password" plus per-manager opt-out attributes (data-lpignore, data-1p-ignore) and unique names for any secret field, especially the first password input on a page. Always show provenance for stored secrets (saved? how old?) and an easy Remove, and order free options before paid so the UI never nudges users into charges.',
+        impact: 'High - key fields no longer capture autofilled passwords, each provider clearly shows whether its key is saved and how old it is (jogging users to rotate expiring keys), mistaken keys are one click to remove, and the free-first ordering keeps the default experience free.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

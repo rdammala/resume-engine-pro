@@ -938,51 +938,82 @@ async function fetchGitHubFileCount(folder, matchRegex) {
 // ---------------------------------------------------------------------------
 // Dashboard: AI Status — which engines are configured / ready to use right now.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Shared provider metadata used by BOTH the dashboard and the Settings tab so
+// grouping / readiness / key-age logic lives in one place.
+// ---------------------------------------------------------------------------
+const AI_GROUPS = [
+    { key: 'free',    label: '① Free — no key needed',      ids: ['pollinations', 'webllm', 'ollama'] },
+    { key: 'freekey', label: '② Free — add an API key',     ids: ['groq', 'gemini', 'openrouter', 'cerebras', 'together', 'githubmodels', 'cohere', 'mistral'] },
+    { key: 'paid',    label: '③ Premium — paid (billed to your account)', ids: ['openai', 'claude'] },
+    { key: 'custom',  label: '④ Bring your own endpoint',   ids: ['custom'] }
+];
+
+// Human "saved N days ago" for a provider key (keys often expire on a schedule).
+function aiKeyAgeLabel(id) {
+    try {
+        const all = (window.StorageManager && StorageManager.getAllAPIKeys) ? StorageManager.getAllAPIKeys() : {};
+        const savedAt = all[id] && all[id].savedAt;
+        if (!savedAt) return '';
+        const days = Math.floor((Date.now() - new Date(savedAt).getTime()) / 86400000);
+        if (days <= 0) return 'saved today';
+        if (days === 1) return 'saved 1 day ago';
+        return `saved ${days} days ago`;
+    } catch (_) { return ''; }
+}
+
+// Uniform readiness for a provider id (ready + short action label + kind).
+function aiProviderStatus(id) {
+    const hasGhToken = !!(window.GitHubRunner && GitHubRunner.hasToken && GitHubRunner.hasToken());
+    if (id === 'pollinations') return { ready: true, label: 'Ready · free', kind: 'free' };
+    if (id === 'webllm') return (AIIntegration.webgpuSupported && AIIntegration.webgpuSupported())
+        ? { ready: true, label: 'Ready · free', kind: 'free' }
+        : { ready: false, label: 'Needs WebGPU', kind: 'free' };
+    if (id === 'ollama') return hasGhToken
+        ? { ready: true, label: 'Ready · free', kind: 'free' }
+        : { ready: false, label: 'Add GitHub token', kind: 'free' };
+    if (id === 'custom') return AIIntegration.isConfigured('custom')
+        ? { ready: true, label: 'Ready', kind: 'custom' }
+        : { ready: false, label: 'Add endpoint', kind: 'custom' };
+    return AIIntegration.isConfigured(id)
+        ? { ready: true, label: 'Ready', kind: 'key' }
+        : { ready: false, label: 'Add key', kind: 'key' };
+}
+
 function renderAIStatus() {
     const el = document.getElementById('aiStatus');
     if (!el || !window.AIIntegration) return;
 
-    // Curated display order (paid first, then free, then custom).
-    const order = ['openai', 'claude', 'gemini', 'mistral', 'groq', 'openrouter', 'cerebras', 'together', 'githubmodels', 'cohere', 'ollama', 'pollinations', 'custom'];
-    const hasGhToken = !!(window.GitHubRunner && GitHubRunner.hasToken && GitHubRunner.hasToken());
-
-    // One consistent pattern: "✓ Ready" (green) when usable now, otherwise a
-    // short action telling the user exactly what to add.
-    const statusOf = (id) => {
-        if (id === 'pollinations') return { ready: true, label: '✓ Ready · free' };
-        if (id === 'ollama') return hasGhToken
-            ? { ready: true, label: '✓ Ready · free' }
-            : { ready: false, label: 'Add GitHub token' };
-        if (id === 'custom') return AIIntegration.isConfigured('custom')
-            ? { ready: true, label: '✓ Ready' }
-            : { ready: false, label: 'Add endpoint' };
-        return AIIntegration.isConfigured(id)
-            ? { ready: true, label: '✓ Ready' }
-            : { ready: false, label: 'Add API key' };
-    };
-
-    const rows = order.map(id => {
-        const p = AIIntegration.providers[id];
-        if (!p) return '';
-
-        // Resolve the model actually in effect for this provider.
-        let model = p.model || '';
-        try {
-            if (id === 'ollama' && AIIntegration.getOllamaConfig) model = AIIntegration.getOllamaConfig().model || model;
-            if (id === 'custom' && AIIntegration.getCustomConfig) model = AIIntegration.getCustomConfig().model || model;
-        } catch (_) {}
-
-        const st = statusOf(id);
-        const cls = st.ready ? 'ok' : 'off';
-        const modelHtml = model ? `<small style="opacity:.7;"> · ${escHtml(model)}</small>` : '';
-        return `<div class="ai-status-item ai-${cls}">
-            <span>${escHtml(p.name)}${modelHtml}</span>
-            <span class="ai-status-badge">${st.label}</span>
+    let readyTotal = 0, total = 0;
+    const groupsHtml = AI_GROUPS.map(g => {
+        const chips = g.ids.filter(id => AIIntegration.providers[id]).map(id => {
+            const p = AIIntegration.providers[id];
+            const st = aiProviderStatus(id);
+            total++; if (st.ready) readyTotal++;
+            const shortName = p.name.replace(/\s*[\(\u2014].*$/, '').trim();
+            const age = (st.ready && (g.key === 'freekey' || g.key === 'paid')) ? aiKeyAgeLabel(id) : '';
+            const meta = st.ready ? (age || st.label) : st.label;
+            return `<button type="button" class="ai-chip ${st.ready ? 'on' : 'off'}" onclick="switchMainTab('settings')" title="${escHtml(p.name)} — ${escHtml(st.label)}. Manage in Settings.">
+                <span class="ai-chip-dot"></span>
+                <span class="ai-chip-body">
+                    <span class="ai-chip-name">${escHtml(shortName)}</span>
+                    <span class="ai-chip-meta">${escHtml(meta)}</span>
+                </span>
+            </button>`;
+        }).join('');
+        if (!chips) return '';
+        return `<div class="ai-engine-group">
+            <div class="ai-engine-group-label">${escHtml(g.label)}</div>
+            <div class="ai-engine-grid">${chips}</div>
         </div>`;
     }).join('');
 
-    const readyCount = order.filter(id => AIIntegration.providers[id] && statusOf(id).ready).length;
-    el.innerHTML = rows + `<div class="ai-status-foot">${readyCount} engine(s) ready to use · <a href="#" onclick="switchMainTab('settings');return false;">Manage in Settings</a></div>`;
+    const chainCount = (AIIntegration.getFailoverOrder ? AIIntegration.getFailoverOrder().length : 0);
+    el.innerHTML = groupsHtml
+        + `<div class="ai-engine-foot">🔗 <strong>Auto failover chain</strong> currently uses <strong>${chainCount}</strong> engine(s) · <a href="#" onclick="switchMainTab('settings');return false;">Manage in Settings</a></div>`;
+
+    const sum = document.getElementById('aiStatusSummary');
+    if (sum) sum.textContent = `${readyTotal} of ${total} ready`;
 }
 
 // ---------------------------------------------------------------------------
@@ -4396,6 +4427,42 @@ function renderAISettings() {
     // Privacy reassurance — mirrors the GitHub token modal note.
     html += `<p class="ai-keys-privacy">🔒 Every key you add here stays in <strong>this browser only</strong> — saved to your local device storage and sent directly to each AI provider. We have no server and never see, store, or transmit your keys anywhere else.</p>`;
 
+    // Consistent, step-by-step card for any key-based provider — shows a green
+    // "key saved" indicator + how long ago it was saved (keys often expire on a
+    // schedule), a signup link for free tiers, and Save/Remove. autocomplete is
+    // disabled so the browser password manager can't dump a saved login into it.
+    const providerKeyCard = (id, opts = {}) => {
+        const p = providers[id];
+        if (!p) return '';
+        const configured = AIIntegration.isConfigured(id);
+        const age = configured ? aiKeyAgeLabel(id) : '';
+        const badge = opts.paid
+            ? '<span class="pk-badge pk-paid">💳 Paid</span>'
+            : '<span class="pk-badge pk-free">✓ Free tier</span>';
+        const signup = p.signupUrl
+            ? `<a href="${escHtml(p.signupUrl)}" target="_blank" rel="noopener">${escHtml(p.signupUrl.replace(/^https?:\/\//, ''))}</a>`
+            : '';
+        const rnd = Math.random().toString(36).slice(2, 7);
+        return `<div class="ai-provider-card pk-card ${configured ? 'pk-on' : ''}">
+            <div class="pk-head">
+                <span class="pk-dot"></span>
+                <span class="pk-name">${escHtml(p.name.replace(/\s*[\(\u2014].*$/, '').trim())}</span>
+                ${badge}
+                ${configured ? `<span class="pk-status">✓ Key saved${age ? ' · ' + escHtml(age) : ''}</span>` : ''}
+            </div>
+            <div class="form-group pk-row">
+                <input type="password" id="aikey_${id}" placeholder="${configured ? '•••••••• (saved — paste a new key to replace)' : 'Paste your ' + escHtml(p.name.replace(/\s*[\(\u2014].*$/, '').trim()) + ' API key'}"
+                    autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"
+                    name="aikey-${id}-${rnd}" data-lpignore="true" data-1p-ignore data-form-type="other" />
+                <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save</button>
+                ${configured ? `<button class="btn pk-remove" onclick="removeAIProviderKey('${id}')">Remove</button>` : ''}
+            </div>
+            <small>${signup ? 'Get a free key at ' + signup + '. ' : ''}Stored only in this browser.${opts.paid ? ' <strong>Billed to your own account.</strong>' : ''}</small>
+        </div>`;
+    };
+
+    html += `<div class="settings-section-label">① Free — no setup needed <span class="ssl-note">start here</span></div>`;
+
     // Free, no-key provider
     html += `<div class="ai-provider-card">
         <h4>${escHtml(providers.pollinations.name)}</h4>
@@ -4423,41 +4490,23 @@ function renderAISettings() {
         <small>Recommended: <code>Llama 3.2 · 3B</code> for a fast, balanced default (~2 GB). For the best quality pick <code>Qwen2.5 · 7B</code> (~4.5 GB) or <code>Llama 3.1 · 8B</code> (~5 GB) if you have the RAM/VRAM.</small>
     </div>`;
 
-    // Key-based providers (use your own account/token)
-    ['openai', 'claude', 'gemini', 'mistral'].forEach(id => {
-        const configured = AIIntegration.isConfigured(id);
-        html += `<div class="ai-provider-card">
-            <h4>${escHtml(providers[id].name)} ${configured ? '✅' : ''}</h4>
-            <div class="form-group">
-                <input type="password" id="aikey_${id}" placeholder="Paste your ${escHtml(id)} API key" />
-                <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save Key</button>
-            </div>
-            <small>Use your own token from your ${escHtml(providers[id].name)} account. Stored only in your browser.</small>
-        </div>`;
-    });
-
-    // Free-tier, OpenAI-compatible providers — perfect for the 🔗 Auto failover
-    // chain. Add as many keys as you like; the chain uses whichever are present.
-    const freeChain = ['groq', 'gemini', 'openrouter', 'cerebras', 'together', 'githubmodels', 'cohere'];
+    // ② Free-tier, OpenAI-compatible providers — best for the failover chain.
     const order = (AIIntegration.getFailoverOrder ? AIIntegration.getFailoverOrder() : []);
     const orderNames = order.map(id => providers[id] && providers[id].name.replace(/\s*\(.*$/, '')).filter(Boolean);
-    html += `<div class="ai-provider-card ai-provider-card--wide">
-        <h4>🔗 Auto failover chain (free)</h4>
-        <p>Add API keys for any of the free-tier providers below. When you pick <strong>🔗 Auto failover chain</strong> in the Generate tab, each generation tries them in order, <strong>skips any without a key</strong>, and automatically fails over on rate-limit / quota errors — ending on keyless Pollinations so it (almost) always succeeds.</p>
-        <p style="font-size:0.85rem;opacity:0.9;">Current active order: <strong>${orderNames.length ? escHtml(orderNames.join(' → ')) : 'Pollinations only — add a key to extend the chain'}</strong>.</p>
-    </div>`;
-    freeChain.filter(id => id !== 'gemini' && providers[id]).forEach(id => {
-        const p = providers[id];
-        const configured = AIIntegration.isConfigured(id);
-        html += `<div class="ai-provider-card">
-            <h4>${escHtml(p.name)} ${configured ? '✅' : ''}</h4>
-            <div class="form-group">
-                <input type="password" id="aikey_${id}" placeholder="Paste your ${escHtml(id)} API key" />
-                <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save Key</button>
-            </div>
-            <small>Free tier — get a key at <a href="${escHtml(p.signupUrl)}" target="_blank" rel="noopener">${escHtml(p.signupUrl.replace(/^https?:\/\//, ''))}</a>. Stored only in your browser.</small>
-        </div>`;
+    html += `<div class="settings-section-label">② Free — add an API key <span class="ssl-note">powers the 🔗 Auto failover chain</span></div>`;
+    html += `<div class="pk-chain-note">🔗 Pick <strong>Auto failover chain</strong> in the Generate tab and it tries these in order, <strong>skips any without a key</strong>, and fails over on rate-limit/quota errors — ending on free Pollinations so it (almost) always works.<br>Active order: <strong>${orderNames.length ? escHtml(orderNames.join(' → ')) : 'Pollinations only — add a key to extend the chain'}</strong>.</div>`;
+    ['groq', 'gemini', 'openrouter', 'cerebras', 'together', 'githubmodels', 'cohere', 'mistral'].forEach(id => {
+        html += providerKeyCard(id);
     });
+
+    // ③ Premium, paid providers — listed AFTER the free ones on purpose.
+    html += `<div class="settings-section-label">③ Premium — paid <span class="ssl-note">billed to your account</span></div>`;
+    ['openai', 'claude'].forEach(id => {
+        html += providerKeyCard(id, { paid: true });
+    });
+
+    // ④ Cloud / self-hosted engines.
+    html += `<div class="settings-section-label">④ Cloud &amp; self-hosted</div>`;
 
     // Ollama (Llama 3) — runs FREE in an ephemeral GitHub Actions cloud runner.
     // No local server: the website dispatches a workflow that installs Ollama,
@@ -4538,10 +4587,26 @@ function saveAIProviderKey(provider) {
     }
     try {
         AIIntegration.setAPIKey(provider, key);
-        showToast(`${provider} key saved`, 'success');
+        const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\s*[\(\u2014].*$/, '').trim()) || provider);
+        showToast(`${nm} key saved`, 'success');
         renderAISettings();
+        if (typeof renderAIStatus === 'function') renderAIStatus();
     } catch (e) {
         showToast('Could not save key: ' + e.message, 'error');
+    }
+}
+
+// Remove a saved provider key (e.g. it expired, or was saved by accident such
+// as a browser-autofilled password landing in the wrong field).
+function removeAIProviderKey(provider) {
+    try {
+        if (window.StorageManager && StorageManager.deleteAPIKey) StorageManager.deleteAPIKey(provider);
+        const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\s*[\(\u2014].*$/, '').trim()) || provider);
+        showToast(`${nm} key removed`, 'success');
+        renderAISettings();
+        if (typeof renderAIStatus === 'function') renderAIStatus();
+    } catch (e) {
+        showToast('Could not remove key: ' + e.message, 'error');
     }
 }
 
