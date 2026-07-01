@@ -612,6 +612,35 @@ recordProviderHealth(id, err){
 // getProviderHealth() returns null once Date.now() > until  -> back to green`,
         lesson: 'Make status a first-class, consistent signal across every engine (one dot vocabulary: green/grey/red) so users can read readiness at a glance. When something fails, tell the user WHY and WHEN to retry — a "free limit reached, back in ~3h" note beats a silent error every time. Store failures with a cooldown timestamp so the UI self-heals without any manual reset.',
         impact: 'High — users instantly see which engines are ready, which need setup, and which are temporarily down (with a reason and a come-back time), turning opaque failures into clear, actionable status.'
+    },
+    {
+        id: 22,
+        title: 'Inline ⓘ Field-Help on the Cloud Generator Setup — Demystifying "Repo owner" & "Fork"',
+        category: 'UX / Onboarding',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '20 min',
+        summary: 'Added a small ⓘ info button next to the "Repo owner" and "Repo name (your fork)" fields on the Ollama cloud-generator setup card. Clicking it toggles a plain-English note explaining what the field means and exactly what to do — so a non-technical user is not left guessing what a "fork" is or which value to enter.',
+        motivation: 'A user pointed out that the "Repo name (your fork)" field is confusing: someone unfamiliar with GitHub sees the word "fork" and does not know what it means or what to type. The setup card had all the info in a paragraph above, but users skip long paragraphs — the help needed to sit right on the field, on demand.',
+        solution: 'Rendered a reusable ⓘ button (.field-i) in each label that calls toggleFieldInfo(id) to show/hide a sibling .field-info-note div containing a short, friendly explanation. "Repo owner" clarifies it is just their own GitHub username (already pre-filled). "Repo name (your fork)" explains a fork is their personal copy of the project and that they should simply keep the default because the ⚡ Auto-create button makes it for them. No dependency on external tooltip libraries — pure toggle so it works offline in the static app.',
+        codeExample: `// Label carries a lightweight ⓘ that reveals an on-field explanation
+<label>Repo name (your fork)
+  <button type="button" class="field-i"
+          onclick="toggleFieldInfo('info-ghRepo')">ⓘ</button></label>
+<div id="info-ghRepo" class="field-info-note" style="display:none;">
+  🍴 A <strong>fork</strong> is your own personal copy of this project inside
+  <em>your</em> GitHub account… just keep the default — the ⚡ Auto-create
+  button makes the fork for you.
+</div>
+
+// Toggle helper (no library needed)
+function toggleFieldInfo(id){
+  const n = document.getElementById(id); if (!n) return;
+  const open = n.style.display !== 'none' && n.style.display !== '';
+  n.style.display = open ? 'none' : 'block';
+}`,
+        lesson: 'Put contextual help exactly where the confusion happens — on the field, one click away — not buried in a paragraph users scroll past. A tiny ⓘ that reveals a one-sentence "what this is and what to do" note removes jargon friction (like "fork") for non-technical users without cluttering the default view. Prefer a dependency-free toggle so it keeps working in a fully static, offline-capable app.',
+        impact: 'Medium — lowers the setup drop-off for the free cloud generator by making its most jargon-heavy fields self-explanatory to first-time, non-technical users.'
     }
 ];
 

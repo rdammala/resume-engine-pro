@@ -4577,11 +4577,13 @@ function renderAISettings() {
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label>Repo owner (your GitHub username)</label>
+                <label>Repo owner (your GitHub username) <button type="button" class="field-i" onclick="toggleFieldInfo('info-ghOwner')" aria-label="What is Repo owner?" title="What is this?">ⓘ</button></label>
+                <div id="info-ghOwner" class="field-info-note" style="display:none;">👤 This is <strong>your own GitHub username</strong> — the account where the free cloud generator will run. We already filled it in from your login, so you can normally <strong>leave it as-is</strong>. Only change it if you want the job to run under a different GitHub account.</div>
                 <input type="text" id="ghOwner" placeholder="${escHtml(ghUser || 'your-username')}" value="${escHtml(ownerVal)}" />
             </div>
             <div class="form-group">
-                <label>Repo name (your fork)</label>
+                <label>Repo name (your fork) <button type="button" class="field-i" onclick="toggleFieldInfo('info-ghRepo')" aria-label="What is Repo name / fork?" title="What is this?">ⓘ</button></label>
+                <div id="info-ghRepo" class="field-info-note" style="display:none;">🍴 A <strong>fork</strong> is <strong>your own personal copy</strong> of this project, living inside <em>your</em> GitHub account. It carries the workflow that actually runs the generator. <br><br>👉 <strong>What to do:</strong> just keep the default <code>resume-engine-pro</code> — the <strong>⚡ Auto-create my cloud generator</strong> button below creates this fork for you automatically. Only change this name if your fork is already called something else.</div>
                 <input type="text" id="ghRepo" placeholder="resume-engine-pro" value="${escHtml(repoVal)}" />
             </div>
         </div>
@@ -4675,6 +4677,15 @@ function saveWebLLMConfig() {
     showToast('Browser AI model saved — ' + model, 'success');
     renderAISettings();
     if (typeof updateAICost === 'function') updateAICost();
+}
+
+// Toggle a small plain-English "what does this field mean?" note next to a
+// form label. Wired to the ⓘ buttons on the Ollama cloud setup fields.
+function toggleFieldInfo(id) {
+    const note = document.getElementById(id);
+    if (!note) return;
+    const open = note.style.display !== 'none' && note.style.display !== '';
+    note.style.display = open ? 'none' : 'block';
 }
 
 function saveOllamaCloudConfig() {
