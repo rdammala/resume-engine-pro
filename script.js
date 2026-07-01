@@ -4471,7 +4471,7 @@ function renderAISettings() {
     // Free, no-key provider
     html += `<div class="ai-provider-card">
         <h4>${escHtml(providers.pollinations.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
-        <p>✅ Ready to use — no account or API key required. Just pick <strong>Free AI</strong> in the Generate tab.</p>
+        <p>Ready to use — no account or API key required. Just pick <strong>Free AI</strong> in the Generate tab.</p>
     </div>`;
 
     // Browser AI (WebLLM) — runs a real LLM 100% on the user's device via WebGPU.
@@ -4485,7 +4485,7 @@ function renderAISettings() {
         <h4>${escHtml(providers.webllm.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
         <p>Runs a real LLM <strong>entirely on your device</strong> in the browser (WebGPU) — <strong>$0 cost</strong>, fully private (nothing leaves your machine), no API key, no GitHub token, no server. Pick it as <strong>Browser AI</strong> in the Generate tab; you still publish your resume &amp; portfolio to a new repo in your GitHub the same way.</p>
         ${webgpuOk
-            ? '<p style="font-size:0.85rem;opacity:0.9;">✅ Your browser supports WebGPU. The first generation downloads the chosen model once (then it\u2019s cached for instant reuse). Bigger models = better quality but larger download &amp; more RAM/VRAM.</p>'
+            ? '<p style="font-size:0.85rem;opacity:0.9;">Your browser supports WebGPU. The first generation downloads the chosen model once (then it\u2019s cached for instant reuse). Bigger models = better quality but larger download &amp; more RAM/VRAM.</p>'
             : '<p style="font-size:0.85rem;color:#b45309;">⚠️ This browser doesn\u2019t expose WebGPU. Use <strong>Chrome/Edge 113+</strong> or <strong>Safari 18+</strong> on a reasonably modern device. Otherwise use <strong>Free AI (Pollinations)</strong> or <strong>Ollama</strong> — both are also free.</p>'}
         <div class="form-group">
             <label>Model (all free, $0)</label>
@@ -4528,7 +4528,7 @@ function renderAISettings() {
     const tokenScopeUrl = 'https://github.com/settings/tokens?type=beta';
     const forkUrl = 'https://github.com/rdammala/resume-engine-pro/fork';
     html += `<div class="ai-provider-card ai-provider-card--wide">
-        <h4>${escHtml(AIIntegration.providers.ollama.name)} <span class="pk-badge pk-free">✓ Free</span> ${hasTok ? '✅' : ''}</h4>
+        <h4>${escHtml(AIIntegration.providers.ollama.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
         <p>Free &amp; automated — when you click <strong>Generate</strong>, a GitHub Actions workflow spins up a fresh cloud runner, installs Ollama, runs <strong>Llama 3</strong>, tailors your resume to the JD, commits the result, and <strong>self-destructs</strong>. No local server, $0 cost.</p>
         <p style="font-size:0.85rem;opacity:0.9;line-height:1.55;">One-time setup — the cloud generator runs in <strong>your own</strong> GitHub account:<br>
         1️⃣ Create a <a href="${tokenScopeUrl}" target="_blank" rel="noopener">fine-grained GitHub token</a> with <strong>Resource owner = your account</strong>, <strong>Repository access = All repositories</strong>, then <strong>Permissions → Actions, Contents and Administration: Read &amp; write</strong>. (Choosing <em>All repositories</em> is what makes the permissions appear; <strong>Administration: Read &amp; write</strong> is needed to fork/create repos — without it you get a 403. The token only affects repos owned by the resource owner you pick.)<br>
