@@ -1095,5 +1095,25 @@ function aiKeyAgeLabel(id){
 }`,
         lesson: 'autocomplete="off" does not stop modern password managers — use autocomplete="new-password" plus per-manager opt-out attributes (data-lpignore, data-1p-ignore) and unique names for any secret field, especially the first password input on a page. Always show provenance for stored secrets (saved? how old?) and an easy Remove, and order free options before paid so the UI never nudges users into charges.',
         impact: 'High - key fields no longer capture autofilled passwords, each provider clearly shows whether its key is saved and how old it is (jogging users to rotate expiring keys), mistaken keys are one click to remove, and the free-first ordering keeps the default experience free.'
+    },
+    {
+        id: 50,
+        title: 'One Stray Parenthesis in script.js Broke the ENTIRE App — Users Could Not Log In',
+        severity: 'critical',
+        status: 'Fixed',
+        role: 'Build Engineer / SRE',
+        fixTime: '15 min',
+        description: 'Right after shipping the dashboard/settings redesign, users reported they could not log in to the live portal — clicking the GitHub sign-in button did nothing. The button, the token modal, and in fact EVERY interactive feature were dead, even though the page HTML rendered fine.',
+        rootCause: 'A refactor added the line const nm = (AIIntegration.providers[provider] && ...replace(...).trim()) || provider); with an EXTRA closing parenthesis at the end (the ( ... ) wrapped only the && expression, so the trailing ) had no match). JavaScript aborts an entire script file on a single parse error, so script.js never executed and none of its functions — including initiateGitHubLogin() — were ever defined. The inline onclick then referenced an undefined function and silently failed. Critically, the VS Code language-service diagnostics (get_errors) reported "No errors found", so the bad code was committed and pushed to production.',
+        resolution: 'Ran node --check script.js, which pinpointed the exact line and column ("Unexpected token )"), removed the extra parenthesis, re-checked until clean, then committed and pushed. Added a standing rule: after ANY edit to script.js run node --check script.js (authoritative) in addition to get_errors, because the editor diagnostics can miss unbalanced-delimiter syntax errors that take down the whole bundle.',
+        codeExample: `// BROKEN - trailing ) has no matching ( -> whole file fails to parse
+const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\\s*[\\(].*$/, '').trim()) || provider);
+
+// FIXED - the ( ... ) wraps only the && expr; || provider sits outside
+const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\\s*[\\(].*$/, '').trim()) || provider;
+
+// Catch it BEFORE committing:  node --check script.js`,
+        lesson: 'A single syntax error takes down an entire JS file - every function in it vanishes, so seemingly unrelated features (like login) break at once. Editor/linter diagnostics are not a substitute for the real parser: always run node --check on changed .js before pushing, especially for a static site with no build step to catch it. When "nothing works", suspect a parse error in a core script, not the feature that appears broken.',
+        impact: 'Critical - restored the entire application (login and every feature) on the live GitHub Pages portal; hardened the pre-push checklist so an unbalanced-paren error cannot silently ship again.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
