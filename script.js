@@ -4587,7 +4587,7 @@ function saveAIProviderKey(provider) {
     }
     try {
         AIIntegration.setAPIKey(provider, key);
-        const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\s*[\(\u2014].*$/, '').trim()) || provider);
+        const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\s*[\(\u2014].*$/, '').trim()) || provider;
         showToast(`${nm} key saved`, 'success');
         renderAISettings();
         if (typeof renderAIStatus === 'function') renderAIStatus();
@@ -4601,7 +4601,7 @@ function saveAIProviderKey(provider) {
 function removeAIProviderKey(provider) {
     try {
         if (window.StorageManager && StorageManager.deleteAPIKey) StorageManager.deleteAPIKey(provider);
-        const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\s*[\(\u2014].*$/, '').trim()) || provider);
+        const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provider].name.replace(/\s*[\(\u2014].*$/, '').trim()) || provider;
         showToast(`${nm} key removed`, 'success');
         renderAISettings();
         if (typeof renderAIStatus === 'function') renderAIStatus();
