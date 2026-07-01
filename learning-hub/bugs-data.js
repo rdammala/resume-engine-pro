@@ -1156,5 +1156,24 @@ const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provide
 .ai-provider-card small { margin-top: auto; }`,
         lesson: 'align-items:start is the right fix ONLY when a row deliberately mixes very different card sizes (like the dashboard AI panel vs small stat cards). For a uniform grid of peer cards, equal-height (the grid default stretch) plus margin-top:auto on the footer is what looks "adjusted". Do not blanket-apply one alignment rule to every grid — and validate layout visually (a tiny offline harness that loads the real CSS beats guessing).',
         impact: 'Low - Settings provider cards now render at equal heights with bottom-aligned "get key" links, so a saved key (extra Remove button/status line) no longer makes a card look mismatched next to its neighbour.'
+    },
+    {
+        id: 53,
+        title: 'Long Provider API-Key URLs Overflowed Outside the Settings Cards',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '15 min',
+        description: 'The provider cards printed the full sign-up URL as the link text (e.g. platform.claude.com/docs/en/api/admin/api_keys/retrieve, admin.mistral.ai/organization/api-keys). Those are long unbroken strings, so the link ran past the right edge of the card instead of staying inside it.',
+        rootCause: 'A URL has no spaces, so it is treated as one long word that will not wrap at the card boundary; with the raw URL used as the visible link text, the anchor overflowed its container. The card was the right width — the content simply could not break.',
+        resolution: 'Replaced the raw-URL link text with a short, friendly hyperlink — "Get your API key ↗" (paid) / "Get a free key ↗" (free) — that links to the same URL (full URL kept in the title tooltip and href). Put it on its own line above the privacy note, and added overflow-wrap:anywhere / word-break:break-word to .ai-provider-card small as a safety net so any future long string still wraps instead of overflowing. Verified in an offline Playwright harness that loads the real style.css: every card reported the link fully inside its box (no overflow) at equal 290px heights.',
+        codeExample: `// before: the raw URL as link text -> long unbroken word overflows the card
+\`<a href="\${url}">\${url.replace(/^https?:\\/\\//,'')}</a>\`
+
+// after: short label link (full URL in title + href) -> always fits
+\`<a class="pk-keylink" href="\${url}" target="_blank" rel="noopener" title="\${url}">\${paid ? 'Get your API key' : 'Get a free key'} \\u2197</a>\`
+/* safety net */ .ai-provider-card small { overflow-wrap: anywhere; word-break: break-word; }`,
+        lesson: 'Never render a raw URL as visible link text inside a fixed-width card — URLs are unbreakable words and will overflow. Use a short human label ("Get your API key ↗") and keep the real URL in href/title. Always pair that with overflow-wrap:anywhere as a defensive fallback for any user- or data-supplied string.',
+        impact: 'Low - provider cards now show a tidy "Get your API key ↗" link that stays inside the card on every provider and width, replacing the long URLs that spilled outside the box.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

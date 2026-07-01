@@ -4445,7 +4445,7 @@ function renderAISettings() {
             ? '<span class="pk-badge pk-paid">💳 Paid</span>'
             : '<span class="pk-badge pk-free">✓ Free tier</span>';
         const signup = p.signupUrl
-            ? `<a href="${escHtml(p.signupUrl)}" target="_blank" rel="noopener">${escHtml(p.signupUrl.replace(/^https?:\/\//, ''))}</a>`
+            ? `<a class="pk-keylink" href="${escHtml(p.signupUrl)}" target="_blank" rel="noopener" title="${escHtml(p.signupUrl)}">${opts.paid ? 'Get your API key' : 'Get a free key'} \u2197</a>`
             : '';
         const rnd = Math.random().toString(36).slice(2, 7);
         return `<div class="ai-provider-card pk-card ${configured ? 'pk-on' : ''}">
@@ -4462,7 +4462,7 @@ function renderAISettings() {
                 <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save</button>
                 ${configured ? `<button class="btn pk-remove" onclick="removeAIProviderKey('${id}')">Remove</button>` : ''}
             </div>
-            <small>${signup ? (opts.paid ? 'Get your API key at ' : 'Get a free key at ') + signup + '. ' : ''}Stored only in this browser.${opts.paid ? ' <strong>Billed to your own account.</strong>' : ''}</small>
+            <small>${signup ? signup + '<br>' : ''}Stored only in this browser.${opts.paid ? ' <strong>Billed to your own account.</strong>' : ''}</small>
         </div>`;
     };
 

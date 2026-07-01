@@ -1271,6 +1271,15 @@ select option {
     padding-top: 0.85rem;
     color: #9fb3c8;
     line-height: 1.5;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+/* Short "Get your API key ↗" link so long provider URLs never overflow the card */
+.pk-keylink {
+    display: inline-block;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    white-space: nowrap;
 }
 
 /* Actionable failure card for the Ollama cloud generator */
