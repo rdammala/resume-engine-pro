@@ -1135,5 +1135,24 @@ const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provide
 .tour-btns { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.4rem; }`,
         lesson: 'A fixed-width popover that shows a variable number of items (here, one progress dot per step) must let its contents WRAP or it will overflow once the count grows. Prefer stacking meta (dots) above actions (buttons) in narrow cards, and never rely on a single non-wrapping flex row for content whose length you do not control.',
         impact: 'Low - the tour coach-mark now looks clean on every step and screen size; the Skip/Back/Next controls always stay inside the bubble even on the long 14-step full tour.'
+    },
+    {
+        id: 52,
+        title: 'Settings Provider Cards & Dashboard Engine Chips Stretched Unevenly (Empty Space) Within a Row',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '10 min',
+        description: 'In Settings, the AI provider cards in a row were stretched to the height of the tallest card in that row, so a card whose "get a key" link wrapped to two lines (or, once a key was saved, grew an extra "✓ Key saved · saved N days ago" line plus a Remove button) forced its neighbours to the same height, leaving ragged empty space at the bottom of the shorter cards. The dashboard AI-engine chips had the same latent issue: adding keys would make some chips taller and stretch the rest of the row.',
+        rootCause: 'CSS grid defaults to align-items:stretch, which sizes every item in a row track to the tallest item. Provider cards and engine chips have variable-height content (wrapping signup URLs, a saved-key status line, a Remove button, or a wrapped provider name), so the tallest card in each row dictated the height of all its siblings — the same class of bug already fixed on the dashboard cards.',
+        resolution: 'Added align-items:start to both grids (.ai-providers-grid in Settings and .ai-engine-grid on the dashboard) so each card/chip takes its natural content height instead of being stretched to match its row. Now saving a key (which grows that one card) no longer inflates the neighbouring cards, and cards with wrapping links stay compact.',
+        codeExample: `/* grid stretches every card to the tallest sibling by default */
+.ai-providers-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); }
+.ai-engine-grid   { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); }
+
+/* fix: let each card/chip be its natural height */
+.ai-providers-grid, .ai-engine-grid { align-items: start; }`,
+        lesson: 'This is the same CSS-grid stretch trap as the dashboard cards: any grid holding variable-height items should use align-items:start unless equal-height cards are explicitly wanted. Watch for content that GROWS on interaction (a saved-key badge, a Remove button) — it will retro-actively stretch a whole row of neighbours if the grid stretches.',
+        impact: 'Low - Settings provider cards and dashboard engine chips now sit at their natural heights; saving/removing keys or wrapping links no longer leaves lopsided empty space across a row.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");

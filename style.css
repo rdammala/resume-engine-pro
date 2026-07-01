@@ -533,6 +533,7 @@ html:not(.js-ready)[data-boot="app"][data-tab="settings"] #settings { display: b
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 0.5rem;
+    align-items: start;
 }
 .ai-chip {
     display: flex;
@@ -1127,6 +1128,7 @@ select option {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
+    align-items: start;
 }
 
 .ai-provider-card {
