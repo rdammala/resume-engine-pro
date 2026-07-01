@@ -4086,7 +4086,9 @@ function populatePortfolioTemplates() {
 
 // Render a small SVG preview that mirrors a template's real look (header style,
 // accent colour, heading treatment, serif vs sans) — so users pick by sight.
-function resumeTemplateThumb(t) {
+// opts.photo (data URL) is embedded into the Photo-Header avatar for the big preview.
+function resumeTemplateThumb(t, opts) {
+    opts = opts || {};
     const ac = t.accent, nm = t.nameColor, hd = t.heading, dv = t.divider;
     const ff = t.font === 'times' ? "Georgia, 'Times New Roman', serif" : "Helvetica, Arial, sans-serif";
     const gray = '#c9ced6';
@@ -4121,10 +4123,15 @@ function resumeTemplateThumb(t) {
         const sec = (label, y) => `<text x="12" y="${y}" font-family="${ff}" font-size="7.5" font-weight="bold" fill="${hd}">${label}</text>
             <rect x="12" y="${y + 3}" width="136" height="1.2" fill="${dv}"/>
             ${line(12, y + 10, 130)}${line(12, y + 16, 118)}${line(12, y + 22, 134)}`;
+        const avatar = opts.photo
+            ? `<defs><clipPath id="rtpPhotoClip"><circle cx="80" cy="24" r="14"/></clipPath></defs>
+               <image href="${opts.photo}" x="66" y="10" width="28" height="28" clip-path="url(#rtpPhotoClip)" preserveAspectRatio="xMidYMid slice"/>
+               <circle cx="80" cy="24" r="14" fill="none" stroke="${ac}" stroke-width="2"/>`
+            : `<circle cx="80" cy="24" r="14" fill="${ac}"/>
+               <text x="80" y="28" text-anchor="middle" font-family="${ff}" font-size="9" font-weight="bold" fill="#ffffff">RD</text>`;
         return `<svg viewBox="0 0 160 210" xmlns="http://www.w3.org/2000/svg" class="rc-thumb" preserveAspectRatio="xMidYMid meet">
             <rect x="0.5" y="0.5" width="159" height="209" fill="#ffffff" stroke="#e2e5ea"/>
-            <circle cx="80" cy="24" r="14" fill="${ac}"/>
-            <text x="80" y="28" text-anchor="middle" font-family="${ff}" font-size="9" font-weight="bold" fill="#ffffff">RD</text>
+            ${avatar}
             <text x="80" y="52" text-anchor="middle" font-family="${ff}" font-size="11" font-weight="bold" fill="${nm}">NAME</text>
             <rect x="50" y="58" width="60" height="2.5" rx="1.25" fill="${gray}"/>
             <rect x="12" y="66" width="136" height="2" fill="${dv}"/>
@@ -4199,8 +4206,26 @@ function populateResumeTemplates() {
     renderResumeGallery();
     renderResumeTemplateDesc();
     renderResumeCustomBuilder();
+    renderResumeTemplatePreview();
     syncResumeExtraOptsUI();
 }
+
+// Big "zoomed" preview of the selected (or hovered) template, so the tiny
+// gallery cards aren't the only way to judge a design.
+function renderResumeTemplatePreview(previewId) {
+    const box = document.getElementById('resumeTemplatePreview');
+    const sel = document.getElementById('resumeTemplate');
+    if (!box || !sel) return;
+    const id = previewId || sel.value || 'classic-charcoal';
+    const t = getResumeTemplate(id);
+    const photo = (t.header === 'photo') ? getResumePhoto() : '';
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="rtp-head"><span class="rtp-eye">🔍 Live preview</span><span class="rtp-name">${escHtml(t.name)}</span><span class="rtp-tags">${escHtml(t.tags.join(' · '))}</span></div>
+        <div class="rtp-stage">${resumeTemplateThumb(t, { photo })}</div>
+        <div class="rtp-desc">${escHtml(t.desc)}</div>`;
+}
+function previewResumeTemplate(id) { renderResumeTemplatePreview(id); }
 
 // Reflect saved density + photo into the Step-4 controls.
 function syncResumeExtraOptsUI() {
@@ -4227,6 +4252,7 @@ function onResumePhotoPick(event) {
     reader.onload = () => {
         setResumePhoto(reader.result);
         syncResumeExtraOptsUI();
+        renderResumeTemplatePreview();
         if (getResumeTemplate(document.getElementById('resumeTemplate')?.value).header !== 'photo') {
             showToast('Photo saved — pick a "Photo Header" design to use it', 'success');
         } else { showToast('Photo added', 'success'); }
@@ -4240,6 +4266,7 @@ function clearResumePhoto() {
     const i = document.getElementById('resumePhotoInput');
     if (i) i.value = '';
     syncResumeExtraOptsUI();
+    renderResumeTemplatePreview();
 }
 
 function renderResumeGallery() {
@@ -4255,7 +4282,7 @@ function renderResumeGallery() {
     const matches = (t) => !filter || t.name.toLowerCase().includes(filter) || t.tags.join(' ').toLowerCase().includes(filter) || t.sid.includes(filter);
     const cardHtml = (t, isRec) => {
         const isSel = t.id === selected;
-        return `<button type="button" class="resume-card${isSel ? ' selected' : ''}" onclick="selectResumeTemplate('${t.id}')" title="${escHtml(t.desc)}">
+        return `<button type="button" class="resume-card${isSel ? ' selected' : ''}" onclick="selectResumeTemplate('${t.id}')" onmouseenter="previewResumeTemplate('${t.id}')" title="${escHtml(t.desc)}">
             ${isRec ? '<span class="rc-badge">✨ Top pick</span>' : ''}
             <span class="rc-thumb-wrap">${resumeTemplateThumb(t)}</span>
             <span class="rc-name">${escHtml(t.name)}</span>
@@ -4267,7 +4294,7 @@ function renderResumeGallery() {
     const others = RESUME_TEMPLATES.filter(t => !recs.has(t.id) && matches(t));
     const cust = getCustomResumeTemplate();
     const custCard = (!filter || 'custom'.includes(filter) || 'build'.includes(filter))
-        ? `<button type="button" class="resume-card${selected === 'custom' ? ' selected' : ''}" onclick="selectResumeTemplate('custom')" title="Build your own design">
+        ? `<button type="button" class="resume-card${selected === 'custom' ? ' selected' : ''}" onclick="selectResumeTemplate('custom')" onmouseenter="previewResumeTemplate('custom')" title="Build your own design">
             <span class="rc-badge rc-badge-custom">🎨 Build</span>
             <span class="rc-thumb-wrap">${resumeTemplateThumb(cust)}</span>
             <span class="rc-name">Custom</span>
@@ -4318,6 +4345,7 @@ function selectResumeTemplate(id) {
     renderResumeGallery();
     renderResumeTemplateDesc();
     renderResumeCustomBuilder();
+    renderResumeTemplatePreview();
 }
 
 function filterResumeTemplates() { renderResumeGallery(); }
@@ -4329,6 +4357,7 @@ function onResumeTemplateChange() {
     renderResumeGallery();
     renderResumeTemplateDesc();
     renderResumeCustomBuilder();
+    renderResumeTemplatePreview();
 }
 window.populateResumeTemplates = populateResumeTemplates;
 window.renderResumeGallery = renderResumeGallery;
@@ -4342,6 +4371,8 @@ window.setResumeDensityUI = setResumeDensityUI;
 window.onResumePhotoPick = onResumePhotoPick;
 window.clearResumePhoto = clearResumePhoto;
 window.syncResumeExtraOptsUI = syncResumeExtraOptsUI;
+window.renderResumeTemplatePreview = renderResumeTemplatePreview;
+window.previewResumeTemplate = previewResumeTemplate;
 
 function renderAISettings() {
     const container = document.getElementById('aiProvidersSettings');

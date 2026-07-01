@@ -2291,6 +2291,36 @@ audio {
     background: rgba(0, 0, 0, 0.18);
 }
 
+/* Résumé template "zoomed" live preview */
+.resume-preview {
+    margin: 0.5rem 0 0.6rem;
+    padding: 0.7rem 0.7rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.22);
+    text-align: center;
+}
+.rtp-head {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
+}
+.rtp-eye { font-size: 0.68rem; color: var(--text-muted); }
+.rtp-name { font-size: 0.95rem; font-weight: 700; }
+.rtp-tags { font-size: 0.7rem; color: var(--text-muted); }
+.rtp-stage { display: flex; justify-content: center; }
+.rtp-stage svg.rc-thumb {
+    width: 270px;
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+}
+.rtp-desc { font-size: 0.74rem; color: var(--text-muted); margin-top: 0.55rem; }
+
 /* Résumé template VISUAL gallery (rendered thumbnails, like Word/Docs) */
 .resume-gallery {
     display: grid;

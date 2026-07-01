@@ -531,7 +531,8 @@
                                     <label>Résumé Template <span class="optional">(click a design — 100+ styles incl. photo header, skill-bars &amp; timeline, or build your own)</span></label>
                                     <input type="text" id="resumeTemplateFilter" class="resume-filter" placeholder="🔎 Search designs — e.g. blue, executive, serif, band…" oninput="filterResumeTemplates()" />
                                     <select id="resumeTemplate" onchange="onResumeTemplateChange()" style="display:none;"></select>
-                                    <div class="resume-gallery-scroll">
+                                    <div id="resumeTemplatePreview" class="resume-preview" style="display:none;"></div>
+                                    <div class="resume-gallery-scroll" onmouseleave="renderResumeTemplatePreview()">
                                         <div id="resumeTemplateGallery" class="resume-gallery"></div>
                                     </div>
                                     <div id="resumeCustomBuilder" class="resume-custom-builder" style="display:none;"></div>
