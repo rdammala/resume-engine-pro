@@ -1138,21 +1138,23 @@ const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provide
     },
     {
         id: 52,
-        title: 'Settings Provider Cards & Dashboard Engine Chips Stretched Unevenly (Empty Space) Within a Row',
+        title: 'Settings Provider Cards Rendered Uneven (Ragged Heights) Within a Row',
         severity: 'low',
         status: 'Fixed',
         role: 'Frontend Developer',
-        fixTime: '10 min',
-        description: 'In Settings, the AI provider cards in a row were stretched to the height of the tallest card in that row, so a card whose "get a key" link wrapped to two lines (or, once a key was saved, grew an extra "✓ Key saved · saved N days ago" line plus a Remove button) forced its neighbours to the same height, leaving ragged empty space at the bottom of the shorter cards. The dashboard AI-engine chips had the same latent issue: adding keys would make some chips taller and stretch the rest of the row.',
-        rootCause: 'CSS grid defaults to align-items:stretch, which sizes every item in a row track to the tallest item. Provider cards and engine chips have variable-height content (wrapping signup URLs, a saved-key status line, a Remove button, or a wrapped provider name), so the tallest card in each row dictated the height of all its siblings — the same class of bug already fixed on the dashboard cards.',
-        resolution: 'Added align-items:start to both grids (.ai-providers-grid in Settings and .ai-engine-grid on the dashboard) so each card/chip takes its natural content height instead of being stretched to match its row. Now saving a key (which grows that one card) no longer inflates the neighbouring cards, and cards with wrapping links stay compact.',
-        codeExample: `/* grid stretches every card to the tallest sibling by default */
-.ai-providers-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); }
-.ai-engine-grid   { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); }
+        fixTime: '20 min',
+        description: 'In Settings, two cards side by side (e.g. OpenAI with a saved key + Remove button vs Claude without) rendered at different heights, leaving a ragged, "not adjusted" look. An earlier attempt to fix a perceived stretch actually made it worse by forcing natural (unequal) heights.',
+        rootCause: 'A previous change added align-items:start to the .ai-providers-grid (and the dashboard .ai-engine-grid) on the assumption that "stretch = bad". But for a simple grid of provider cards, EQUAL height is the tidy result; align-items:start sized each card to its own content, so a taller saved-key card sat next to a shorter unsaved one with mismatched bottoms.',
+        resolution: 'Reverted both card grids to the CSS-grid default (align-items:stretch) so cards in a row share the tallest height, and relied on the existing rule .ai-provider-card small { margin-top:auto } which sinks each card footer to the bottom — so the "Get your API key at…" lines align across cards. Verified in an offline Playwright harness that loads the real style.css: paired paid cards measured 305/305px and free cards 285/285px (equal), with footers bottom-aligned. NOTE: this is different from the dashboard .dashboard-grid, which correctly KEEPS align-items:start because its cards (a full-width AI panel next to small Quick-Actions/Statistics cards) are intentionally different sizes.',
+        codeExample: `/* WRONG for a plain card grid: makes neighbours ragged/unequal */
+.ai-providers-grid { align-items: start; }
 
-/* fix: let each card/chip be its natural height */
-.ai-providers-grid, .ai-engine-grid { align-items: start; }`,
-        lesson: 'This is the same CSS-grid stretch trap as the dashboard cards: any grid holding variable-height items should use align-items:start unless equal-height cards are explicitly wanted. Watch for content that GROWS on interaction (a saved-key badge, a Remove button) — it will retro-actively stretch a whole row of neighbours if the grid stretches.',
-        impact: 'Low - Settings provider cards and dashboard engine chips now sit at their natural heights; saving/removing keys or wrapping links no longer leaves lopsided empty space across a row.'
+/* RIGHT: default stretch = equal height; footer sinks to the bottom so
+   the "get key" lines align across cards */
+.ai-providers-grid { /* (no align-items) => stretch */ }
+.ai-provider-card { display:flex; flex-direction:column; }
+.ai-provider-card small { margin-top: auto; }`,
+        lesson: 'align-items:start is the right fix ONLY when a row deliberately mixes very different card sizes (like the dashboard AI panel vs small stat cards). For a uniform grid of peer cards, equal-height (the grid default stretch) plus margin-top:auto on the footer is what looks "adjusted". Do not blanket-apply one alignment rule to every grid — and validate layout visually (a tiny offline harness that loads the real CSS beats guessing).',
+        impact: 'Low - Settings provider cards now render at equal heights with bottom-aligned "get key" links, so a saved key (extra Remove button/status line) no longer makes a card look mismatched next to its neighbour.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
