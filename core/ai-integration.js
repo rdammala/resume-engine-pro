@@ -60,6 +60,69 @@ const AIIntegration = {
                 ultra: { tokens: 2500, cost: 0.005 }
             }
         },
+        // ---- Free-tier, OpenAI-compatible providers (great for the failover
+        // chain). All use `Authorization: Bearer <key>` + the OpenAI chat format,
+        // so one generic call handles them. Costs are $0 on their free tiers. ----
+        groq: {
+            name: 'Groq (Llama 3.3 — free tier)',
+            endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+            model: 'llama-3.3-70b-versatile',
+            openaiCompatible: true,
+            free: true,
+            signupUrl: 'https://console.groq.com/keys',
+            costs: { input: 0, output: 0 },
+            modes: { fast: { tokens: 500, cost: 0 }, smart: { tokens: 1500, cost: 0 }, ultra: { tokens: 2500, cost: 0 } }
+        },
+        openrouter: {
+            name: 'OpenRouter (many free models)',
+            endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            openaiCompatible: true,
+            free: true,
+            signupUrl: 'https://openrouter.ai/keys',
+            costs: { input: 0, output: 0 },
+            modes: { fast: { tokens: 500, cost: 0 }, smart: { tokens: 1500, cost: 0 }, ultra: { tokens: 2500, cost: 0 } }
+        },
+        cerebras: {
+            name: 'Cerebras (very fast, free tier)',
+            endpoint: 'https://api.cerebras.ai/v1/chat/completions',
+            model: 'llama-3.3-70b',
+            openaiCompatible: true,
+            free: true,
+            signupUrl: 'https://cloud.cerebras.ai',
+            costs: { input: 0, output: 0 },
+            modes: { fast: { tokens: 500, cost: 0 }, smart: { tokens: 1500, cost: 0 }, ultra: { tokens: 2500, cost: 0 } }
+        },
+        together: {
+            name: 'Together AI (free model + trial credits)',
+            endpoint: 'https://api.together.xyz/v1/chat/completions',
+            model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free',
+            openaiCompatible: true,
+            free: true,
+            signupUrl: 'https://api.together.xyz/settings/api-keys',
+            costs: { input: 0, output: 0 },
+            modes: { fast: { tokens: 500, cost: 0 }, smart: { tokens: 1500, cost: 0 }, ultra: { tokens: 2500, cost: 0 } }
+        },
+        githubmodels: {
+            name: 'GitHub Models (free with a GitHub PAT)',
+            endpoint: 'https://models.inference.ai.azure.com/chat/completions',
+            model: 'gpt-4o-mini',
+            openaiCompatible: true,
+            free: true,
+            signupUrl: 'https://github.com/marketplace/models',
+            costs: { input: 0, output: 0 },
+            modes: { fast: { tokens: 500, cost: 0 }, smart: { tokens: 1500, cost: 0 }, ultra: { tokens: 2500, cost: 0 } }
+        },
+        cohere: {
+            name: 'Cohere (Command — free trial keys)',
+            endpoint: 'https://api.cohere.ai/compatibility/v1/chat/completions',
+            model: 'command-r-08-2024',
+            openaiCompatible: true,
+            free: true,
+            signupUrl: 'https://dashboard.cohere.com/api-keys',
+            costs: { input: 0, output: 0 },
+            modes: { fast: { tokens: 500, cost: 0 }, smart: { tokens: 1500, cost: 0 }, ultra: { tokens: 2500, cost: 0 } }
+        },
         pollinations: {
             name: 'Free AI (Pollinations — no key needed)',
             endpoint: 'https://text.pollinations.ai/openai',
@@ -139,6 +202,7 @@ const AIIntegration = {
     },
     
     isConfigured(provider) {
+        if (provider === 'auto' || provider === 'chain') return this.getFailoverOrder().length > 0;
         if (provider === 'pollinations') return true; // free, no key required
         if (provider === 'ollama') return true; // free local/Codespace server, no key
         if (provider === 'webllm') return this.webgpuSupported(); // ready only on WebGPU devices
@@ -232,6 +296,9 @@ const AIIntegration = {
     
     async tailorResume(provider, resumeData, jdData, mode = 'smart') {
         // Free + custom providers handle their own auth
+        if (provider === 'auto' || provider === 'chain') {
+            return this.tailorResumeChain(resumeData, jdData, mode);
+        }
         if (provider === 'pollinations') {
             return this.tailorWithPollinations(resumeData, jdData, mode);
         }
@@ -260,8 +327,114 @@ const AIIntegration = {
             case 'mistral':
                 return this.tailorWithMistral(key, resumeData, jdData, mode);
             default:
+                if (this.providers[provider] && this.providers[provider].openaiCompatible) {
+                    return this.tailorWithOpenAICompatible(provider, key, resumeData, jdData, mode);
+                }
                 throw new Error(`Unknown provider: ${provider}`);
         }
+    },
+
+    // ========================================================================
+    // GENERIC OPENAI-COMPATIBLE PROVIDER (Groq, OpenRouter, Cerebras, Together,
+    // GitHub Models, Cohere, …) — all share the OpenAI chat-completions shape.
+    // ========================================================================
+    async tailorWithOpenAICompatible(providerId, apiKey, resumeData, jdData, mode) {
+        const cfg = this.providers[providerId];
+        if (!cfg || !cfg.endpoint) throw new Error(`${providerId} is not configured`);
+        const prompt = this.buildTailoringPrompt(resumeData, jdData, mode);
+        const headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        };
+        // OpenRouter recommends these (harmless elsewhere).
+        if (providerId === 'openrouter') {
+            headers['HTTP-Referer'] = 'https://rdammala.github.io/resume-engine-pro/';
+            headers['X-Title'] = 'Resume Engine Pro';
+        }
+        let response;
+        try {
+            response = await fetch(cfg.endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    model: cfg.model,
+                    messages: [
+                        { role: 'system', content: 'You are an expert resume writer and ATS optimization specialist.' },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: cfg.modes[mode].tokens
+                })
+            });
+        } catch (netErr) {
+            const e = new Error(`${cfg.name} network error: ${netErr.message}`);
+            e.status = 0;
+            throw e;
+        }
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.text()).slice(0, 300); } catch (_) {}
+            const e = new Error(`${cfg.name} error: ${response.status}${detail ? ' — ' + detail : ''}`);
+            e.status = response.status;
+            throw e;
+        }
+        const data = await response.json();
+        const content = data && data.choices && data.choices[0] &&
+            (data.choices[0].message ? data.choices[0].message.content : data.choices[0].text);
+        if (!content) throw new Error(`${cfg.name} returned an empty response`);
+        return {
+            success: true,
+            provider: providerId,
+            cost: this.getCost(providerId, mode),
+            tailored: content
+        };
+    },
+
+    // ========================================================================
+    // AUTOMATIC FAILOVER CHAIN — tries each provider in priority order, skips
+    // ones without a key, and on a rate-limit / quota / server error moves to
+    // the next. Ends with keyless Pollinations so it (almost) always succeeds.
+    // ========================================================================
+    failoverChain: ['groq', 'gemini', 'openrouter', 'cerebras', 'mistral', 'together', 'githubmodels', 'cohere', 'pollinations'],
+
+    // Is this error worth failing over for (vs a hard, non-retryable failure)?
+    isRetryableError(err) {
+        const status = err && err.status;
+        if (status === 429) return true;                 // rate limit / quota
+        if (status === 0) return true;                   // network / CORS
+        if (typeof status === 'number' && status >= 500) return true; // server side
+        const msg = ((err && err.message) || '').toLowerCase();
+        return /rate limit|quota|too many requests|overloaded|capacity|timeout|temporar|unavailable|exhaust|429|5\d\d/.test(msg);
+    },
+
+    // Providers (in chain order) that are actually usable right now.
+    getFailoverOrder() {
+        return this.failoverChain.filter(id => this.providers[id] && this.isConfigured(id));
+    },
+
+    async tailorResumeChain(resumeData, jdData, mode = 'smart', chain) {
+        const order = (chain && chain.length ? chain : this.getFailoverOrder());
+        if (!order.length) throw new Error('No AI provider is configured for the failover chain');
+        const attempts = [];
+        let lastErr = null;
+        for (const id of order) {
+            try {
+                const result = await this.tailorResume(id, resumeData, jdData, mode);
+                result.usedProvider = id;
+                result.chainAttempts = attempts.concat([{ provider: id, ok: true }]);
+                return result;
+            } catch (err) {
+                lastErr = err;
+                attempts.push({ provider: id, ok: false, error: (err && err.message) || String(err) });
+                if (this.isRetryableError(err)) continue;   // try the next provider
+                // Non-retryable (e.g. bad key / malformed request): still fall
+                // through to the next provider — the whole point is resilience.
+                continue;
+            }
+        }
+        const e = new Error(`All providers in the failover chain failed. Last error: ${(lastErr && lastErr.message) || 'unknown'}`);
+        e.chainAttempts = attempts;
+        throw e;
     },
     
     // ========================================================================

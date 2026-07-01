@@ -943,7 +943,7 @@ function renderAIStatus() {
     if (!el || !window.AIIntegration) return;
 
     // Curated display order (paid first, then free, then custom).
-    const order = ['openai', 'claude', 'gemini', 'mistral', 'ollama', 'pollinations', 'custom'];
+    const order = ['openai', 'claude', 'gemini', 'mistral', 'groq', 'openrouter', 'cerebras', 'together', 'githubmodels', 'cohere', 'ollama', 'pollinations', 'custom'];
     const hasGhToken = !!(window.GitHubRunner && GitHubRunner.hasToken && GitHubRunner.hasToken());
 
     // One consistent pattern: "✓ Ready" (green) when usable now, otherwise a
@@ -2655,7 +2655,7 @@ async function tailorProfileWithAI(profile, jdText, provider, mode) {
         const reconciled = reconcileExperience(aiData.experience, profile.experience, aiData.company || aiData.job_company);
         if (reconciled && reconciled.length) tailored.experience = reconciled;
     }
-    return { profile: tailored, cost: result.cost || 0, usedAI: true };
+    return { profile: tailored, cost: result.cost || 0, usedAI: true, usedProvider: result.usedProvider || provider };
 }
 
 // Parse an AI response that may be wrapped in markdown code fences, contain
@@ -3596,6 +3596,10 @@ async function generateSingle() {
                 workingProfile = r.profile;
                 aiUsed = true;
                 aiCost = r.cost;
+                if (provider === 'auto' && r.usedProvider) {
+                    const usedName = (AIIntegration.providers[r.usedProvider] && AIIntegration.providers[r.usedProvider].name) || r.usedProvider;
+                    showToast(`🔗 Failover chain tailored with ${usedName}`, 'success');
+                }
             } catch (e) {
                 console.error('AI tailoring failed:', e);
                 if (provider === 'webllm') AIIntegration.onWebLLMProgress = null;
@@ -3929,6 +3933,13 @@ function updateAICost() {
     }
     const cost = (window.AIIntegration && AIIntegration.getCost) ? AIIntegration.getCost(provider, mode) : 0;
     const configured = window.AIIntegration && AIIntegration.isConfigured(provider);
+    if (provider === 'auto') {
+        const order = (window.AIIntegration && AIIntegration.getFailoverOrder) ? AIIntegration.getFailoverOrder() : [];
+        const names = order.map(id => AIIntegration.providers[id] && AIIntegration.providers[id].name.replace(/\s*\(.*$/, '')).filter(Boolean);
+        box.innerHTML = `<p>🔗 <strong>Auto failover chain</strong> — on each generation it tries your providers in order and automatically skips any without a key, falling over on rate-limit/quota errors. Ends on free Pollinations so it (almost) always succeeds. $0 on free tiers.</p>`
+            + `<p style="font-size:0.85rem;opacity:0.9;">Active order: ${names.length ? escHtml(names.join(' → ')) : 'Pollinations (add keys in Settings to add more)'}.</p>`;
+        return;
+    }
     if (provider === 'pollinations') {
         box.innerHTML = '<p>✅ <strong>Free AI</strong> selected — no key needed, $0.00 cost. Tailoring runs in your browser.</p>';
         return;
@@ -3963,7 +3974,8 @@ function updateAICost() {
 function refreshGenerationModeLabels(provider) {
     const sel = document.getElementById('generationMode');
     if (!sel) return;
-    const free = !provider || provider === 'pollinations' || provider === 'custom' || provider === 'ollama' || provider === 'webllm';
+    const cfg = window.AIIntegration && AIIntegration.providers && AIIntegration.providers[provider];
+    const free = !provider || provider === 'auto' || provider === 'pollinations' || provider === 'custom' || provider === 'ollama' || provider === 'webllm' || (cfg && cfg.free);
     const base = {
         fast: 'Fast (Quick keyword matching)',
         smart: 'Smart (Full tailoring)',
@@ -4421,6 +4433,29 @@ function renderAISettings() {
                 <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save Key</button>
             </div>
             <small>Use your own token from your ${escHtml(providers[id].name)} account. Stored only in your browser.</small>
+        </div>`;
+    });
+
+    // Free-tier, OpenAI-compatible providers — perfect for the 🔗 Auto failover
+    // chain. Add as many keys as you like; the chain uses whichever are present.
+    const freeChain = ['groq', 'gemini', 'openrouter', 'cerebras', 'together', 'githubmodels', 'cohere'];
+    const order = (AIIntegration.getFailoverOrder ? AIIntegration.getFailoverOrder() : []);
+    const orderNames = order.map(id => providers[id] && providers[id].name.replace(/\s*\(.*$/, '')).filter(Boolean);
+    html += `<div class="ai-provider-card ai-provider-card--wide">
+        <h4>🔗 Auto failover chain (free)</h4>
+        <p>Add API keys for any of the free-tier providers below. When you pick <strong>🔗 Auto failover chain</strong> in the Generate tab, each generation tries them in order, <strong>skips any without a key</strong>, and automatically fails over on rate-limit / quota errors — ending on keyless Pollinations so it (almost) always succeeds.</p>
+        <p style="font-size:0.85rem;opacity:0.9;">Current active order: <strong>${orderNames.length ? escHtml(orderNames.join(' → ')) : 'Pollinations only — add a key to extend the chain'}</strong>.</p>
+    </div>`;
+    freeChain.filter(id => id !== 'gemini' && providers[id]).forEach(id => {
+        const p = providers[id];
+        const configured = AIIntegration.isConfigured(id);
+        html += `<div class="ai-provider-card">
+            <h4>${escHtml(p.name)} ${configured ? '✅' : ''}</h4>
+            <div class="form-group">
+                <input type="password" id="aikey_${id}" placeholder="Paste your ${escHtml(id)} API key" />
+                <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save Key</button>
+            </div>
+            <small>Free tier — get a key at <a href="${escHtml(p.signupUrl)}" target="_blank" rel="noopener">${escHtml(p.signupUrl.replace(/^https?:\/\//, ''))}</a>. Stored only in your browser.</small>
         </div>`;
     });
 

@@ -469,6 +469,7 @@
                                 <label>AI Provider:</label>
                                 <select id="aiProvider" onchange="updateAICost()">
                                     <option value="">None — generate locally (free, no AI)</option>
+                                    <option value="auto">🔗 Auto failover chain (free — tries each provider you've added, skips empty ones)</option>
                                     <option value="pollinations">Free AI (Pollinations — no key needed)</option>
                                     <option value="webllm">Browser AI (WebLLM — free, private, runs on your device)</option>
                                     <option value="ollama">Ollama / Llama 3 (free — auto-runs in a GitHub cloud runner)</option>
@@ -477,6 +478,12 @@
                                     <option value="claude">Claude (Anthropic) — needs your key</option>
                                     <option value="gemini">Google Gemini — needs your key</option>
                                     <option value="mistral">Mistral AI — needs your key</option>
+                                    <option value="groq">Groq (Llama 3.3 — free tier)</option>
+                                    <option value="openrouter">OpenRouter (many free models)</option>
+                                    <option value="cerebras">Cerebras (very fast — free tier)</option>
+                                    <option value="together">Together AI (free model + credits)</option>
+                                    <option value="githubmodels">GitHub Models (free with a GitHub PAT)</option>
+                                    <option value="cohere">Cohere (Command — free trial keys)</option>
                                 </select>
                             </div>
 
