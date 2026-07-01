@@ -1115,5 +1115,25 @@ const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provide
 // Catch it BEFORE committing:  node --check script.js`,
         lesson: 'A single syntax error takes down an entire JS file - every function in it vanishes, so seemingly unrelated features (like login) break at once. Editor/linter diagnostics are not a substitute for the real parser: always run node --check on changed .js before pushing, especially for a static site with no build step to catch it. When "nothing works", suspect a parse error in a core script, not the feature that appears broken.',
         impact: 'Critical - restored the entire application (login and every feature) on the live GitHub Pages portal; hardened the pre-push checklist so an unbalanced-paren error cannot silently ship again.'
+    },
+    {
+        id: 51,
+        title: 'Guided-Tour Bubble: Skip/Back/Next Buttons Overflowed Outside the Card',
+        severity: 'low',
+        status: 'Fixed',
+        role: 'Frontend Developer',
+        fixTime: '10 min',
+        description: 'On the multi-page guided tour, the footer controls (the progress dots plus the Skip / Back / Next buttons) spilled outside the right edge of the coach-mark bubble on every step, so the Next button was partly clipped by the card border.',
+        rootCause: 'The footer was a single horizontal flex row (dots + buttons, justify-content:space-between, no wrapping). The full portal tour has 14 steps, so it renders 14 progress dots; that dot strip alone is wider than the narrow bubble body, and with no wrap it pushed the button group past the card edge. The bubble body could not shrink the row, so it overflowed instead of reflowing.',
+        resolution: 'Changed the footer to a vertical stack (flex-direction:column): the dots sit on their own row and are allowed to wrap (flex-wrap), and the buttons sit on a second row right-aligned (justify-content:flex-end) and also wrap if needed. Added box-sizing:border-box and flex:1 1 auto on the body, and nudged the bubble width to min(360px,92vw). Now the controls always stay inside the card regardless of step count.',
+        codeExample: `/* before: one row, no wrap -> 14 dots shove the buttons out */
+.tour-foot { display:flex; justify-content:space-between; }
+
+/* after: stack dots above buttons; both wrap; buttons right-aligned */
+.tour-foot { display:flex; flex-direction:column; align-items:stretch; gap:.55rem; }
+.tour-dots { display:flex; flex-wrap:wrap; gap:5px; }
+.tour-btns { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.4rem; }`,
+        lesson: 'A fixed-width popover that shows a variable number of items (here, one progress dot per step) must let its contents WRAP or it will overflow once the count grows. Prefer stacking meta (dots) above actions (buttons) in narrow cards, and never rely on a single non-wrapping flex row for content whose length you do not control.',
+        impact: 'Low - the tour coach-mark now looks clean on every step and screen size; the Skip/Back/Next controls always stay inside the bubble even on the long 14-step full tour.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
