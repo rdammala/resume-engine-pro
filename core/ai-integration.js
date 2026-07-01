@@ -8,6 +8,7 @@ const AIIntegration = {
             name: 'OpenAI (GPT-4)',
             endpoint: 'https://api.openai.com/v1/chat/completions',
             model: 'gpt-4',
+            signupUrl: 'https://platform.openai.com/settings/organization/api-keys',
             costs: {
                 input: 0.00003,
                 output: 0.00006
@@ -22,6 +23,7 @@ const AIIntegration = {
             name: 'Claude (Anthropic)',
             endpoint: 'https://api.anthropic.com/v1/messages',
             model: 'claude-3-sonnet-20240229',
+            signupUrl: 'https://platform.claude.com/docs/en/api/admin/api_keys/retrieve',
             costs: {
                 input: 0.000003,
                 output: 0.000015
@@ -36,6 +38,7 @@ const AIIntegration = {
             name: 'Google Gemini',
             endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
             model: 'gemini-pro',
+            signupUrl: 'https://aistudio.google.com/app/api-keys',
             costs: {
                 input: 0.000000125,
                 output: 0.000000375
@@ -50,6 +53,7 @@ const AIIntegration = {
             name: 'Mistral AI',
             endpoint: 'https://api.mistral.ai/v1/chat/completions',
             model: 'mistral-large-latest',
+            signupUrl: 'https://admin.mistral.ai/organization/api-keys',
             costs: {
                 input: 0.0000024,
                 output: 0.0000072

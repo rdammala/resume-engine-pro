@@ -134,6 +134,9 @@ function showPage(pageName) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const page = document.getElementById(pageName);
     if (page) page.classList.add('active');
+    // The "Tour this page" FAB only makes sense inside the app, not on login.
+    const tourFab = document.getElementById('tourFab');
+    if (tourFab) tourFab.style.display = (pageName === 'appPage') ? 'inline-flex' : 'none';
 }
 
 function switchMainTab(tabName) {
@@ -4459,7 +4462,7 @@ function renderAISettings() {
                 <button class="btn btn-secondary" onclick="saveAIProviderKey('${id}')">Save</button>
                 ${configured ? `<button class="btn pk-remove" onclick="removeAIProviderKey('${id}')">Remove</button>` : ''}
             </div>
-            <small>${signup ? 'Get a free key at ' + signup + '. ' : ''}Stored only in this browser.${opts.paid ? ' <strong>Billed to your own account.</strong>' : ''}</small>
+            <small>${signup ? (opts.paid ? 'Get your API key at ' : 'Get a free key at ') + signup + '. ' : ''}Stored only in this browser.${opts.paid ? ' <strong>Billed to your own account.</strong>' : ''}</small>
         </div>`;
     };
 
@@ -4751,30 +4754,57 @@ window.verifyCloudSetup = verifyCloudSetup;
 // first login; replay anytime via the "🧭 Take a 60-sec tour" button or Help.
 // ============================================================================
 const APP_TOUR_STEPS = [
-    { sel: null, emoji: '👋', title: "Hi, I'm Rae — your guide!",
-      body: "New here? I'll walk you through the whole flow in about a minute. You can leave anytime with <strong>Skip</strong>." },
-    { sel: '#tourStep1', emoji: '📇', title: 'Step 1 — Create your profile',
-      body: 'Upload a résumé (PDF/DOCX/TXT) or type your details once. You reuse this for every job, so you only do it a single time.' },
-    { sel: '#tourStep2', emoji: '✍️', title: 'Step 2 — Generate a tailored résumé',
-      body: 'Paste a job link or description, pick a design, and choose an AI engine. You get a résumé, cover letter and portfolio together.' },
-    { sel: '#aiStatus', emoji: '🤖', title: 'Pick a free AI engine',
-      body: 'Everything here can be <strong>free</strong>. Tip: choose the <strong>🔗 Auto failover chain</strong> and it rotates through free providers automatically so you never get stuck.' },
-    { sel: '#tourStep3', emoji: '🚀', title: 'Step 3 — Publish & track',
-      body: 'Publish a live portfolio to your GitHub and keep every application organized in the tracker.' },
-    { sel: '#settingsBtn', emoji: '⚙️', title: 'Keys & settings live here',
-      body: 'Add AI keys or your GitHub token anytime from Settings. Your keys stay in <strong>your browser only</strong>.' },
-    { sel: null, emoji: '🎉', title: "You're all set!",
-      body: 'Start with <strong>Step 1 — Create your profile</strong>. Want to see this again? Click <strong>🧭 Take a 60-sec tour</strong> on the dashboard.' }
+    // — Dashboard —
+    { page: 'dashboard', sel: null, emoji: '👋', title: "Hi, I'm Rae — your guide!",
+      body: "New here? I'll walk you through the whole portal in about a minute — dashboard, profiles, generating, tracking and settings. Leave anytime with <strong>Skip</strong>." },
+    { page: 'dashboard', sel: '#tourStep1', emoji: '📇', title: 'Dashboard · Step 1 — Create a profile',
+      body: 'Everything starts with a profile: upload a résumé or type your details once, then reuse it for every job.' },
+    { page: 'dashboard', sel: '#tourStep2', emoji: '✍️', title: 'Dashboard · Step 2 — Generate',
+      body: 'Turn a profile + a job post into a tailored résumé, cover letter and portfolio.' },
+    { page: 'dashboard', sel: '#aiStatus', emoji: '🤖', title: 'Dashboard · Your AI engines',
+      body: 'See which engines are ready at a glance. Everything here can be <strong>free</strong> — the 🔗 Auto chain even rotates providers for you.' },
+    { page: 'dashboard', sel: '#tourStep3', emoji: '🚀', title: 'Dashboard · Step 3 — Publish & track',
+      body: 'Publish a live portfolio to your GitHub and keep every application in the tracker.' },
+    // — My Profiles —
+    { page: 'profiles', sel: '#profiles h2', emoji: '📇', title: 'My Profiles',
+      body: 'This tab holds the profiles you reuse for every application. Create as many as you like — for example one per role type.' },
+    { page: 'profiles', sel: '#profiles .section-header button', emoji: '➕', title: 'Add a profile',
+      body: 'Click <strong>+ New Profile</strong> to upload a résumé (PDF/DOCX/TXT) or enter details manually. This is the very first step of the flow.' },
+    // — Generate —
+    { page: 'generator', sel: '#generator h2', emoji: '✍️', title: 'Generate',
+      body: 'Here you turn a profile + a job description into tailored documents. Pick a profile at the top, then follow the steps down the page.' },
+    { page: 'generator', sel: '#jdText', emoji: '📋', title: 'Paste the job description',
+      body: 'Paste the JD (or a job link) here. The app matches your skills to it and tailors the résumé accordingly.' },
+    { page: 'generator', sel: '#resumeTemplateGallery', emoji: '🎨', title: 'Pick a résumé design',
+      body: 'Choose from 100+ designs (photo header, skill-bars, timeline…). Hover any card for a big live preview, or build your own.' },
+    { page: 'generator', sel: '#aiProvider', emoji: '🤖', title: 'Choose an AI engine',
+      body: 'Pick an engine — or <strong>🔗 Auto failover chain</strong> to use free providers that rotate automatically. Then hit Generate.' },
+    // — Applications —
+    { page: 'applications', sel: '#applications h2', emoji: '📌', title: 'Applications tracker',
+      body: 'Every résumé/portfolio you publish is logged here automatically — status, links and dates — so nothing slips through the cracks.' },
+    // — History —
+    { page: 'history', sel: '#history h2', emoji: '🕘', title: 'History',
+      body: 'A record of every generation (successful or not). Re-download the documents or re-publish any past run from here.' },
+    // — Settings —
+    { page: 'settings', sel: '#aiProvidersSettings', emoji: '⚙️', title: 'Settings — keys & AI',
+      body: "Add AI keys or your GitHub token here, free-first and step by step. Keys stay in <strong>your browser only</strong>. That's the tour — you're all set! 🎉" }
 ];
 
 let _tourIndex = 0;
+let _tourSteps = [];
 let _tourEls = null;
 let _tourReposition = null;
 
-function startAppTour() {
-    // Targets live on the dashboard — make sure it's the active tab.
-    try { if (typeof switchMainTab === 'function') switchMainTab('dashboard'); } catch (_) {}
+function _activeTabId() {
+    return (document.querySelector('.main-tab-content.active') || {}).id || 'dashboard';
+}
+
+// Shared setup: build the overlay and run whatever step list is passed in.
+function beginTour(steps) {
+    if (!steps || !steps.length) { if (typeof showToast === 'function') showToast('Nothing to tour on this page yet', 'info'); return; }
     endAppTour(true); // clear any prior instance without marking done
+    _tourSteps = steps;
+    _tourIndex = 0;
     const overlay = document.createElement('div');
     overlay.className = 'tour-overlay';
     overlay.id = 'appTourOverlay';
@@ -4786,12 +4816,23 @@ function startAppTour() {
     overlay.appendChild(bubble);
     document.body.appendChild(overlay);
     _tourEls = { overlay, spot, bubble };
-    _tourIndex = 0;
     _tourReposition = () => positionTourStep();
     window.addEventListener('resize', _tourReposition);
     window.addEventListener('scroll', _tourReposition, true);
     document.addEventListener('keydown', tourKeydown, true);
     renderTourStep();
+}
+
+// Full portal tour across every page (first login + dashboard button).
+function startAppTour() { beginTour(APP_TOUR_STEPS.slice()); }
+
+// Tour ONLY one page — defaults to the page you're currently on (floating
+// "Tour this page" button), so users can get help for exactly where they are.
+function startPageTour(page) {
+    const p = page || _activeTabId();
+    const steps = APP_TOUR_STEPS.filter(s => s.page === p);
+    if (!steps.length) { startAppTour(); return; }
+    beginTour(steps);
 }
 
 function tourKeydown(e) {
@@ -4802,9 +4843,13 @@ function tourKeydown(e) {
 
 function renderTourStep() {
     if (!_tourEls) return;
-    const step = APP_TOUR_STEPS[_tourIndex];
-    const last = _tourIndex === APP_TOUR_STEPS.length - 1;
-    const dots = APP_TOUR_STEPS.map((_, i) => `<span class="tour-dot${i === _tourIndex ? ' on' : ''}"></span>`).join('');
+    const step = _tourSteps[_tourIndex];
+    // Make sure the step's page is the active tab before we spotlight it.
+    if (step.page && _activeTabId() !== step.page) {
+        try { if (typeof switchMainTab === 'function') switchMainTab(step.page); } catch (_) {}
+    }
+    const last = _tourIndex === _tourSteps.length - 1;
+    const dots = _tourSteps.map((_, i) => `<span class="tour-dot${i === _tourIndex ? ' on' : ''}"></span>`).join('');
     _tourEls.bubble.innerHTML = `
         <div class="tour-mascot">${step.emoji}</div>
         <div class="tour-body">
@@ -4819,12 +4864,13 @@ function renderTourStep() {
                 </div>
             </div>
         </div>`;
-    positionTourStep();
+    // Let a freshly-shown tab lay out before we measure it.
+    requestAnimationFrame(() => positionTourStep());
 }
 
 function positionTourStep() {
     if (!_tourEls) return;
-    const step = APP_TOUR_STEPS[_tourIndex];
+    const step = _tourSteps[_tourIndex];
     const { overlay, spot, bubble } = _tourEls;
     const pad = 8;
     const target = step.sel ? document.querySelector(step.sel) : null;
@@ -4859,7 +4905,7 @@ function positionTourStep() {
 }
 
 function tourNext() {
-    if (_tourIndex >= APP_TOUR_STEPS.length - 1) { endAppTour(); return; }
+    if (_tourIndex >= _tourSteps.length - 1) { endAppTour(); return; }
     _tourIndex++;
     renderTourStep();
 }
@@ -4883,7 +4929,7 @@ function endAppTour(silent) {
     }
 }
 
-// Auto-run the tour the first time a user reaches the dashboard after login.
+// Auto-run the full tour the first time a user logs in.
 function maybeStartAppTour() {
     let done = false;
     try { done = !!(window.StorageManager && StorageManager.get && StorageManager.get('onboardingDone')); } catch (_) {}
@@ -4892,6 +4938,7 @@ function maybeStartAppTour() {
 }
 
 window.startAppTour = startAppTour;
+window.startPageTour = startPageTour;
 window.endAppTour = endAppTour;
 window.tourNext = tourNext;
 window.tourPrev = tourPrev;

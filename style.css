@@ -2951,6 +2951,20 @@ html[data-theme="light"] #themeToggleBtn { color: #1a2230; }
 }
 @media (max-width: 600px) { .help-fab-label { display: none; } .help-fab { padding: 0.7rem; } }
 
+/* "Tour this page" FAB — sits just above the Help FAB */
+.tour-fab {
+    position: fixed; right: 20px; bottom: 74px; z-index: 1200;
+    display: none; align-items: center; gap: 0.45rem;
+    padding: 0.6rem 1rem 0.6rem 0.8rem; border: 1px solid rgba(56, 224, 255, 0.5);
+    border-radius: 999px;
+    background: rgba(20, 26, 43, 0.95);
+    color: #cdeffb; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.15s ease, background 0.15s ease;
+}
+.tour-fab:hover { background: rgba(56, 224, 255, 0.18); transform: translateY(-1px); }
+.tour-fab-ico { font-size: 1.05rem; line-height: 1; }
+@media (max-width: 600px) { .tour-fab-label { display: none; } .tour-fab { padding: 0.6rem; bottom: 70px; } }
+
 .help-modal {
     position: fixed; inset: 0; z-index: 1300; background: rgba(0,0,0,0.6);
     display: flex; align-items: flex-start; justify-content: center;

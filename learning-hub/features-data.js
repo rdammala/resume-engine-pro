@@ -561,7 +561,32 @@ function positionTourStep() {
 // Auto-run ONCE after first login
 function maybeStartAppTour(){ if(!StorageManager.get('onboardingDone')) setTimeout(startAppTour, 700); }`,
         lesson: 'For multi-step tools, first-timers need guidance IN CONTEXT, not a static FAQ — a spotlight tour that points at the real UI and says "do this next" beats documentation for onboarding. Gate it behind a one-time flag but always leave a visible replay button. And audit for duplicate entry points: two controls that do the same thing (Quick Actions vs the 3-step box) add cognitive load — delete the redundant one.',
-        impact: 'High — brand-new users are walked through the exact flow on first login instead of guessing among many steps; the tour is replayable on demand, and the dashboard is less cluttered after removing the duplicate Quick Actions card.'    }
+        impact: 'High — brand-new users are walked through the exact flow on first login instead of guessing among many steps; the tour is replayable on demand, and the dashboard is less cluttered after removing the duplicate Quick Actions card.'    },
+    {
+        id: 20,
+        title: 'Multi-Page + Per-Page Guided Tour, plus Direct "Get API key" Links on Every Provider Card',
+        category: 'UX / Onboarding',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '55 min',
+        summary: 'Extended the guided tour beyond the dashboard: the full tour now walks across every page (Dashboard, My Profiles, Generate, Applications, History, Settings), switching tabs as it goes. Added a floating "Tour this page" button so a user can tour just the page they are on - starting there, not from the dashboard. Also added deep links straight to each provider API-key page (Gemini, Mistral, OpenAI, Claude, plus the existing free-tier providers) on the Settings cards.',
+        motivation: 'Users asked why the tour ended on the dashboard and did not continue to the other pages, and wanted to replay a tour for a specific page without restarting from the top. They also wanted a fast path to where each provider issues API keys instead of hunting for it.',
+        solution: 'Refactored the tour into a single ordered step list where every step carries a page key; a shared beginTour(steps) engine drives it. startAppTour() runs the whole list (auto-switching tabs via switchMainTab before spotlighting each target); startPageTour(page) filters to one page and defaults to the current active tab (read from .main-tab-content.active). renderTourStep switches to the step page first, then positions the spotlight on the next animation frame so a freshly-shown tab has laid out. A floating Tour-this-page FAB (shown only inside the app) calls startPageTour(). Provider cards gained signupUrl links (providerKeyCard renders "Get your API key at" for paid, "Get a free key at" for free tiers).',
+        codeExample: `// Steps carry a page; the engine switches tabs then spotlights the target
+function startPageTour(page){
+  const p = page || (document.querySelector('.main-tab-content.active')||{}).id || 'dashboard';
+  const steps = APP_TOUR_STEPS.filter(s => s.page === p);
+  beginTour(steps.length ? steps : APP_TOUR_STEPS.slice());   // page-only, else full
+}
+function renderTourStep(){
+  const step = _tourSteps[_tourIndex];
+  if (step.page && activeTab() !== step.page) switchMainTab(step.page); // show the page
+  // ...render bubble...
+  requestAnimationFrame(positionTourStep);   // measure AFTER the tab lays out
+}`,
+        lesson: 'Model a guided tour as data (a flat list of steps, each tagged with the page it belongs to) rather than hard-coded to one screen - then the SAME engine can play the whole tour or any single page just by filtering. When a step lives on another tab, switch to it first and measure on the next animation frame so the target is laid out. And meet users where the friction is: a one-click deep link to each provider key page removes a real hunt-and-peck step.',
+        impact: 'High — the tour now covers the entire portal and can be replayed per-page from a floating button, and every AI provider card links straight to its API-key page, so setup is noticeably faster and less confusing.'
+    }
 ];
 
 console.log("FEATURES array loaded with", window.FEATURES.length, "features");
