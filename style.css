@@ -556,6 +556,9 @@ html:not(.js-ready)[data-boot="app"][data-tab="settings"] #settings { display: b
 }
 .ai-chip.on { border-color: rgba(0, 224, 138, 0.4); }
 .ai-chip.on .ai-chip-dot { background: #00e08a; box-shadow: 0 0 0 3px rgba(0, 224, 138, 0.2); }
+.ai-chip.err { border-color: rgba(255, 92, 92, 0.45); }
+.ai-chip.err .ai-chip-dot { background: #ff5c5c; box-shadow: 0 0 0 3px rgba(255, 92, 92, 0.22); }
+.ai-chip.err .ai-chip-meta { color: #ff9a9a; }
 .ai-chip-body { display: flex; flex-direction: column; min-width: 0; }
 .ai-chip-name { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-chip-meta { font-size: 0.68rem; color: var(--text-muted); }
@@ -1201,6 +1204,13 @@ select option {
     box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.18);
 }
 .pk-card.pk-on .pk-dot { background: #00e08a; box-shadow: 0 0 0 3px rgba(0, 224, 138, 0.22); }
+/* Standalone dot state classes (used in card headings + key cards) */
+.pk-dot.on { background: #00e08a; box-shadow: 0 0 0 3px rgba(0, 224, 138, 0.22); }
+.pk-dot.err { background: #ff5c5c; box-shadow: 0 0 0 3px rgba(255, 92, 92, 0.25); }
+.pk-card.pk-err { border-color: rgba(255, 92, 92, 0.5); background: rgba(255, 92, 92, 0.05); }
+.ai-provider-card h4 .pk-dot { display: inline-block; vertical-align: middle; margin-right: 7px; }
+.pk-status-err { color: #ff9a9a !important; white-space: normal !important; }
+.pk-health-note { color: #ff9a9a; font-size: 0.8rem; margin-top: 0.4rem; }
 .pk-name { font-weight: 700; font-size: 0.95rem; }
 .pk-badge {
     font-size: 0.66rem;

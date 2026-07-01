@@ -586,6 +586,32 @@ function renderTourStep(){
 }`,
         lesson: 'Model a guided tour as data (a flat list of steps, each tagged with the page it belongs to) rather than hard-coded to one screen - then the SAME engine can play the whole tour or any single page just by filtering. When a step lives on another tab, switch to it first and measure on the next animation frame so the target is laid out. And meet users where the friction is: a one-click deep link to each provider key page removes a real hunt-and-peck step.',
         impact: 'High — the tour now covers the entire portal and can be replayed per-page from a floating button, and every AI provider card links straight to its API-key page, so setup is noticeably faster and less confusing.'
+    },
+    {
+        id: 21,
+        title: 'Live Provider Status Radios — Green/Grey/Red Health Dots with Rate-Limit & Expiry Notes',
+        category: 'AI / UX / Reliability',
+        status: 'Shipped',
+        role: 'Full-Stack',
+        effort: '75 min',
+        summary: 'Gave every AI engine a consistent status "radio" dot on both the dashboard chips and the Settings cards: GREEN when ready, GREY when not set up, RED when the engine recently failed. Pollinations and WebLLM are always green (no key needed); Ollama is green only once its GitHub token is added. On a real failure the dot goes RED with a plain-English note — "Free limit reached — try again in ~3 hours", "Key rejected or expired — replace it", or "Model unavailable right now — pick another" — and auto-recovers to green after a cooldown or the next successful call.',
+        motivation: 'The key-based provider cards already had grey/green dots, but the no-key engines (Pollinations, WebLLM, Ollama) had none, so their readiness was inconsistent. Users also wanted to know WHY an engine is not working — a free-tier daily cap, an expired key, or a model outage — instead of a silent failure, with guidance on when to come back.',
+        solution: 'Added a per-provider health store (StorageManager "providerHealth") with recordProviderHealth/getProviderHealth/clearProviderHealth. tailorResumeChain records health on each failed attempt and clears it on success; the single-provider path does the same in tailorProfileWithAI. recordProviderHealth classifies the error — 429/quota -> "limited" with a cooldown (Retry-After or 1h) and a humanized "try again in ~N hours"; 401/403/expired -> "expired"; model/unavailable -> short cooldown — and stores an until timestamp so the dot self-heals. aiProviderStatus() and providerKeyCard() now surface green/grey/red; the three no-key cards got matching dots via a freeCardStatus() helper; dashboard chips and cards show a red dot + message when unhealthy.',
+        codeExample: `// Record WHY a provider failed, with a cooldown so the dot self-heals
+recordProviderHealth(id, err){
+  const s = err && err.status, msg = ((err&&err.message)||'').toLowerCase(), now = Date.now();
+  let kind='error', until=0, label;
+  if (s===429 || /rate limit|quota|exhaust/.test(msg)) {
+    kind='limited'; until = now + (\+err.retryAfter||3600)*1000;
+    label = 'Free limit reached — try again ' + this._humanizeUntil(until);
+  } else if (s===401||s===403||/expired|invalid api key/.test(msg)) {
+    kind='expired'; label='Key rejected or expired — replace it';
+  } else { kind='error'; until=now+15*60*1000; label='Last attempt failed'; }
+  // ...persist { kind, label, until } in providerHealth
+}
+// getProviderHealth() returns null once Date.now() > until  -> back to green`,
+        lesson: 'Make status a first-class, consistent signal across every engine (one dot vocabulary: green/grey/red) so users can read readiness at a glance. When something fails, tell the user WHY and WHEN to retry — a "free limit reached, back in ~3h" note beats a silent error every time. Store failures with a cooldown timestamp so the UI self-heals without any manual reset.',
+        impact: 'High — users instantly see which engines are ready, which need setup, and which are temporarily down (with a reason and a come-back time), turning opaque failures into clear, actionable status.'
     }
 ];
 

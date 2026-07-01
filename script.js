@@ -968,21 +968,28 @@ function aiKeyAgeLabel(id) {
 }
 
 // Uniform readiness for a provider id (ready + short action label + kind).
+// If the provider recently errored (rate-limit / expired key / model down),
+// it reports an `error` state so the dot goes red with a helpful message.
 function aiProviderStatus(id) {
     const hasGhToken = !!(window.GitHubRunner && GitHubRunner.hasToken && GitHubRunner.hasToken());
-    if (id === 'pollinations') return { ready: true, label: 'Ready · free', kind: 'free' };
-    if (id === 'webllm') return (AIIntegration.webgpuSupported && AIIntegration.webgpuSupported())
+    let st;
+    if (id === 'pollinations') st = { ready: true, label: 'Ready · free', kind: 'free' };
+    else if (id === 'webllm') st = (AIIntegration.webgpuSupported && AIIntegration.webgpuSupported())
         ? { ready: true, label: 'Ready · free', kind: 'free' }
         : { ready: false, label: 'Needs WebGPU', kind: 'free' };
-    if (id === 'ollama') return hasGhToken
+    else if (id === 'ollama') st = hasGhToken
         ? { ready: true, label: 'Ready · free', kind: 'free' }
         : { ready: false, label: 'Add GitHub token', kind: 'free' };
-    if (id === 'custom') return AIIntegration.isConfigured('custom')
+    else if (id === 'custom') st = AIIntegration.isConfigured('custom')
         ? { ready: true, label: 'Ready', kind: 'custom' }
         : { ready: false, label: 'Add endpoint', kind: 'custom' };
-    return AIIntegration.isConfigured(id)
+    else st = AIIntegration.isConfigured(id)
         ? { ready: true, label: 'Ready', kind: 'key' }
         : { ready: false, label: 'Add key', kind: 'key' };
+
+    const health = (AIIntegration.getProviderHealth) ? AIIntegration.getProviderHealth(id) : null;
+    if (health) return { ready: false, error: true, label: health.label, kind: st.kind, health };
+    return st;
 }
 
 function renderAIStatus() {
@@ -998,7 +1005,8 @@ function renderAIStatus() {
             const shortName = p.name.replace(/\s*[\(\u2014].*$/, '').trim();
             const age = (st.ready && (g.key === 'freekey' || g.key === 'paid')) ? aiKeyAgeLabel(id) : '';
             const meta = st.ready ? (age || st.label) : st.label;
-            return `<button type="button" class="ai-chip ${st.ready ? 'on' : 'off'}" onclick="switchMainTab('settings')" title="${escHtml(p.name)} — ${escHtml(st.label)}. Manage in Settings.">
+            const cls = st.error ? 'err' : (st.ready ? 'on' : 'off');
+            return `<button type="button" class="ai-chip ${cls}" onclick="switchMainTab('settings')" title="${escHtml(p.name)} — ${escHtml(st.label)}. Manage in Settings.">
                 <span class="ai-chip-dot"></span>
                 <span class="ai-chip-body">
                     <span class="ai-chip-name">${escHtml(shortName)}</span>
@@ -2667,7 +2675,17 @@ function addDownloadLink(container, blob, filename, label) {
 // the model and merge its tailored summary/skills/experience into the profile.
 // Returns { profile, cost, usedAI }. Throws on AI/network failure (caller falls back).
 async function tailorProfileWithAI(profile, jdText, provider, mode) {
-    const result = await AIIntegration.tailorResume(provider, profile, jdText, mode);
+    const isChain = (provider === 'auto' || provider === 'chain');
+    let result;
+    try {
+        result = await AIIntegration.tailorResume(provider, profile, jdText, mode);
+    } catch (e) {
+        // The chain records health per-attempt itself; for a directly-chosen
+        // provider, remember why it failed so its dot can go red with a note.
+        if (!isChain && provider && AIIntegration.recordProviderHealth) AIIntegration.recordProviderHealth(provider, e);
+        throw e;
+    }
+    if (!isChain && provider && AIIntegration.clearProviderHealth) AIIntegration.clearProviderHealth(result.usedProvider || provider);
     const aiData = parseAIResponse(result.tailored);
 
     const tailored = { ...profile };
@@ -4440,6 +4458,7 @@ function renderAISettings() {
         const p = providers[id];
         if (!p) return '';
         const configured = AIIntegration.isConfigured(id);
+        const health = (AIIntegration.getProviderHealth) ? AIIntegration.getProviderHealth(id) : null;
         const age = configured ? aiKeyAgeLabel(id) : '';
         const badge = opts.paid
             ? '<span class="pk-badge pk-paid">💳 Paid</span>'
@@ -4448,12 +4467,17 @@ function renderAISettings() {
             ? `<a class="pk-keylink" href="${escHtml(p.signupUrl)}" target="_blank" rel="noopener" title="${escHtml(p.signupUrl)}">${opts.paid ? 'Get your API key' : 'Get a free key'} \u2197</a>`
             : '';
         const rnd = Math.random().toString(36).slice(2, 7);
-        return `<div class="ai-provider-card pk-card ${configured ? 'pk-on' : ''}">
+        const dotCls = health ? 'err' : (configured ? 'on' : '');
+        const cardCls = health ? 'pk-err' : (configured ? 'pk-on' : '');
+        const statusHtml = health
+            ? `<span class="pk-status pk-status-err">⚠ ${escHtml(health.label)}</span>`
+            : (configured ? `<span class="pk-status">✓ Key saved${age ? ' · ' + escHtml(age) : ''}</span>` : '');
+        return `<div class="ai-provider-card pk-card ${cardCls}">
             <div class="pk-head">
-                <span class="pk-dot"></span>
+                <span class="pk-dot ${dotCls}"></span>
                 <span class="pk-name">${escHtml(p.name.replace(/\s*[\(\u2014].*$/, '').trim())}</span>
                 ${badge}
-                ${configured ? `<span class="pk-status">✓ Key saved${age ? ' · ' + escHtml(age) : ''}</span>` : ''}
+                ${statusHtml}
             </div>
             <div class="form-group pk-row">
                 <input type="password" id="aikey_${id}" placeholder="${configured ? '•••••••• (saved — paste a new key to replace)' : 'Paste your ' + escHtml(p.name.replace(/\s*[\(\u2014].*$/, '').trim()) + ' API key'}"
@@ -4466,12 +4490,25 @@ function renderAISettings() {
         </div>`;
     };
 
+    // Status dot (+ optional red note) for the big no-key cards, matching the
+    // key-card dots: green when ready, grey when not, red when recently errored.
+    const freeCardStatus = (id, ready) => {
+        const health = (AIIntegration.getProviderHealth) ? AIIntegration.getProviderHealth(id) : null;
+        const cls = health ? 'err' : (ready ? 'on' : '');
+        return {
+            dot: `<span class="pk-dot ${cls}"></span>`,
+            note: health ? `<p class="pk-health-note">⚠ ${escHtml(health.label)}</p>` : ''
+        };
+    };
+
     html += `<div class="settings-section-label">① Free — no setup needed <span class="ssl-note">start here</span></div>`;
 
     // Free, no-key provider
+    const polS = freeCardStatus('pollinations', true);
     html += `<div class="ai-provider-card">
-        <h4>${escHtml(providers.pollinations.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
+        <h4>${polS.dot}${escHtml(providers.pollinations.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
         <p>Ready to use — no account or API key required. Just pick <strong>Free AI</strong> in the Generate tab.</p>
+        ${polS.note}
     </div>`;
 
     // Browser AI (WebLLM) — runs a real LLM 100% on the user's device via WebGPU.
@@ -4482,7 +4519,7 @@ function renderAISettings() {
         .map(m => `<option value="${escHtml(m.id)}" ${m.id === wll.model ? 'selected' : ''}>${escHtml(m.label)}</option>`)
         .join('');
     html += `<div class="ai-provider-card ai-provider-card--wide">
-        <h4>${escHtml(providers.webllm.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
+        <h4>${freeCardStatus('webllm', webgpuOk).dot}${escHtml(providers.webllm.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
         <p>Runs a real LLM <strong>entirely on your device</strong> in the browser (WebGPU) — <strong>$0 cost</strong>, fully private (nothing leaves your machine), no API key, no GitHub token, no server. Pick it as <strong>Browser AI</strong> in the Generate tab; you still publish your resume &amp; portfolio to a new repo in your GitHub the same way.</p>
         ${webgpuOk
             ? '<p style="font-size:0.85rem;opacity:0.9;">Your browser supports WebGPU. The first generation downloads the chosen model once (then it\u2019s cached for instant reuse). Bigger models = better quality but larger download &amp; more RAM/VRAM.</p>'
@@ -4528,7 +4565,7 @@ function renderAISettings() {
     const tokenScopeUrl = 'https://github.com/settings/tokens?type=beta';
     const forkUrl = 'https://github.com/rdammala/resume-engine-pro/fork';
     html += `<div class="ai-provider-card ai-provider-card--wide">
-        <h4>${escHtml(AIIntegration.providers.ollama.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
+        <h4>${freeCardStatus('ollama', hasTok).dot}${escHtml(AIIntegration.providers.ollama.name)} <span class="pk-badge pk-free">✓ Free</span></h4>
         <p>Free &amp; automated — when you click <strong>Generate</strong>, a GitHub Actions workflow spins up a fresh cloud runner, installs Ollama, runs <strong>Llama 3</strong>, tailors your resume to the JD, commits the result, and <strong>self-destructs</strong>. No local server, $0 cost.</p>
         <p style="font-size:0.85rem;opacity:0.9;line-height:1.55;">One-time setup — the cloud generator runs in <strong>your own</strong> GitHub account:<br>
         1️⃣ Create a <a href="${tokenScopeUrl}" target="_blank" rel="noopener">fine-grained GitHub token</a> with <strong>Resource owner = your account</strong>, <strong>Repository access = All repositories</strong>, then <strong>Permissions → Actions, Contents and Administration: Read &amp; write</strong>. (Choosing <em>All repositories</em> is what makes the permissions appear; <strong>Administration: Read &amp; write</strong> is needed to fork/create repos — without it you get a 403. The token only affects repos owned by the resource owner you pick.)<br>

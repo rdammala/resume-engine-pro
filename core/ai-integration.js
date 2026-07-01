@@ -416,6 +416,63 @@ const AIIntegration = {
         return this.failoverChain.filter(id => this.providers[id] && this.isConfigured(id));
     },
 
+    // ---- Per-provider HEALTH (rate-limit / quota / expired key / model down) --
+    // Stored with a cooldown "until" so the dot goes red with a helpful note and
+    // auto-recovers to green once the cooldown passes or the next call succeeds.
+    getProviderHealth(id) {
+        try {
+            const all = (StorageManager.get('providerHealth', false)) || {};
+            const h = all[id];
+            if (!h) return null;
+            if (h.until && Date.now() > h.until) { delete all[id]; StorageManager.set('providerHealth', all, false); return null; }
+            return h;
+        } catch (_) { return null; }
+    },
+    clearProviderHealth(id) {
+        try {
+            const all = (StorageManager.get('providerHealth', false)) || {};
+            if (all[id]) { delete all[id]; StorageManager.set('providerHealth', all, false); }
+        } catch (_) {}
+    },
+    recordProviderHealth(id, err) {
+        try {
+            const all = (StorageManager.get('providerHealth', false)) || {};
+            const status = err && err.status;
+            const msg = ((err && err.message) || '').toLowerCase();
+            const now = Date.now();
+            let kind = 'error', label = '', until = 0;
+            if (status === 429 || /rate limit|quota|too many requests|exhaust|capacity/.test(msg)) {
+                kind = 'limited';
+                const secs = (err && +err.retryAfter) ? +err.retryAfter : 3600; // default 1h
+                until = now + secs * 1000;
+                label = 'Free limit reached — try again ' + this._humanizeUntil(until);
+            } else if (status === 401 || status === 403 || /unauthorized|invalid api key|invalid_api_key|expired|forbidden/.test(msg)) {
+                kind = 'expired';
+                label = 'Key rejected or expired — replace it';
+            } else if (/model|not found|unavailable|deprecat|decommission/.test(msg)) {
+                kind = 'error';
+                until = now + 30 * 60 * 1000; // 30 min
+                label = 'Model unavailable right now — pick another';
+            } else {
+                kind = 'error';
+                until = now + 15 * 60 * 1000; // 15 min
+                label = 'Last attempt failed' + (err && err.message ? ' — ' + String(err.message).slice(0, 60) : '');
+            }
+            all[id] = { kind, label, until, at: now };
+            StorageManager.set('providerHealth', all, false);
+        } catch (_) {}
+    },
+    _humanizeUntil(ts) {
+        const ms = ts - Date.now();
+        if (ms <= 0) return 'now';
+        const mins = Math.round(ms / 60000);
+        if (mins < 60) return 'in ~' + mins + ' min';
+        const hrs = Math.round(mins / 60);
+        if (hrs < 24) return 'in ~' + hrs + ' hour' + (hrs > 1 ? 's' : '');
+        const days = Math.round(hrs / 24);
+        return 'in ~' + days + ' day' + (days > 1 ? 's' : '');
+    },
+
     async tailorResumeChain(resumeData, jdData, mode = 'smart', chain) {
         const order = (chain && chain.length ? chain : this.getFailoverOrder());
         if (!order.length) throw new Error('No AI provider is configured for the failover chain');
@@ -424,11 +481,13 @@ const AIIntegration = {
         for (const id of order) {
             try {
                 const result = await this.tailorResume(id, resumeData, jdData, mode);
+                this.clearProviderHealth(id);               // it worked — back to green
                 result.usedProvider = id;
                 result.chainAttempts = attempts.concat([{ provider: id, ok: true }]);
                 return result;
             } catch (err) {
                 lastErr = err;
+                this.recordProviderHealth(id, err);         // remember why it failed
                 attempts.push({ provider: id, ok: false, error: (err && err.message) || String(err) });
                 if (this.isRetryableError(err)) continue;   // try the next provider
                 // Non-retryable (e.g. bad key / malformed request): still fall
