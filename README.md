@@ -402,19 +402,38 @@ newprovider: {
 
 ## 🚀 Deployment
 
-### Option 1: GitHub Pages (Recommended)
+### Current live setup: Cloudflare Worker → `https://rdammala.com`
+
+The app is served from a **Cloudflare Worker (Static Assets)**, configured in
+[`wrangler.jsonc`](wrangler.jsonc). Every push to `master` auto-deploys to
+`https://rdammala.com` (and `www`). No action needed — just:
 
 ```bash
-# Repository must be public for Pages
-git push origin main
-
-# Enable in repo settings:
-# Settings → Pages → Source: main branch
+git push origin master
 ```
 
-Live at: `https://rdammala.com/`
+> **Note:** the old GitHub Pages mirror (`https://rdammala.github.io/resume-engine-pro/`)
+> was **disabled on 2026-07-02** to avoid a duplicate of the live site. `rdammala.com`
+> is unaffected (it does not use GitHub Pages).
 
-### Option 2: Deploy to Any Static Host
+### Re-enable GitHub Pages later (optional, reversible)
+
+Disabling Pages is just an off switch — you can turn it back on anytime and it will
+redeploy. To restore the previous configuration (**Deploy from branch → `master` → `/` root**):
+
+**Via GitHub UI:**
+`Settings → Pages → Build and deployment → Source: "Deploy from a branch" → Branch: master → Folder: / (root) → Save`
+
+**Or via GitHub CLI:**
+```bash
+gh api -X POST repos/rdammala/resume-engine-pro/pages \
+  -f "source[branch]=master" -f "source[path]=/"
+```
+
+It goes live again at `https://rdammala.github.io/resume-engine-pro/` within a minute or two.
+To disable it again: `gh api -X DELETE repos/rdammala/resume-engine-pro/pages`.
+
+### Deploy to any other static host
 
 - Netlify: Drag & drop folder
 - Vercel: Connect GitHub repo
