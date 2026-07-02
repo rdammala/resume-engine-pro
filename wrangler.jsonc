@@ -1,0 +1,15 @@
+{
+  // Cloudflare Worker (Static Assets) config for Resume Engine Pro.
+  // Publishes the static site straight to the custom domains, so the CI
+  // `npx wrangler deploy` no longer needs a workers.dev subdomain.
+  "name": "resume-engine-pro",
+  "compatibility_date": "2025-06-01",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "rdammala.com", "custom_domain": true },
+    { "pattern": "www.rdammala.com", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "./"
+  }
+}
