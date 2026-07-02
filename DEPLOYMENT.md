@@ -29,28 +29,59 @@ resume-engine-pro/
     └── portfolio-templates.js  (Portfolio designs)
 ```
 
-## 🚀 Deploy in 5 Minutes
+## 🌐 Current Production Setup — Cloudflare Workers + Custom Domain
 
-### Option 1: GitHub Pages (Recommended)
+**Live at: https://rdammala.com** (and https://www.rdammala.com)
+
+Resume Engine Pro is served as a **Cloudflare Worker (Static Assets)** connected to
+this GitHub repo. Every push to `master` **auto-deploys** to `rdammala.com`.
+
+### How it works
+- The repo is connected to Cloudflare via **Workers & Pages → Git integration**
+  (build command: none, deploy command: `npx wrangler deploy`, root: `/`).
+- **`wrangler.jsonc`** (repo root) pins the deploy to the custom domains so the CI
+  deploy does **not** need a `workers.dev` subdomain:
+
+  ```jsonc
+  {
+    "name": "resume-engine-pro",
+    "compatibility_date": "2025-06-01",
+    "workers_dev": false,
+    "routes": [
+      { "pattern": "rdammala.com", "custom_domain": true },
+      { "pattern": "www.rdammala.com", "custom_domain": true }
+    ],
+    "assets": { "directory": "./" }
+  }
+  ```
+
+- **`.assetsignore`** keeps `.git`, `.github`, `node_modules` etc. out of the public
+  asset bundle.
+- Both the **apex** (`rdammala.com`) and **www** are attached as **separate** Custom
+  Domains on the Worker (the apex is not automatic). Cloudflare auto-creates the
+  proxied DNS records + SSL.
+
+### Reproduce from scratch
+1. Cloudflare → **Workers & Pages** → **Create** → connect the GitHub repo.
+2. Ensure `wrangler.jsonc` + `.assetsignore` exist in the repo root (above).
+3. Add both `rdammala.com` and `www.rdammala.com` under the Worker's **Custom domains**.
+4. `git push` → the build runs and publishes to `rdammala.com`.
+
+> 💡 A custom domain decouples the public URL from the repo — you can rename or move
+> the repo and the link never breaks (GitHub Pages URLs, by contrast, are **not**
+> redirected on repo transfer).
+
+---
+
+## 🚀 Alternative Hosting Options
+
+### Option 1: GitHub Pages
 
 ```bash
-# Navigate to the project
-cd c:\rdammala\resume-engine-pro
-
-# Initialize git (if not already done)
-git init
-git add .
-git commit -m "Initial commit: Resume Engine Pro v1.0"
-
-# Create GitHub repo (via gh CLI)
+# Push the repo, then enable Pages:
 gh repo create resume-engine-pro --public --source=. --push
-
-# Enable GitHub Pages
-# Go to: https://github.com/rdammala/resume-engine-pro/settings/pages
-# Source: main branch
-# Wait 1-2 minutes
-
-# Live at: https://rdammala.com/
+# Settings → Pages → Source: master branch → /
+# Live at: https://<user>.github.io/resume-engine-pro/
 ```
 
 ### Option 2: Netlify (30 seconds)
