@@ -2,8 +2,8 @@
 
 ## 🔗 Quick Links
 
-- **▶️ Live App:** https://rdammala.github.io/resume-engine-pro/
-- **📚 Learning Hub:** https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html
+- **▶️ Live App:** https://rdammala.com/
+- **📚 Learning Hub:** https://rdammala.com/learning-hub/INDEX.html
 - **⚡ Quick Start:** [QUICK-START.md](QUICK-START.md)
 - **🗂️ Job Tracker Guide:** [JOB-TRACKER-GUIDE.md](JOB-TRACKER-GUIDE.md)
 
@@ -93,13 +93,13 @@ WebLLM runs a real LLM **entirely inside your browser** via **WebGPU** — **$0*
 
 **Interactive development documentation for Resume Engine Pro**
 
-👉 **[Visit the Learning Hub](https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html)**
+👉 **[Visit the Learning Hub](https://rdammala.com/learning-hub/INDEX.html)**
 
 The Learning Hub is an interactive guide documenting the design decisions, bugs, and architectural patterns behind Resume Engine Pro. Explore 5 role-specific perspectives (SRE, DevOps, Build Engineer, Test Engineer, Release Manager), **39 documented bugs** with complete root-cause analysis and lessons learned, and **8 shipped features** — each with the motivation, approach, and properly formatted code.
 
 - **Bug Tracking:** 8 bugs documented with severity, status, and resolution details
 - **Role Perspectives:** 500+ words each on SRE, DevOps, Build, Test, and Release Management
-- **Live Link:** https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html
+- **Live Link:** https://rdammala.com/learning-hub/INDEX.html
 - **Repository:** [learning-hub/](./learning-hub/) folder in this repository
 
 ## 📋 Architecture
@@ -412,7 +412,7 @@ git push origin main
 # Settings → Pages → Source: main branch
 ```
 
-Live at: `https://rdammala.github.io/resume-engine-pro/`
+Live at: `https://rdammala.com/`
 
 ### Option 2: Deploy to Any Static Host
 

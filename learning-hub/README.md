@@ -4,7 +4,7 @@
 
 Welcome to the Resume Engine Pro Learning Hub — an interactive documentation system that tracks the design decisions, bugs, and architectural patterns behind the Resume Engine Pro application.
 
-**🔗 Live Access:** [https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html](https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html)
+**🔗 Live Access:** [https://rdammala.com/learning-hub/INDEX.html](https://rdammala.com/learning-hub/INDEX.html)
 
 ---
 
@@ -95,7 +95,7 @@ Each bug includes:
 
 ### Live Access
 
-Visit: **[https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html](https://rdammala.github.io/resume-engine-pro/learning-hub/INDEX.html)**
+Visit: **[https://rdammala.com/learning-hub/INDEX.html](https://rdammala.com/learning-hub/INDEX.html)**
 
 (Deployed via GitHub Pages — updates automatically on push to master)
 
@@ -184,7 +184,7 @@ After exploring the Learning Hub, you'll understand:
 
 ## 🔗 Related Resources
 
-- **Main App:** [Resume Engine Pro](https://rdammala.github.io/resume-engine-pro/)
+- **Main App:** [Resume Engine Pro](https://rdammala.com/)
 - **GitHub Repository:** [rdammala/resume-engine-pro](https://github.com/rdammala/resume-engine-pro)
 - **Bug Tracker Issues:** [GitHub Issues](https://github.com/rdammala/resume-engine-pro/issues)
 

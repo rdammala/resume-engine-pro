@@ -485,7 +485,7 @@ gh repo create resume-engine-pro --public --source=. --push
 # Source: main branch
 
 # 4. Live in 2 minutes!
-# Visit: https://rdammala.github.io/resume-engine-pro/
+# Visit: https://rdammala.com/
 ```
 
 ---

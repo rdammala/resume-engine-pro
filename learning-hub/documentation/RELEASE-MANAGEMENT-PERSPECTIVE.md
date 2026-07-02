@@ -377,7 +377,7 @@ What's Next (v0.2.0 in 4 weeks):
   • Download capabilities
 
 Getting Started:
-  Visit: https://rdammala.github.io/resume-engine-pro/
+  Visit: https://rdammala.com/
 
 Known Issues:
   • DOCX parsing coming in v0.2.0

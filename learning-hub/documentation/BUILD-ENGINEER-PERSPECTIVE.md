@@ -220,7 +220,7 @@ Stage 7: Deployment
     "minify": "npm run minify:js && npm run minify:css && npm run minify:html",
     "bundle": "webpack --config webpack.config.js",
     "test": "jest --coverage",
-    "preformance:audit": "lighthouse https://rdammala.github.io/resume-engine-pro/",
+    "preformance:audit": "lighthouse https://rdammala.com/",
     "dev": "python -m http.server 8000",
     "deploy": "npm run build && git add . && git commit -m 'Build: [timestamp]' && git push"
   }

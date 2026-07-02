@@ -3186,7 +3186,7 @@ function buildPublishReadme({ role, company, pagesUrl, fileNames, date }) {
     const lines = [];
     lines.push(`# ${role}`);
     lines.push('');
-    lines.push(`${company} — application package generated with [Resume Engine Pro](https://rdammala.github.io/resume-engine-pro/).`);
+    lines.push(`${company} — application package generated with [Resume Engine Pro](https://rdammala.com/).`);
     lines.push('');
     if (pagesUrl) {
         lines.push('## 🔗 Live Portfolio');

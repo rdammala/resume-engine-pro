@@ -50,7 +50,7 @@ gh repo create resume-engine-pro --public --source=. --push
 # Source: main branch
 # Wait 1-2 minutes
 
-# Live at: https://rdammala.github.io/resume-engine-pro/
+# Live at: https://rdammala.com/
 ```
 
 ### Option 2: Netlify (30 seconds)
@@ -199,7 +199,7 @@ All must pass before going live:
 
 **GitHub Pages:**
 ```
-https://rdammala.github.io/resume-engine-pro/
+https://rdammala.com/
 ```
 
 **Netlify:**
@@ -226,7 +226,7 @@ Generate tailored resumes instantly with AI:
 - Multi-AI support (Claude, Mistral, etc.)
 - Completely free (just API costs)
 
-Live: https://rdammala.github.io/resume-engine-pro/
+Live: https://rdammala.com/
 
 Features:
 ✅ AI-powered tailoring

@@ -352,7 +352,7 @@ const AIIntegration = {
         };
         // OpenRouter recommends these (harmless elsewhere).
         if (providerId === 'openrouter') {
-            headers['HTTP-Referer'] = 'https://rdammala.github.io/resume-engine-pro/';
+            headers['HTTP-Referer'] = 'https://rdammala.com/';
             headers['X-Title'] = 'Resume Engine Pro';
         }
         let response;

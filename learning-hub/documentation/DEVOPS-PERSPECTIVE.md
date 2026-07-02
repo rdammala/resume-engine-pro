@@ -34,7 +34,7 @@ Staging Environment:
 
 Production Environment:
 ├── GitHub repository: github.com/rdammala/resume-engine-pro
-├── GitHub Pages: https://rdammala.github.io/resume-engine-pro/
+├── GitHub Pages: https://rdammala.com/
 ├── Data repository: github.com/rdammala/resume-engine-data (private)
 └── CI/CD: GitHub Actions (planned)
 
@@ -59,7 +59,7 @@ Build & Test Stage
     ↓
 Deploy to GitHub Pages
     ↓
-Live at https://rdammala.github.io/resume-engine-pro/
+Live at https://rdammala.com/
 ```
 
 ---
@@ -296,7 +296,7 @@ git push origin v0.1.0
 # Watch GitHub Actions tab for workflow completion
 
 # 6. Verify production
-curl -I https://rdammala.github.io/resume-engine-pro/
+curl -I https://rdammala.com/
 # Expected: 200 OK
 ```
 
@@ -404,7 +404,7 @@ jobs:
       - name: Verify deployment
         run: |
           sleep 5
-          curl -f https://rdammala.github.io/resume-engine-pro/ || exit 1
+          curl -f https://rdammala.com/ || exit 1
 ```
 
 ---
@@ -416,7 +416,7 @@ jobs:
 **Uptime Monitoring:**
 ```yaml
 Service: Resume Engine Pro
-URL: https://rdammala.github.io/resume-engine-pro/
+URL: https://rdammala.com/
 Expected: 200 OK
 Frequency: Every 5 minutes
 Alert: Down for >15 minutes
@@ -472,7 +472,7 @@ git reset --hard <good-commit-hash>
 git push origin master --force
 
 # Verify rollback
-curl https://rdammala.github.io/resume-engine-pro/
+curl https://rdammala.com/
 ```
 
 ---

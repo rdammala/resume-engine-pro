@@ -14,7 +14,7 @@
 ## Step 2: Open Resume Engine Pro (1 min)
 
 **Option A - Online (Recommended):**
-- Visit: https://rdammala.github.io/resume-engine-pro/
+- Visit: https://rdammala.com/
 
 **Option B - Local File:**
 - Download: `index.html` and save locally
@@ -205,6 +205,6 @@ A: Yes! Portfolio repos are public. Share GitHub Pages link.
 
 ---
 
-**Ready?** Open [Resume Engine Pro](https://rdammala.github.io/resume-engine-pro/) and get started!
+**Ready?** Open [Resume Engine Pro](https://rdammala.com/) and get started!
 
 **Estimated Time:** 5 minutes ⏱️

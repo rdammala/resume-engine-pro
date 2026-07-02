@@ -641,6 +641,30 @@ function toggleFieldInfo(id){
 }`,
         lesson: 'Put contextual help exactly where the confusion happens — on the field, one click away — not buried in a paragraph users scroll past. A tiny ⓘ that reveals a one-sentence "what this is and what to do" note removes jargon friction (like "fork") for non-technical users without cluttering the default view. Prefer a dependency-free toggle so it keeps working in a fully static, offline-capable app.',
         impact: 'Medium — lowers the setup drop-off for the free cloud generator by making its most jargon-heavy fields self-explanatory to first-time, non-technical users.'
+    },
+    {
+        id: 23,
+        title: 'Custom Domain — Resume Engine Pro Now Lives at rdammala.com (Cloudflare)',
+        category: 'Infrastructure / Hosting',
+        status: 'Shipped',
+        role: 'DevOps / Platform',
+        effort: '90 min',
+        summary: 'Moved the app off the long GitHub Pages URL onto a clean custom domain — the tool is now served at https://rdammala.com (and www.rdammala.com) via a Cloudflare Worker with static assets. Rewrote every hardcoded rdammala.github.io/resume-engine-pro reference (30 across 12 files) to rdammala.com in one pass, including the OpenRouter HTTP-Referer, the social/OG meta tags, and the Learning Hub links.',
+        motivation: 'A GitHub Pages project URL (user.github.io/repo) is long, ties the public link to a specific repo, and breaks the moment the repo is renamed or transferred (GitHub does NOT redirect Pages URLs on transfer). A custom domain decouples the public URL from the repo forever and looks far more professional on a resume.',
+        solution: 'Registered rdammala.com, added it as a zone in Cloudflare, then connected it as a Custom Domain on the Worker (both apex + www — the apex needs its OWN custom-domain entry; www alone leaves rdammala.com unresolved, and browsers only *appear* to work by silently auto-prepending www). Cloudflare auto-creates the proxied A/AAAA records (apex via CNAME flattening) and provisions SSL. Then a scripted literal find/replace swapped rdammala.github.io/resume-engine-pro -> rdammala.com everywhere; validated JS with node --check afterward.',
+        codeExample: `# Verify the apex authoritatively (bypasses cached negative lookups)
+Resolve-DnsName rdammala.com -Type A -Server nia.ns.cloudflare.com
+#  rdammala.com  A  104.21.91.254 / 172.67.183.110  -> live
+
+# One-pass URL migration across tracked files
+$files = git grep -l "rdammala.github.io/resume-engine-pro"
+foreach($f in $files){
+  $c = [IO.File]::ReadAllText((Resolve-Path $f))
+  $n = $c -replace 'rdammala\\.github\\.io/resume-engine-pro','rdammala.com'
+  if($n -ne $c){ [IO.File]::WriteAllText((Resolve-Path $f), $n) }
+}`,
+        lesson: 'On a custom domain you must connect BOTH the apex and www as separate custom domains — the apex is not automatic, and a browser silently rewriting rdammala.com -> www.rdammala.com hides the fact that the bare domain is dead (other browsers may not do the same). When debugging DNS, query the authoritative nameserver directly (Resolve-DnsName ... -Server <ns>.cloudflare.com) because public resolvers cache "no record" (NODATA) answers for the full SOA TTL, making a freshly-added record look missing. And a custom domain is the real fix for link-rot: it decouples the public URL from the underlying repo so you can move/rename hosting freely.',
+        impact: 'High — the flagship tool now has a short, professional, permanent home (rdammala.com) that will never break when repos move, and every in-app/meta/doc reference points to it.'
     }
 ];
 
