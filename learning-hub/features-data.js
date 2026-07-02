@@ -665,6 +665,23 @@ foreach($f in $files){
 }`,
         lesson: 'On a custom domain you must connect BOTH the apex and www as separate custom domains — the apex is not automatic, and a browser silently rewriting rdammala.com -> www.rdammala.com hides the fact that the bare domain is dead (other browsers may not do the same). When debugging DNS, query the authoritative nameserver directly (Resolve-DnsName ... -Server <ns>.cloudflare.com) because public resolvers cache "no record" (NODATA) answers for the full SOA TTL, making a freshly-added record look missing. And a custom domain is the real fix for link-rot: it decouples the public URL from the underlying repo so you can move/rename hosting freely.',
         impact: 'High — the flagship tool now has a short, professional, permanent home (rdammala.com) that will never break when repos move, and every in-app/meta/doc reference points to it.'
+    },
+    {
+        id: 24,
+        title: 'Portfolio Privacy Cleanup — Moved 34 Portfolios to a GitHub Org, Cleaned the Personal Profile',
+        category: 'Infrastructure / Privacy',
+        status: 'Shipped',
+        role: 'DevOps / Platform',
+        effort: '2 hrs',
+        summary: 'Consolidated 50+ resume/portfolio repos so a recruiter browsing the personal GitHub profile no longer sees dozens of tailored portfolios. Created a dedicated org (rdammala-org), transferred 34 portfolios into it, made 17 archived/private company portfolios public and live, deleted 6 legacy/duplicate repos, and repointed every link. The personal profile went from 50+ repos down to 14.',
+        motivation: 'Applying to many roles means many tailored portfolios; a recruiter seeing 50+ of them on the personal profile could misread it as instability. The goal was to keep every portfolio live and usable, but off the personal profile.',
+        solution: 'Created org rdammala-org and scripted the moves with the gh CLI: transferred the already-public portfolios, and for the archived/private company ones the flow was unarchive -> make public -> transfer (a repo must be unarchived before it can be edited or transferred). Enabled GitHub Pages on all 34 org repos (transfers do NOT redirect Pages URLs, so each needed Pages re-enabled at the org URL). Batch-rewrote README self-links and the Job Application Tracker links from rdammala.github.io to rdammala-org.github.io. Kept resume-engine-pro, the profile README, two master templates, and the private data repos on the personal account.',
+        codeExample: `# Unarchive -> make public -> transfer (order matters; archived repos are read-only)
+gh api "repos/rdammala/$r" --method PATCH -F archived=false
+gh repo edit "rdammala/$r" --visibility public --accept-visibility-change-consequences
+gh api "repos/rdammala/$r/transfer" -f new_owner=rdammala-org`,
+        lesson: 'You keep full control of transferred repos — as org owner you can delete, rename, or move them back. Archived repos are read-only, so unarchive before editing/transferring. Critically, a repo transfer does NOT redirect its GitHub Pages URL, so re-enable Pages at the new owner and update every hardcoded link. And never blindly make "all private repos" public — exclude data/tooling repos (like the resume-data repo) that must stay private.',
+        impact: 'High — the personal profile is now clean and credible (14 repos), while all 34 portfolios stay live under the org, decoupled from the personal identity.'
     }
 ];
 

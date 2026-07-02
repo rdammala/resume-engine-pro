@@ -1175,5 +1175,28 @@ const nm = (AIIntegration.providers[provider] && AIIntegration.providers[provide
 /* safety net */ .ai-provider-card small { overflow-wrap: anywhere; word-break: break-word; }`,
         lesson: 'Never render a raw URL as visible link text inside a fixed-width card — URLs are unbreakable words and will overflow. Use a short human label ("Get your API key ↗") and keep the real URL in href/title. Always pair that with overflow-wrap:anywhere as a defensive fallback for any user- or data-supplied string.',
         impact: 'Low - provider cards now show a tidy "Get your API key ↗" link that stays inside the card on every provider and width, replacing the long URLs that spilled outside the box.'
+    },
+    {
+        id: 54,
+        title: 'Cloudflare Git Deploy Kept Failing — "register a workers.dev subdomain"',
+        severity: 'high',
+        status: 'Fixed',
+        role: 'DevOps / Platform',
+        fixTime: '90 min',
+        description: 'After connecting resume-engine-pro to Cloudflare Workers Builds (Git integration), every automatic build uploaded the static assets fine but the final step failed: "You need to register a workers.dev subdomain before publishing to workers.dev" / "You can either deploy your worker to one or more routes ... or register a workers.dev subdomain." The live site never picked up new commits, and the failed builds looked mysterious because the asset upload step succeeded first.',
+        rootCause: 'The CI runs npx wrangler deploy, but the repo had NO wrangler config, so wrangler had no publish target: no workers.dev subdomain was registered and no routes were declared. Custom domains added through the Cloudflare dashboard are a separate mechanism that wrangler deploy does not read, so the deploy literally had nowhere to publish.',
+        resolution: 'Added a wrangler.jsonc at the repo root declaring the custom domains as routes (custom_domain:true for both apex and www) with workers_dev:false and assets.directory set to the repo root — giving wrangler a concrete target without any workers.dev subdomain. Also added .assetsignore to keep .git out of the public bundle. The next push deployed green and rdammala.com began reflecting new commits.',
+        codeExample: `// wrangler.jsonc — gives wrangler deploy a target = the custom domains
+{
+  "name": "resume-engine-pro",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "rdammala.com", "custom_domain": true },
+    { "pattern": "www.rdammala.com", "custom_domain": true }
+  ],
+  "assets": { "directory": "./" }
+}`,
+        lesson: 'Cloudflare dashboard Custom Domains and wrangler routes are different things: attaching a custom domain in the UI does NOT satisfy wrangler deploy, which still needs a workers.dev subdomain OR routes in wrangler config. For a static site on a custom domain, commit a wrangler.jsonc with custom_domain routes and workers_dev:false — the CI then deploys straight to the domain. Confirm a deploy actually happened by checking a value that changed (og:url) rather than trusting a green badge.',
+        impact: 'High - unblocked continuous deployment; every push to master now auto-publishes to rdammala.com, and the app stopped serving stale versions.'
     }
 ];console.log("BUGS array loaded with", window.BUGS.length, "bugs");
