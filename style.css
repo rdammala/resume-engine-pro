@@ -3615,4 +3615,28 @@ html[data-theme="light"] .js-jobcard,
 html[data-theme="light"] .js-partner { background: #ffffff; }
 html[data-theme="light"] .js-hint code { background: #eef2f7; }
 
+/* Location autocomplete dropdown */
+.js-ac-wrap { position: relative; flex: 1 1 200px; display: inline-flex; }
+.js-ac-wrap .js-input { width: 100%; flex: 1 1 auto; }
+.js-ac-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 60;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; margin-top: 4px; overflow: hidden;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.4);
+}
+.js-ac-item { padding: 0.55rem 0.8rem; cursor: pointer; font-size: 0.9rem; color: var(--text-primary); }
+.js-ac-item:hover { background: rgba(0,153,255,0.16); }
+
+/* Partnership tracker */
+.js-pn { margin-top: 2rem; padding-top: 1.4rem; border-top: 1px dashed var(--border); }
+.js-pn-list { margin: 0.9rem 0; }
+.js-pn-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.js-pn-table th, .js-pn-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+.js-pn-table th { color: var(--text-secondary); font-weight: 600; }
+.js-pn-table a { color: var(--secondary); text-decoration: none; }
+.js-pn-table a:hover { text-decoration: underline; }
+.js-pn-x { color: var(--text-muted); cursor: pointer; font-weight: 700; margin-left: 0.4rem; }
+.js-pn-x:hover { color: var(--danger); }
+html[data-theme="light"] .js-ac-list { background: #ffffff; }
+
 

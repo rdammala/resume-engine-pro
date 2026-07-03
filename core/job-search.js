@@ -15,7 +15,10 @@
     'use strict';
 
     var LS_KEY = 'resumeEngineProV1_jobSearchCompanies';
+    var PN_KEY = 'resumeEngineProV1_partnerships';
     var _mounted = false;
+    var _locSel = null;   // place picked from autocomplete: {city,state,country,label}
+    var _acTimer = null;  // debounce timer for city autocomplete
 
     // Curated starter companies (users can add/remove their own). These use
     // public Greenhouse/Ashby boards; if a token ever changes the fetch just
@@ -57,6 +60,14 @@
         { name: 'Databricks Partners', url: 'https://www.databricks.com/company/partners', tag: 'Data / AI' },
         { name: 'Oracle Partner Finder', url: 'https://partner-finder.oracle.com/', tag: 'Oracle / OCI' },
         { name: 'IBM Business Partner Directory', url: 'https://www.ibm.com/partnerplus/directory', tag: 'IBM' }
+    ];
+
+    // Starter partnership examples (publicly reported — the user should VERIFY at
+    // the source link). Users maintain their own list; nothing is asserted as fact.
+    var PARTNERSHIPS_SEED = [
+        { org: 'USCIS (US)', partner: 'CGI Federal', area: 'IT systems / modernization', source: 'https://www.cgi.com/en/united-states/federal' },
+        { org: 'HealthCare.gov (CMS)', partner: 'Accenture Federal Services', area: 'Platform operations', source: 'https://www.accenture.com/us-en/industries/public-service' },
+        { org: 'NHS England (UK)', partner: 'Palantir', area: 'Federated Data Platform', source: 'https://www.england.nhs.uk/' }
     ];
 
     // ---- helpers ----
@@ -178,7 +189,7 @@
         + '<div class="js-controls">'
         + '  <div class="js-row">'
         + '    <input id="jsKeyword" class="js-input" type="text" placeholder="Keyword — e.g. SRE, reliability, support manager" />'
-        + '    <input id="jsLocation" class="js-input" type="text" placeholder="Location — e.g. remote, London, India" />'
+        + '    <span class="js-ac-wrap"><input id="jsLocation" class="js-input" type="text" autocomplete="off" placeholder="Location — type a city (auto-suggests, matches vicinity)" /><div id="jsAcList" class="js-ac-list" style="display:none"></div></span>'
         + '    <select id="jsPosted" class="js-input js-input-sm">'
         + '      <option value="0">Any time</option>'
         + '      <option value="3">Last 3 days</option>'
@@ -206,6 +217,19 @@
         + '  <p class="js-lead">Implementation partners of the big clouds are almost always hiring. These are <strong>official, public partner directories</strong> — '
         + 'browse companies in your target tech, research them, and reach out respectfully on your own. (We never auto-contact anyone.)</p>'
         + '  <div class="js-partners">' + partnerCards() + '</div>'
+        + '  <div class="js-pn">'
+        + '    <h3>🔗 Who works with whom — partnership tracker</h3>'
+        + '    <p class="js-lead">Like a “board token” for the hidden market: track which organizations publicly work with which implementation partners, so you know where the downstream hiring is (e.g. an agency and the vendor that runs its tech). <strong>User-maintained — always verify at the source link.</strong></p>'
+        + '    <input id="jsPnQuery" class="js-input" type="text" placeholder="Filter — e.g. USCIS, Accenture, payments" />'
+        + '    <div id="jsPnList" class="js-pn-list">' + partnershipRows() + '</div>'
+        + '    <div class="js-row js-add">'
+        + '      <input id="jsPnOrg" class="js-input" type="text" placeholder="Organization (e.g. USCIS)" />'
+        + '      <input id="jsPnPartner" class="js-input" type="text" placeholder="Works with (e.g. CGI Federal)" />'
+        + '      <input id="jsPnArea" class="js-input js-input-sm" type="text" placeholder="Area (e.g. payments)" />'
+        + '      <input id="jsPnSource" class="js-input" type="text" placeholder="Source URL (public proof)" />'
+        + '      <button id="jsPnAddBtn" class="btn btn-secondary">+ Add</button>'
+        + '    </div>'
+        + '  </div>'
         + '</div>';
     }
 
@@ -258,11 +282,26 @@
                 res.jobs.forEach(function (j) { jobs.push(j); });
             });
 
+            // Vicinity-aware location terms: a place picked from autocomplete matches
+            // its city OR state OR country; free-typed text is a plain substring.
+            var locTerms = [];
+            if (_locSel && _locSel.label && _locSel.label.toLowerCase() === locq) {
+                [_locSel.city, _locSel.state, _locSel.country].forEach(function (x) {
+                    if (x) locTerms.push(String(x).toLowerCase());
+                });
+            } else if (locq) {
+                locTerms = [locq];
+            }
+
             // filters
             var filtered = jobs.filter(function (j) {
                 if (cutoff && (!j.postedMs || j.postedMs < cutoff)) return false;
                 if (kw && (j.title || '').toLowerCase().indexOf(kw) === -1) return false;
-                if (locq && (j.location || '').toLowerCase().indexOf(locq) === -1) return false;
+                if (locTerms.length) {
+                    var jl = (j.location || '').toLowerCase();
+                    var hit = locTerms.some(function (term) { return jl.indexOf(term) !== -1; });
+                    if (!hit) return false;
+                }
                 return true;
             });
             // newest first
@@ -324,9 +363,104 @@
         toast('Added ' + name, 'success');
     }
 
+    // ---- location autocomplete (Photon — free, CORS, no key) + vicinity ----
+    function acSearch(q) {
+        var listEl = document.getElementById('jsAcList');
+        if (!listEl) return;
+        if (!q || q.length < 2) { listEl.style.display = 'none'; listEl.innerHTML = ''; return; }
+        fetch('https://photon.komoot.io/api/?limit=6&lang=en&q=' + encodeURIComponent(q))
+            .then(function (r) { return r.ok ? r.json() : { features: [] }; })
+            .then(function (d) {
+                var bad = { house: 1, street: 1 };
+                var seen = {};
+                var items = [];
+                (d.features || []).forEach(function (f) {
+                    var p = f.properties || {};
+                    if (p.type && bad[p.type]) return;
+                    var parts = [p.name, p.state, p.country].filter(Boolean);
+                    var label = parts.join(', ');
+                    if (!label || seen[label]) return;
+                    seen[label] = 1;
+                    items.push({ label: label, city: p.name || '', state: p.state || '', country: p.country || '' });
+                });
+                if (!items.length) { listEl.style.display = 'none'; listEl.innerHTML = ''; return; }
+                listEl.innerHTML = items.map(function (it, i) {
+                    return '<div class="js-ac-item" data-ac="' + i + '">📍 ' + esc(it.label) + '</div>';
+                }).join('');
+                listEl._items = items;
+                listEl.style.display = 'block';
+            }).catch(function () { listEl.style.display = 'none'; });
+    }
+
+    function pickPlace(i) {
+        var listEl = document.getElementById('jsAcList');
+        var input = document.getElementById('jsLocation');
+        if (!listEl || !listEl._items || !input) return;
+        var it = listEl._items[i];
+        if (!it) return;
+        input.value = it.label;
+        _locSel = { city: it.city, state: it.state, country: it.country, label: it.label };
+        listEl.style.display = 'none';
+    }
+
+    // ---- partnership tracker (who works with whom) ----
+    function loadPartnerships() {
+        try {
+            var raw = localStorage.getItem(PN_KEY);
+            if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
+        } catch (e) { /* fall through */ }
+        return PARTNERSHIPS_SEED.slice();
+    }
+    function savePartnerships(list) {
+        try { localStorage.setItem(PN_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+    }
+    function partnershipRows() {
+        var list = loadPartnerships();
+        var qEl = document.getElementById('jsPnQuery');
+        var q = (qEl && qEl.value ? qEl.value : '').trim().toLowerCase();
+        var rows = list.map(function (p, i) { return { p: p, i: i }; });
+        if (q) rows = rows.filter(function (r) {
+            return (r.p.org + ' ' + r.p.partner + ' ' + (r.p.area || '')).toLowerCase().indexOf(q) !== -1;
+        });
+        if (!rows.length) return '<div class="js-empty">No partnerships tracked yet. Add one below — an organization and the vendor it publicly works with, plus a source link.</div>';
+        return '<table class="js-pn-table"><tr><th>Organization</th><th>Works with</th><th>Area</th><th></th></tr>'
+            + rows.map(function (r) {
+                var src = r.p.source ? '<a href="' + esc(r.p.source) + '" target="_blank" rel="noopener">source ↗</a>' : '';
+                return '<tr><td>' + esc(r.p.org) + '</td><td><strong>' + esc(r.p.partner) + '</strong></td><td>' + esc(r.p.area || '') + '</td>'
+                    + '<td>' + src + ' <span class="js-pn-x" data-pnremove="' + r.i + '" title="Remove">×</span></td></tr>';
+            }).join('') + '</table>';
+    }
+    function addPartnership() {
+        function v(id) { var el = document.getElementById(id); return (el && el.value ? el.value : '').trim(); }
+        var org = v('jsPnOrg'), partner = v('jsPnPartner'), area = v('jsPnArea'), source = v('jsPnSource');
+        if (!org || !partner) { toast('Enter at least the organization and the partner', 'error'); return; }
+        var list = loadPartnerships();
+        list.push({ org: org, partner: partner, area: area, source: source });
+        savePartnerships(list);
+        document.getElementById('jsPnList').innerHTML = partnershipRows();
+        ['jsPnOrg', 'jsPnPartner', 'jsPnArea', 'jsPnSource'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+        toast('Partnership added', 'success');
+    }
+
     function wire(root) {
         root.addEventListener('click', function (e) {
             var t = e.target;
+            // hide the autocomplete dropdown when clicking outside it
+            var acList = document.getElementById('jsAcList');
+            if (acList && t.id !== 'jsLocation' && !(t.className && String(t.className).indexOf('js-ac') !== -1)) {
+                acList.style.display = 'none';
+            }
+            // pick an autocomplete suggestion
+            var ac = t.getAttribute && t.getAttribute('data-ac');
+            if (ac !== null && ac !== undefined && t.classList.contains('js-ac-item')) {
+                pickPlace(parseInt(ac, 10)); return;
+            }
+            // remove a tracked partnership
+            var pnr = t.getAttribute && t.getAttribute('data-pnremove');
+            if (pnr !== null && pnr !== undefined && t.classList.contains('js-pn-x')) {
+                var pl = loadPartnerships(); pl.splice(parseInt(pnr, 10), 1); savePartnerships(pl);
+                document.getElementById('jsPnList').innerHTML = partnershipRows(); return;
+            }
             // remove-company (x on chip)
             var rm = t.getAttribute && t.getAttribute('data-remove');
             if (rm !== null && rm !== undefined && t.classList.contains('js-chip-x')) {
@@ -353,6 +487,18 @@
             }
             if (t.id === 'jsSearchBtn') { runSearch(); return; }
             if (t.id === 'jsAddBtn') { addCompany(); return; }
+            if (t.id === 'jsPnAddBtn') { addPartnership(); return; }
+        });
+        root.addEventListener('input', function (e) {
+            if (e.target.id === 'jsLocation') {
+                _locSel = null; // manual edit invalidates a prior pick
+                var q = e.target.value || '';
+                if (_acTimer) clearTimeout(_acTimer);
+                _acTimer = setTimeout(function () { acSearch(q.trim()); }, 220);
+            } else if (e.target.id === 'jsPnQuery') {
+                var el = document.getElementById('jsPnList');
+                if (el) el.innerHTML = partnershipRows();
+            }
         });
         root.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && (e.target.id === 'jsKeyword' || e.target.id === 'jsLocation')) {

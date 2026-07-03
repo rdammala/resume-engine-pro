@@ -4832,6 +4832,15 @@ const APP_TOUR_STEPS = [
       body: 'Choose from 100+ designs (photo header, skill-bars, timeline…). Hover any card for a big live preview, or build your own.' },
     { page: 'generator', sel: '#aiProvider', emoji: '🤖', title: 'Choose an AI engine',
       body: 'Pick an engine — or <strong>🔗 Auto failover chain</strong> to use free providers that rotate automatically. Then hit Generate.' },
+    // — Job Search —
+    { page: 'jobsearch', sel: '#jobsearch h2', emoji: '🔎', title: 'Job Search — straight from the source',
+      body: 'Live openings pulled <strong>directly from companies\u2019 own career systems</strong> (Greenhouse / Ashby) — no aggregators, no scraping, nothing leaves your browser.' },
+    { page: 'jobsearch', sel: '#jsKeyword', emoji: '⌨️', title: 'Filter by keyword, location & recency',
+      body: 'Type a role keyword and a city (it <strong>auto-suggests</strong> cities/states/countries and also matches the surrounding area), choose how recent, then hit <strong>Search jobs</strong>.' },
+    { page: 'jobsearch', sel: '#jsChips', emoji: '🏢', title: 'Pick which companies to search',
+      body: 'Click a chip to toggle it on/off — the highlighted ones get searched. Add your own by ATS + <strong>board token</strong> below.' },
+    { page: 'jobsearch', sel: '.js-partners', emoji: '🤝', title: 'Partner directories — hidden market',
+      body: 'Implementation partners of the big clouds are almost always hiring. Browse these <strong>official</strong> directories, research, and reach out respectfully on your own.' },
     // — Applications —
     { page: 'applications', sel: '#applications h2', emoji: '📌', title: 'Applications tracker',
       body: 'Every résumé/portfolio you publish is logged here automatically — status, links and dates — so nothing slips through the cracks.' },
