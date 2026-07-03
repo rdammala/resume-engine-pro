@@ -5,7 +5,7 @@
 // Workday, whose public CxS JSON API works fine from a server but sends no CORS
 // header, so a static browser app can't read it. This script fetches them on a
 // GitHub runner (no CORS there), normalizes the shape, and writes
-// generated/external-jobs.json — which the Job Search tab reads same-origin.
+// data/external-jobs.json — which the Job Search tab reads same-origin.
 // Public endpoints only, no secrets, no scraping (their own JSON API).
 // ============================================================================
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -90,9 +90,9 @@ async function main() {
         companies: COMPANIES.map(c => c.name),
         jobs: all
     };
-    mkdirSync('generated', { recursive: true });
-    writeFileSync('generated/external-jobs.json', JSON.stringify(out));
-    console.log('Wrote generated/external-jobs.json —', all.length, 'jobs |', meta.join(' '));
+    mkdirSync('data', { recursive: true });
+    writeFileSync('data/external-jobs.json', JSON.stringify(out));
+    console.log('Wrote data/external-jobs.json —', all.length, 'jobs |', meta.join(' '));
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

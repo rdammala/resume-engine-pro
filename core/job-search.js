@@ -182,7 +182,7 @@
     // committed to generated/external-jobs.json, so the browser reads it
     // same-origin (no CORS). Giants like NVIDIA/Salesforce/Adobe live here.
     function fetchScheduled() {
-        return fetch('generated/external-jobs.json?cb=' + Date.now())
+        return fetch('data/external-jobs.json?cb=' + Date.now())
             .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(function (d) { return { ok: true, company: { name: 'Big-tech feed' }, jobs: (d.jobs || []) }; })
             .catch(function (err) { return { ok: false, company: { name: 'Big-tech feed' }, error: (err && err.message) || 'feed not built yet', jobs: [] }; });

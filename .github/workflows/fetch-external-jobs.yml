@@ -2,7 +2,7 @@ name: Refresh Big-tech job feed (Workday)
 
 # Fetches jobs from CORS-blocked Workday career sites (NVIDIA, Salesforce,
 # Adobe, Workday) SERVER-SIDE — where there is no CORS wall — and commits
-# generated/external-jobs.json so the static Job Search tab can read it
+# data/external-jobs.json so the static Job Search tab can read it
 # same-origin. Public endpoints only; no secrets required.
 
 on:
@@ -36,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add generated/external-jobs.json
+          git add data/external-jobs.json
           if git diff --staged --quiet; then
             echo "No changes to the feed."
           else
