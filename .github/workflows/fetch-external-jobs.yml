@@ -1,0 +1,45 @@
+name: Refresh Big-tech job feed (Workday)
+
+# Fetches jobs from CORS-blocked Workday career sites (NVIDIA, Salesforce,
+# Adobe, Workday) SERVER-SIDE — where there is no CORS wall — and commits
+# generated/external-jobs.json so the static Job Search tab can read it
+# same-origin. Public endpoints only; no secrets required.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # every day at 06:00 UTC
+  workflow_dispatch: {}    # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: external-jobs-feed
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch Workday jobs
+        run: node scripts/fetch-workday-jobs.mjs
+
+      - name: Commit feed if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add generated/external-jobs.json
+          if git diff --staged --quiet; then
+            echo "No changes to the feed."
+          else
+            git commit -m "chore: refresh Big-tech Workday job feed"
+            git push
+          fi

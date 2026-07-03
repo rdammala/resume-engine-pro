@@ -65,7 +65,7 @@
     // Starter partnership examples (publicly reported — the user should VERIFY at
     // the source link). Users maintain their own list; nothing is asserted as fact.
     var PARTNERSHIPS_SEED = [
-        { org: 'USCIS (US)', partner: 'CGI Federal', area: 'IT systems / modernization', source: 'https://www.cgi.com/en/united-states/federal' },
+        { org: 'Netflix', partner: 'Amazon Web Services (AWS)', area: 'Cloud infrastructure & streaming', source: 'https://aws.amazon.com/solutions/case-studies/netflix/' },
         { org: 'HealthCare.gov (CMS)', partner: 'Accenture Federal Services', area: 'Platform operations', source: 'https://www.accenture.com/us-en/industries/public-service' },
         { org: 'NHS England (UK)', partner: 'Palantir', area: 'Federated Data Platform', source: 'https://www.england.nhs.uk/' }
     ];
@@ -178,6 +178,16 @@
         });
     }
 
+    // The Big-tech (Workday) feed is fetched server-side by a GitHub Action and
+    // committed to generated/external-jobs.json, so the browser reads it
+    // same-origin (no CORS). Giants like NVIDIA/Salesforce/Adobe live here.
+    function fetchScheduled() {
+        return fetch('generated/external-jobs.json?cb=' + Date.now())
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (d) { return { ok: true, company: { name: 'Big-tech feed' }, jobs: (d.jobs || []) }; })
+            .catch(function (err) { return { ok: false, company: { name: 'Big-tech feed' }, error: (err && err.message) || 'feed not built yet', jobs: [] }; });
+    }
+
     // ---- rendering ----
     function companyChips() {
         var list = loadCompanies();
@@ -186,6 +196,11 @@
                 + esc(c.name) + ' <span class="js-chip-ats">' + esc(c.ats) + '</span>'
                 + ' <span class="js-chip-x" data-remove="' + i + '" title="Remove">&times;</span></button>';
         }).join('');
+    }
+
+    // Special chip for the daily Big-tech (Workday) feed committed by a GitHub Action.
+    function scheduledChip() {
+        return '<button type="button" class="js-chip js-selected js-chip-sched" data-sched="1" title="NVIDIA, Salesforce, Adobe, Workday — refreshed daily by a GitHub Action (these run on Workday, which browsers can’t read live)">🗓️ Big-tech feed <span class="js-chip-ats">Workday</span></button>';
     }
 
     function partnerCards() {
@@ -207,7 +222,7 @@
         return ''
         + '<h2>🔎 Job Search — straight from the source</h2>'
         + '<p class="js-lead">Skip the aggregator noise. This pulls <strong>live openings directly from companies\u2019 own career systems</strong> '
-        + '(their public Greenhouse / Ashby feeds) so you see real, fresh roles — then save the ones you like into your tracker. '
+        + '(their public Greenhouse / Ashby feeds, plus a daily <strong>Big-tech Workday feed</strong>) so you see real, fresh roles — then save the ones you like into your tracker. '
         + 'No scraping, no logins, nothing leaves your browser.</p>'
 
         + '<div class="js-controls">'
@@ -223,7 +238,7 @@
         + '    <button id="jsSearchBtn" class="btn btn-primary">Search jobs</button>'
         + '  </div>'
         + '  <div class="js-companies-head">Companies to search <span class="js-muted">(click to toggle; searches the highlighted ones)</span></div>'
-        + '  <div id="jsChips" class="js-chips">' + companyChips() + '</div>'
+        + '  <div id="jsChips" class="js-chips">' + scheduledChip() + companyChips() + '</div>'
         + '  <div class="js-row js-add">'
         + '    <input id="jsAddName" class="js-input" type="text" placeholder="Add company (display name)" />'
         + '    <select id="jsAddAts" class="js-input js-input-sm"><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option></select>'
@@ -297,14 +312,18 @@
                 if (all[idx]) selected.push(all[idx]);
             }
         });
-        if (!selected.length) selected = all.slice();
+        if (!selected.length && !document.querySelector('#jsChips .js-chip-sched.js-selected')) selected = all.slice();
+
+        var schedOn = !!document.querySelector('#jsChips .js-chip-sched.js-selected');
+        var tasks = selected.map(fetchCompany);
+        if (schedOn) tasks.push(fetchScheduled());
 
         var statusEl = document.getElementById('jsStatus');
         var resultsEl = document.getElementById('jsResults');
-        statusEl.innerHTML = '⏳ Searching ' + selected.length + ' companies…';
+        statusEl.innerHTML = '⏳ Searching ' + tasks.length + ' sources…';
         resultsEl.innerHTML = '';
 
-        Promise.all(selected.map(fetchCompany)).then(function (settled) {
+        Promise.all(tasks).then(function (settled) {
             var jobs = [];
             var failed = [];
             settled.forEach(function (res) {
@@ -339,8 +358,9 @@
 
             _last = filtered;
 
+            var reached = settled.filter(function (r) { return r.ok; }).length;
             var msg = '<strong>' + filtered.length + '</strong> role' + (filtered.length === 1 ? '' : 's')
-                + ' from ' + (selected.length - failed.length) + ' companies'
+                + ' from ' + reached + ' sources'
                 + (kw || locq || days ? ' (filtered)' : '');
             if (failed.length) msg += ' · <span class="js-muted">couldn\u2019t reach: ' + esc(failed.join(', ')) + '</span>';
             statusEl.innerHTML = msg;
