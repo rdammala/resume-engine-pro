@@ -1,0 +1,47 @@
+name: "💡 Feature request"
+description: Suggest a new capability or an improvement for Resume Engine Pro.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Great features often start as a quick note like this.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: What are you trying to do that is hard or impossible today?
+      placeholder: I apply to a lot of jobs and want to compare two AI engines side by side before I pick one.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: Describe the feature or improvement you'd like.
+      placeholder: Add a "compare engines" toggle that generates the same résumé with two providers and shows them next to each other.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Profiles
+        - Generate résumé
+        - AI engines / providers
+        - Portfolio templates
+        - Applications tracker
+        - Settings
+        - Landing / onboarding
+        - Other
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else? (optional)
+      description: Mockups, links, or examples from other tools are welcome.
+    validations:
+      required: false

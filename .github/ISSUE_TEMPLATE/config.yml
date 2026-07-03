@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📘 Help & FAQ
+    url: https://rdammala.com/
+    about: Setup steps, GitHub token guide, and answers to common questions are built into the app — click the "?" Help button.
+  - name: 📚 Learning Hub
+    url: https://rdammala.com/learning-hub/INDEX.html
+    about: See documented bugs, shipped features, and engineering write-ups.

@@ -1790,6 +1790,35 @@ select option {
     flex-shrink: 0;
 }
 
+.footer-links {
+    margin-top: 0.9rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+.footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+.footer-links a:hover { color: var(--secondary); }
+.footer-links span { color: var(--text-muted); opacity: 0.6; }
+
+.lp-feedback {
+    margin-top: 0.8rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.lp-feedback a {
+    color: var(--secondary);
+    text-decoration: none;
+    font-weight: 600;
+}
+.lp-feedback a:hover { text-decoration: underline; }
+
 /* ============================================================================
    RESPONSIVE
    ============================================================================ */

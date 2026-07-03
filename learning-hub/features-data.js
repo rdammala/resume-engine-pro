@@ -703,6 +703,27 @@ gh api "repos/rdammala/$r/transfer" -f new_owner=rdammala-org`,
 @media (prefers-reduced-motion: reduce){ .lp-orb{animation:none;} }`,
         lesson: 'A landing page has two jobs: sell the value fast and remove the reason people hesitate. The token ask was the biggest friction, so instead of hiding it, address it directly and turn it into the differentiator (your data lives in YOUR GitHub). Keep the existing auth hooks untouched so a pure visual/markup redesign carries zero JS risk. Never ship developer debug buttons into the visitor-facing flow. And always pair motion with a prefers-reduced-motion escape hatch.',
         impact: 'High — the first impression now communicates the value in seconds, motivates the GitHub sign-in by explaining the safety/benefit, and looks like a finished product instead of a dev login screen.'
+    },
+    {
+        id: 26,
+        title: 'Contact / Feedback Channel — GitHub Issue Forms Instead of a Monitored Inbox',
+        category: 'UX / Support',
+        status: 'Shipped',
+        role: 'Front-End / DevOps',
+        effort: '30 min',
+        summary: 'Gave visitors a clear way to report bugs and request features without standing up any backend or personal email inbox. Added "Report a bug / Request a feature / Source on GitHub" links to the shared footer (shown on every page) and a soft feedback line on the landing. Both point at the repo issue chooser. Added two structured GitHub issue FORMS (Bug report and Feature request) plus a config that disables blank issues and surfaces Help and Learning Hub links.',
+        motivation: 'A real user asked how people would raise bugs or contact us — should it be an email to monitor manually? For a static, backend-less site that is a maintenance burden and a spam magnet. Since every user of the app already signs in with GitHub, GitHub Issues is a zero-maintenance, structured, notification-driven channel that fits the audience perfectly.',
+        solution: 'Linked the UI to github.com/OWNER/REPO/issues/new/choose so visitors land on a template picker. Authored .github/ISSUE_TEMPLATE/bug_report.yml and feature_request.yml as GitHub issue FORMS (typed fields: what happened, steps, expected, area dropdown, browser, console output for bugs; problem, idea, area for features) so reports arrive structured and labeled (bug / enhancement). Added config.yml with blank_issues_enabled:false and contact_links to the in-app Help and the Learning Hub. Issue forms are read from the default branch, so a normal push activates them. No JS changed; links are plain anchors with target=_blank rel=noopener.',
+        codeExample: `# .github/ISSUE_TEMPLATE/config.yml — no blank issues; steer people to self-serve first
+blank_issues_enabled: false
+contact_links:
+  - name: 📘 Help & FAQ
+    url: https://rdammala.com/
+    about: Setup + token guide are built into the app.
+# UI: a single link opens the template chooser, no inbox to babysit
+# <a href="https://github.com/rdammala/resume-engine-pro/issues/new/choose">🐞 Report a bug</a>`,
+        lesson: 'Match the contact channel to who your users already are. A backend-less app does NOT need a contact form or a monitored inbox — if the audience already has GitHub accounts (this app requires one to sign in), GitHub Issues gives you structured intake, labels, threading, and notifications for free, with zero servers. Use issue FORMS (.yml) over plain markdown templates so reports come in typed and consistent, and set blank_issues_enabled:false with contact_links to deflect the "how do I use this" questions to your existing Help/docs.',
+        impact: 'Medium — visitors now have an obvious, low-friction path to report bugs and request features from every page, and the maintainer gets structured, labeled issues with GitHub notifications instead of an inbox to monitor manually.'
     }
 ];
 
