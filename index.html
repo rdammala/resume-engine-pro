@@ -167,6 +167,7 @@
                 <button id="settingsBtn" class="btn btn-icon" onclick="toggleSettingsMenu()" title="Settings">⚙️</button>
                 <div id="settingsMenu" class="settings-menu" style="display:none;">
                     <a href="#" onclick="switchMainTab('settings'); toggleSettingsMenu(); return false;">Settings</a>
+                    <a href="https://github.com/rdammala/resume-engine-pro/issues/new/choose" target="_blank" rel="noopener" onclick="toggleSettingsMenu()">💬 Send feedback</a>
                     <button onclick="handleLogout()" class="btn btn-logout">Logout</button>
                 </div>
                 <button id="loginBtn" class="btn btn-primary" onclick="initiateGitHubLogin()" style="display:none;">Login</button>
@@ -282,6 +283,79 @@
                             <li><span>✅</span><div><strong>Free forever to start.</strong> Free AI option, free hosting on GitHub Pages, no credit card, no trial clock.</div></li>
                         </ul>
                     </div>
+                </section>
+
+                <!-- ===================== ANIMATED WALKTHROUGH ===================== -->
+                <section class="lp-section lp-demo-wrap">
+                    <h2 class="lp-h2">See it work — start to finish</h2>
+                    <p class="lp-h2-sub">A quick loop of the whole setup. No sound · ~30 seconds · repeats.</p>
+
+                    <div class="lp-demo" role="img" aria-label="Animated walkthrough: click Sign in with GitHub, generate a classic token with repo, gist and user scopes, then take the in-app tour.">
+                        <div class="lp-demo-bar">
+                            <span class="lp-dot lp-dot-r"></span><span class="lp-dot lp-dot-y"></span><span class="lp-dot lp-dot-g"></span>
+                            <em class="lp-demo-url">resume-engine-pro</em>
+                        </div>
+                        <div class="lp-demo-stage">
+
+                            <!-- Scene 1 -->
+                            <figure class="lp-scene lp-scene-1">
+                                <span class="lp-scene-badge">1</span>
+                                <div class="lp-scene-cap">Click <strong>“Sign in with GitHub”</strong> — it's free.</div>
+                                <div class="lp-scene-art">
+                                    <span class="lp-tap"></span>
+                                    <button class="lp-mock-btn lp-mock-primary" type="button" disabled>⎇ Sign in with GitHub</button>
+                                </div>
+                            </figure>
+
+                            <!-- Scene 2 -->
+                            <figure class="lp-scene lp-scene-2">
+                                <span class="lp-scene-badge">2</span>
+                                <div class="lp-scene-cap">On GitHub, open <strong>Generate new token (classic)</strong>.</div>
+                                <div class="lp-scene-art">
+                                    <div class="lp-gh-row"><span class="lp-gh-mark">⎇</span> github.com › Settings › Tokens</div>
+                                    <span class="lp-tap lp-tap-2"></span>
+                                    <button class="lp-mock-btn lp-mock-green" type="button" disabled>Generate new token (classic)</button>
+                                </div>
+                            </figure>
+
+                            <!-- Scene 3 -->
+                            <figure class="lp-scene lp-scene-3">
+                                <span class="lp-scene-badge">3</span>
+                                <div class="lp-scene-cap">Tick the scopes: <strong>repo</strong>, <strong>gist</strong>, <strong>user</strong>.</div>
+                                <div class="lp-scene-art lp-scopes">
+                                    <label class="lp-scope lp-scope-a"><span class="lp-check"></span> repo <em>— full control of repositories</em></label>
+                                    <label class="lp-scope lp-scope-b"><span class="lp-check"></span> gist <em>— create gists</em></label>
+                                    <label class="lp-scope lp-scope-c"><span class="lp-check"></span> user <em>— read profile data</em></label>
+                                </div>
+                            </figure>
+
+                            <!-- Scene 4 -->
+                            <figure class="lp-scene lp-scene-4">
+                                <span class="lp-scene-badge">4</span>
+                                <div class="lp-scene-cap">Back in the app, take the <strong>60-second tour</strong>.</div>
+                                <div class="lp-scene-art">
+                                    <div class="lp-tour-steps">
+                                        <span class="lp-tour-chip lp-tc-1">① Create profile</span>
+                                        <span class="lp-tour-chip lp-tc-2">② Generate</span>
+                                        <span class="lp-tour-chip lp-tc-3">③ Publish &amp; track</span>
+                                    </div>
+                                    <div class="lp-coach">🧭 <strong>Rae:</strong> do this next →</div>
+                                </div>
+                            </figure>
+
+                            <div class="lp-demo-progress" aria-hidden="true">
+                                <i class="lp-pg lp-pg-1"></i><i class="lp-pg lp-pg-2"></i><i class="lp-pg lp-pg-3"></i><i class="lp-pg lp-pg-4"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Static fallback for reduced-motion / no-anim -->
+                    <ol class="lp-demo-static">
+                        <li>Click <strong>Sign in with GitHub</strong>.</li>
+                        <li>On GitHub, choose <strong>Generate new token (classic)</strong>.</li>
+                        <li>Select scopes <strong>repo</strong>, <strong>gist</strong>, <strong>user</strong>, then generate &amp; copy it.</li>
+                        <li>Paste it in the app and take the built-in <strong>60-second tour</strong>.</li>
+                    </ol>
                 </section>
 
                 <!-- ===================== FINAL CTA ===================== -->

@@ -724,6 +724,32 @@ contact_links:
 # <a href="https://github.com/rdammala/resume-engine-pro/issues/new/choose">🐞 Report a bug</a>`,
         lesson: 'Match the contact channel to who your users already are. A backend-less app does NOT need a contact form or a monitored inbox — if the audience already has GitHub accounts (this app requires one to sign in), GitHub Issues gives you structured intake, labels, threading, and notifications for free, with zero servers. Use issue FORMS (.yml) over plain markdown templates so reports come in typed and consistent, and set blank_issues_enabled:false with contact_links to deflect the "how do I use this" questions to your existing Help/docs.',
         impact: 'Medium — visitors now have an obvious, low-friction path to report bugs and request features from every page, and the maintainer gets structured, labeled issues with GitHub notifications instead of an inbox to monitor manually.'
+    },
+    {
+        id: 27,
+        title: 'Looping "See It Work" Walkthrough Animation — Pure-CSS Storyboard on the Landing',
+        category: 'UX / Marketing',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '70 min',
+        summary: 'Filled the dead space above the final call-to-action with a self-contained, auto-looping walkthrough that shows the whole onboarding in about 30 seconds: (1) click Sign in with GitHub, (2) on GitHub open Generate new token classic, (3) tick the scopes repo / gist / user (they check in one by one), (4) back in the app take the 60-second tour. It is styled as a little browser frame with a title bar, progress dots, a pulsing tap ripple, and a friendly coach bubble. Also added an in-app Send feedback entry point in the Settings menu.',
+        motivation: 'The redesigned landing had a large empty gap right above the final CTA, and a first-time visitor still had to imagine what using the app actually looks like - especially the scary-sounding GitHub token step. A short, silent, looping demo answers what do I actually do? without a video file, a backend, or the user clicking anything. The user also asked to make the feedback channel reachable from inside the app, not just the footer.',
+        solution: 'Built the storyboard as four absolutely-stacked scene figures inside a fixed-height stage, all driven by ONE shared 32s keyframe (lpSceneCycle) with staggered animation-delays of 0s / 8s / 16s / 24s so each scene owns a quarter of the loop and it repeats seamlessly - no JavaScript, no timers. Scene-level details are their own keyframes on the same 32s master clock: the scope checkmarks pop in staggered (lpCheckA/B/C), the tour chips slide up in sequence (lpChip1/2/3), a tap ripple pulses over the buttons, progress dots light per quarter, and the coach bubble bobs. Added a prefers-reduced-motion fallback that hides the animation and shows a plain numbered ol instead, plus light-theme overrides for the frame. The Settings dropdown got a Send feedback link to the GitHub issue chooser.',
+        codeExample: `/* ONE 32s clock; each scene delayed by a quarter = seamless 4-step loop, zero JS */
+.lp-scene   { animation: lpSceneCycle 32s infinite both; }
+.lp-scene-2 { animation-delay: 8s; }
+.lp-scene-3 { animation-delay: 16s; }
+.lp-scene-4 { animation-delay: 24s; }
+@keyframes lpSceneCycle {
+  0%{opacity:0;transform:translateY(14px) scale(.98);}
+  3%{opacity:1;transform:translateY(0) scale(1);}
+  22%{opacity:1;} 25%,100%{opacity:0;}
+}
+/* child details ride the SAME master clock so they stay in sync with their scene */
+@keyframes lpCheckA { 0%,54%{opacity:0;transform:scale(0);} 57%{opacity:1;transform:scale(1);} 72%{opacity:1;} 75%,100%{opacity:0;} }
+@media (prefers-reduced-motion: reduce){ .lp-demo{display:none;} .lp-demo-static{display:block;} }`,
+        lesson: 'You can fake a product demo video with pure CSS: stack the scenes absolutely and drive them all from ONE shared keyframe timeline, giving each scene a staggered animation-delay equal to its slice of the loop. Because every sub-animation (checkmarks, chips, progress dots) runs on that same 32s master clock, they stay perfectly in sync with their parent scene with no JavaScript and no drift. Keep it out of the app login script entirely so there is zero risk, and always pair an auto-playing animation with a prefers-reduced-motion fallback (here, a static numbered list). Bonus: a silent looping storyboard sidesteps hosting a real video on a static site.',
+        impact: 'High — the empty pre-CTA space now shows the entire flow at a glance, demystifies the GitHub token step that people hesitate on, and adds motion/personality without any backend, video hosting, or risk to the app JavaScript. Feedback is now also one click away from inside the app.'
     }
 ];
 
