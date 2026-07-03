@@ -3639,4 +3639,20 @@ html[data-theme="light"] .js-hint code { background: #eef2f7; }
 .js-pn-x:hover { color: var(--danger); }
 html[data-theme="light"] .js-ac-list { background: #ffffff; }
 
+/* Big-tech / enterprise direct-portal launcher */
+.js-direct-wrap { margin-top: 2rem; padding-top: 1.4rem; border-top: 1px dashed var(--border); }
+.js-portals { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.8rem; }
+.js-portal-btn {
+    background: rgba(0,153,255,0.10);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    font-size: 0.88rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.js-portal-btn:hover { border-color: rgba(0,217,255,0.6); background: rgba(0,153,255,0.2); transform: translateY(-1px); }
+
 

@@ -70,6 +70,24 @@
         { org: 'NHS England (UK)', partner: 'Palantir', area: 'Federated Data Platform', source: 'https://www.england.nhs.uk/' }
     ];
 
+    // Giants run their OWN career systems (often Workday) which a browser can't
+    // read cross-origin (no CORS). So we deep-link into each company's own search,
+    // pre-filled with the user's keyword + location. {kw}/{loc} are filled at click.
+    var DIRECT_PORTALS = [
+        { name: 'Microsoft', tmpl: 'https://jobs.careers.microsoft.com/global/en/search?q={kw}&lc={loc}' },
+        { name: 'Amazon', tmpl: 'https://www.amazon.jobs/en/search?base_query={kw}&loc_query={loc}' },
+        { name: 'Google', tmpl: 'https://www.google.com/about/careers/applications/jobs/results/?q={kw}&location={loc}' },
+        { name: 'Apple', tmpl: 'https://jobs.apple.com/en-us/search?search={kw}&location={loc}' },
+        { name: 'Meta', tmpl: 'https://www.metacareers.com/jobs?q={kw}' },
+        { name: 'NVIDIA', tmpl: 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite?q={kw}' },
+        { name: 'Netflix', tmpl: 'https://explore.jobs.netflix.net/careers?query={kw}&location={loc}' },
+        { name: 'Salesforce', tmpl: 'https://careers.salesforce.com/en/jobs/?search={kw}' },
+        { name: 'Oracle', tmpl: 'https://careers.oracle.com/jobs/#en/sites/jobsearch/requisitions?keyword={kw}' },
+        { name: 'IBM', tmpl: 'https://www.ibm.com/careers/search?q={kw}' },
+        { name: 'Deloitte', tmpl: 'https://apply.deloitte.com/careers/SearchJobs?searchword={kw}' },
+        { name: 'Accenture', tmpl: 'https://www.accenture.com/us-en/careers/jobsearch?jk={kw}' }
+    ];
+
     // ---- helpers ----
     function esc(s) {
         return String(s == null ? '' : s)
@@ -179,6 +197,12 @@
         }).join('');
     }
 
+    function directPortalCards() {
+        return DIRECT_PORTALS.map(function (p, i) {
+            return '<button type="button" class="js-portal-btn" data-portal="' + i + '">' + esc(p.name) + ' ↗</button>';
+        }).join('');
+    }
+
     function shellHtml() {
         return ''
         + '<h2>🔎 Job Search — straight from the source</h2>'
@@ -211,6 +235,12 @@
 
         + '<div id="jsStatus" class="js-status"></div>'
         + '<div id="jsResults" class="js-results"></div>'
+
+        + '<div class="js-direct-wrap">'
+        + '  <h3>🏢 Big-tech &amp; enterprise portals — search directly</h3>'
+        + '  <p class="js-lead">Giants like Microsoft, Amazon and Google run their own career systems (often Workday), which a browser can’t read directly. These buttons open each company’s <strong>own search, pre-filled with your keyword &amp; location above</strong> — one click, their site, no aggregator.</p>'
+        + '  <div class="js-portals">' + directPortalCards() + '</div>'
+        + '</div>'
 
         + '<div class="js-partners-wrap">'
         + '  <h3>🤝 Partner directories — hidden-market research</h3>'
@@ -403,6 +433,18 @@
         listEl.style.display = 'none';
     }
 
+    // open a giant's own career search, pre-filled with the current keyword/location
+    function openDirectPortal(i) {
+        var p = DIRECT_PORTALS[i];
+        if (!p) return;
+        var kwEl = document.getElementById('jsKeyword');
+        var locEl = document.getElementById('jsLocation');
+        var kw = (kwEl && kwEl.value ? kwEl.value : '').trim();
+        var loc = (locEl && locEl.value ? locEl.value : '').trim();
+        var url = p.tmpl.replace('{kw}', encodeURIComponent(kw)).replace('{loc}', encodeURIComponent(loc));
+        window.open(url, '_blank', 'noopener');
+    }
+
     // ---- partnership tracker (who works with whom) ----
     function loadPartnerships() {
         try {
@@ -488,6 +530,9 @@
             if (t.id === 'jsSearchBtn') { runSearch(); return; }
             if (t.id === 'jsAddBtn') { addCompany(); return; }
             if (t.id === 'jsPnAddBtn') { addPartnership(); return; }
+            // open a big-tech / enterprise portal pre-filled
+            var dp = t.getAttribute && t.getAttribute('data-portal');
+            if (dp !== null && dp !== undefined && t.classList.contains('js-portal-btn')) { openDirectPortal(parseInt(dp, 10)); return; }
         });
         root.addEventListener('input', function (e) {
             if (e.target.id === 'jsLocation') {
