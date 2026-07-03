@@ -3538,7 +3538,17 @@ html[data-theme="light"] #themeToggleBtn { color: #1a2230; }
 .js-input:focus { outline: none; border-color: var(--primary); }
 
 .js-companies-head { margin: 1.1rem 0 0.5rem; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; }
-.js-muted { color: var(--text-muted); font-weight: 400; }
+.js-sources {
+    margin-top: 1.1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: rgba(0, 153, 255, 0.08);
+    border: 1px solid rgba(0, 153, 255, 0.25);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    line-height: 1.5;
+}
+.js-sources strong { color: var(--text-primary); }.js-muted { color: var(--text-muted); font-weight: 400; }
 .js-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .js-chip {
     display: inline-flex; align-items: center; gap: 0.35rem;

@@ -235,9 +235,15 @@
         + '      <option value="7" selected>Last 7 days</option>'
         + '      <option value="30">Last 30 days</option>'
         + '    </select>'
+        + '    <select id="jsRadius" class="js-input js-input-sm" title="How wide to match the location you pick">'
+        + '      <option value="nearby" selected>📍 City + nearby</option>'
+        + '      <option value="exact">🎯 Exact city</option>'
+        + '      <option value="country">🌍 Whole country</option>'
+        + '    </select>'
         + '    <button id="jsSearchBtn" class="btn btn-primary">Search jobs</button>'
         + '  </div>'
-        + '  <div class="js-companies-head">Companies to search <span class="js-muted">(click to toggle; searches the highlighted ones)</span></div>'
+        + '  <div class="js-sources">📡 Live results come from <strong>Greenhouse</strong>, <strong>Ashby</strong> &amp; the daily <strong>Workday</strong> feed. This is <strong>not</strong> the whole web — it searches the companies below (thousands use these platforms; we ship a curated starter set you can add to). For any other employer, use the <strong>Big-tech portals</strong> &amp; <strong>partner directories</strong> further down.</div>'
+        + '  <div class="js-companies-head">Companies in the live feed <span class="js-muted">— we search every highlighted one <em>plus</em> the 🗓️ Big-tech feed. Click to toggle, or add your own by board token.</span></div>'
         + '  <div id="jsChips" class="js-chips">' + scheduledChip() + companyChips() + '</div>'
         + '  <div class="js-row js-add">'
         + '    <input id="jsAddName" class="js-input" type="text" placeholder="Add company (display name)" />'
@@ -245,7 +251,8 @@
         + '    <input id="jsAddToken" class="js-input js-input-sm" type="text" placeholder="board token (e.g. stripe)" />'
         + '    <button id="jsAddBtn" class="btn btn-secondary">+ Add</button>'
         + '  </div>'
-        + '  <p class="js-hint">💡 The <strong>board token</strong> is the company id in its careers URL — e.g. <code>boards.greenhouse.io/<b>stripe</b></code> or <code>jobs.ashbyhq.com/<b>openai</b></code>.</p>'
+        + '  <p class="js-hint">� <strong>City + nearby</strong> matches the whole state/region — e.g. <em>Bellevue, WA</em> also surfaces <em>Seattle</em> &amp; <em>Redmond</em>, so you don’t miss vicinity roles. Switch to <strong>Exact city</strong> to narrow, or <strong>Whole country</strong> to widen.</p>'
+        + '  <p class="js-hint">�💡 The <strong>board token</strong> is the company id in its careers URL — e.g. <code>boards.greenhouse.io/<b>stripe</b></code> or <code>jobs.ashbyhq.com/<b>openai</b></code>.</p>'
         + '</div>'
 
         + '<div id="jsStatus" class="js-status"></div>'
@@ -265,11 +272,11 @@
         + '  <div class="js-pn">'
         + '    <h3>🔗 Who works with whom — partnership tracker</h3>'
         + '    <p class="js-lead">Like a “board token” for the hidden market: track which organizations publicly work with which implementation partners, so you know where the downstream hiring is (e.g. an agency and the vendor that runs its tech). <strong>User-maintained — always verify at the source link.</strong></p>'
-        + '    <input id="jsPnQuery" class="js-input" type="text" placeholder="Filter — e.g. USCIS, Accenture, payments" />'
+        + '    <input id="jsPnQuery" class="js-input" type="text" placeholder="Filter — e.g. Netflix, Accenture, payments" />'
         + '    <div id="jsPnList" class="js-pn-list">' + partnershipRows() + '</div>'
         + '    <div class="js-row js-add">'
-        + '      <input id="jsPnOrg" class="js-input" type="text" placeholder="Organization (e.g. USCIS)" />'
-        + '      <input id="jsPnPartner" class="js-input" type="text" placeholder="Works with (e.g. CGI Federal)" />'
+        + '      <input id="jsPnOrg" class="js-input" type="text" placeholder="Organization (e.g. Netflix)" />'
+        + '      <input id="jsPnPartner" class="js-input" type="text" placeholder="Works with (e.g. AWS)" />'
         + '      <input id="jsPnArea" class="js-input js-input-sm" type="text" placeholder="Area (e.g. payments)" />'
         + '      <input id="jsPnSource" class="js-input" type="text" placeholder="Source URL (public proof)" />'
         + '      <button id="jsPnAddBtn" class="btn btn-secondary">+ Add</button>'
@@ -331,13 +338,21 @@
                 res.jobs.forEach(function (j) { jobs.push(j); });
             });
 
-            // Vicinity-aware location terms: a place picked from autocomplete matches
-            // its city OR state OR country; free-typed text is a plain substring.
+            // Vicinity breadth: how wide to match the place picked from autocomplete.
+            // nearby = city + state/region, exact = city only, country = whole country.
+            // Free-typed text is always a plain substring match.
+            var radiusEl = document.getElementById('jsRadius');
+            var radius = radiusEl ? radiusEl.value : 'nearby';
             var locTerms = [];
             if (_locSel && _locSel.label && _locSel.label.toLowerCase() === locq) {
-                [_locSel.city, _locSel.state, _locSel.country].forEach(function (x) {
-                    if (x) locTerms.push(String(x).toLowerCase());
-                });
+                if (radius === 'exact') {
+                    if (_locSel.city) locTerms.push(_locSel.city.toLowerCase());
+                } else if (radius === 'country') {
+                    if (_locSel.country) locTerms.push(_locSel.country.toLowerCase());
+                } else {
+                    if (_locSel.city) locTerms.push(_locSel.city.toLowerCase());
+                    if (_locSel.state) locTerms.push(_locSel.state.toLowerCase());
+                }
             } else if (locq) {
                 locTerms = [locq];
             }
@@ -361,7 +376,8 @@
             var reached = settled.filter(function (r) { return r.ok; }).length;
             var msg = '<strong>' + filtered.length + '</strong> role' + (filtered.length === 1 ? '' : 's')
                 + ' from ' + reached + ' sources'
-                + (kw || locq || days ? ' (filtered)' : '');
+                + (kw || locq || days ? ' (filtered)' : '')
+                + ' · <span class="js-muted">via Greenhouse · Ashby · Workday — for other employers use the portals below</span>';
             if (failed.length) msg += ' · <span class="js-muted">couldn\u2019t reach: ' + esc(failed.join(', ')) + '</span>';
             statusEl.innerHTML = msg;
 
