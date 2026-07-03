@@ -210,6 +210,11 @@ function switchMainTab(tabName) {
             }
         }
 
+        // Mount the Job Search tab (live Greenhouse/Lever feed + partner directories)
+        if (tabName === 'jobsearch' && window.JobSearch) {
+            window.JobSearch.init();
+        }
+
         // Refresh dashboard statistics (local + live GitHub count) on entry
         if (tabName === 'dashboard' && typeof updateStats === 'function') {
             updateStats();

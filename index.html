@@ -28,7 +28,7 @@
     <script>
         (function () {
             try {
-                var VALID = ['dashboard', 'profiles', 'generator', 'applications', 'history', 'settings'];
+                var VALID = ['dashboard', 'profiles', 'generator', 'jobsearch', 'applications', 'history', 'settings'];
                 var hasGithub = false;
                 var raw = localStorage.getItem('resumeEngineProV1_apiKeys');
                 if (raw) {
@@ -149,6 +149,9 @@
     
     <script src="core/tracker-functions.js"></script>
     <script>window.modulesLoaded.TrackerFunctions = !!window.TrackerFunctions; console.log('DEBUG: TrackerFunctions loaded:', window.modulesLoaded.TrackerFunctions);</script>
+    
+    <script src="core/job-search.js"></script>
+    <script>window.modulesLoaded.JobSearch = !!window.JobSearch; console.log('DEBUG: JobSearch loaded:', window.modulesLoaded.JobSearch);</script>
     
     <script src="core/generator.js"></script>
     <script>window.modulesLoaded.Generator = !!window.Generator; console.log('DEBUG: Generator loaded:', window.modulesLoaded.Generator);</script>
@@ -379,9 +382,15 @@
                 <button class="main-tab-btn active" onclick="switchMainTab('dashboard')">Dashboard</button>
                 <button class="main-tab-btn" onclick="switchMainTab('profiles')">My Profiles</button>
                 <button class="main-tab-btn" onclick="switchMainTab('generator')">Generate</button>
+                <button class="main-tab-btn" onclick="switchMainTab('jobsearch')">🔎 Job Search</button>
                 <button class="main-tab-btn" onclick="switchMainTab('applications')">Applications</button>
                 <button class="main-tab-btn" onclick="switchMainTab('history')">History</button>
                 <button class="main-tab-btn" onclick="switchMainTab('settings')">Settings</button>
+            </div>
+
+            <!-- Job Search Tab (populated by core/job-search.js) -->
+            <div id="jobsearch" class="main-tab-content">
+                <div id="jobSearchRoot"><!-- rendered by JobSearch.init() --></div>
             </div>
 
             <!-- Dashboard Tab -->
