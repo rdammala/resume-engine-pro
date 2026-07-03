@@ -682,6 +682,27 @@ gh repo edit "rdammala/$r" --visibility public --accept-visibility-change-conseq
 gh api "repos/rdammala/$r/transfer" -f new_owner=rdammala-org`,
         lesson: 'You keep full control of transferred repos — as org owner you can delete, rename, or move them back. Archived repos are read-only, so unarchive before editing/transferring. Critically, a repo transfer does NOT redirect its GitHub Pages URL, so re-enable Pages at the new owner and update every hardcoded link. And never blindly make "all private repos" public — exclude data/tooling repos (like the resume-data repo) that must stay private.',
         impact: 'High — the personal profile is now clean and credible (14 repos), while all 34 portfolios stay live under the org, decoupled from the personal identity.'
+    },
+    {
+        id: 25,
+        title: 'Landing Page Redesign — From a Dull Login Box to an Inspiring Hero + Trust Story',
+        category: 'UX / Marketing',
+        status: 'Shipped',
+        role: 'Front-End / UX',
+        effort: '60 min',
+        summary: 'Rebuilt the first screen a visitor sees. The old landing was a plain login card (a title, six checkmark lines, a Sign-in button) with three raw DEBUG buttons exposed to every visitor — a real user called it boring and said it looked like an internal org page. The new landing is a full marketing page: an animated gradient hero with a clear value prop, a four-card value strip, a three-step how-it-works, a dedicated "why GitHub sign-in is safe" trust section that answers the hesitation head-on, and a closing call-to-action. The debug buttons are gone.',
+        motivation: 'A first-time visitor gave blunt feedback: the page was dull with no life, and it asked them to go get a GitHub token without ever explaining WHY it was worth it or WHY it was safe. It failed at the two jobs a landing page must do — sell the value and reduce the fear of signing in. Three developer debug buttons sitting in the visitor flow made it look unfinished.',
+        solution: 'Replaced the entire login-box markup with a semantic landing structure (hero, value grid, steps, trust, final CTA) and added a scoped lp- CSS layer: floating blurred gradient orbs, a gradient-clipped headline, staggered fade-up entrance animations, hover-lift cards, numbered step badges, and a two-column trust block that reframes the token question as the product benefit ("your GitHub is the vault, you hold the keys"). Kept the exact same auth entry point (initiateGitHubLogin) and Help link (openHelp), so no JavaScript changed and the anti-flash boot logic on #loginPage still works. Added light-theme overrides for the new surfaces and a prefers-reduced-motion guard that disables the animations. Removed the three DEBUG buttons from the visitor view.',
+        codeExample: `/* Spotlight-free "wow": a blurred gradient orb that drifts behind the hero */
+.lp-orb { position:absolute; border-radius:50%; filter:blur(70px); opacity:.5;
+          animation: lpFloat 14s ease-in-out infinite; }
+@keyframes lpFloat { 0%,100%{transform:translate(0,0) scale(1);}
+                     50%{transform:translate(20px,-30px) scale(1.08);} }
+/* Reframe the scary ask as the selling point */
+.lp-trust-list li strong { color: var(--text-primary); }
+@media (prefers-reduced-motion: reduce){ .lp-orb{animation:none;} }`,
+        lesson: 'A landing page has two jobs: sell the value fast and remove the reason people hesitate. The token ask was the biggest friction, so instead of hiding it, address it directly and turn it into the differentiator (your data lives in YOUR GitHub). Keep the existing auth hooks untouched so a pure visual/markup redesign carries zero JS risk. Never ship developer debug buttons into the visitor-facing flow. And always pair motion with a prefers-reduced-motion escape hatch.',
+        impact: 'High — the first impression now communicates the value in seconds, motivates the GitHub sign-in by explaining the safety/benefit, and looks like a finished product instead of a dev login screen.'
     }
 ];
 

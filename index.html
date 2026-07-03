@@ -177,36 +177,124 @@
     <div class="container">
         <!-- Login Page -->
         <section id="loginPage" class="page active">
-            <div class="login-container">
-                <div class="login-box">
-                    <h2>Resume Engine Pro</h2>
-                    <p>The Ultimate AI-Powered Resume & Portfolio Generator</p>
-                    <div class="login-features">
-                        <div class="feature">✓ Upload your existing resume</div>
-                        <div class="feature">✓ AI tailors to any JD</div>
-                        <div class="feature">✓ Generate bulk resumes instantly</div>
-                        <div class="feature">✓ Multiple portfolio templates</div>
-                        <div class="feature">✓ GitHub storage (no external costs)</div>
-                        <div class="feature">✓ Multi-AI support (OpenAI, Claude, Gemini, Mistral)</div>
+            <div class="landing">
+
+                <!-- ===================== HERO ===================== -->
+                <header class="lp-hero">
+                    <div class="lp-orb lp-orb-a" aria-hidden="true"></div>
+                    <div class="lp-orb lp-orb-b" aria-hidden="true"></div>
+
+                    <div class="lp-hero-inner">
+                        <span class="lp-eyebrow">✨ Free &amp; open · runs in your browser · zero backend</span>
+                        <h1 class="lp-title">
+                            Turn one résumé into<br>
+                            <span class="lp-grad">a perfect match for every job.</span>
+                        </h1>
+                        <p class="lp-sub">
+                            Paste any job description. Resume Engine Pro uses AI to rewrite your résumé and spin up a
+                            live portfolio tailored to <em>that</em> role — in seconds. Your data stays in
+                            <strong>your own</strong> GitHub. Nothing to install. Nothing to pay for to start.
+                        </p>
+
+                        <div class="lp-cta-row">
+                            <button class="btn btn-primary large lp-cta" onclick="initiateGitHubLogin()">
+                                <span class="lp-gh">⎇</span> Sign in with GitHub — it's free
+                            </button>
+                            <a href="#lp-how" class="lp-cta-ghost">See how it works ↓</a>
+                        </div>
+                        <p class="lp-trust-line">🔒 We never see your data. No password. No spam. Sign out anytime.</p>
+
+                        <div class="lp-stats">
+                            <div class="lp-stat"><strong>5+</strong><span>AI engines</span></div>
+                            <div class="lp-stat"><strong>25+</strong><span>portfolio styles</span></div>
+                            <div class="lp-stat"><strong>$0</strong><span>to get started</span></div>
+                            <div class="lp-stat"><strong>100%</strong><span>your data, your GitHub</span></div>
+                        </div>
                     </div>
-                    <button class="btn btn-primary large" onclick="initiateGitHubLogin()">
-                        Sign in with GitHub
+                </header>
+
+                <!-- ===================== VALUE STRIP ===================== -->
+                <section class="lp-section">
+                    <div class="lp-grid lp-grid-4">
+                        <div class="lp-card">
+                            <div class="lp-ico">🎯</div>
+                            <h3>Tailored to the JD</h3>
+                            <p>Drop in a job link or description and get a résumé rewritten around the exact keywords recruiters and ATS scan for.</p>
+                        </div>
+                        <div class="lp-card">
+                            <div class="lp-ico">🤖</div>
+                            <h3>Multi-AI, incl. free</h3>
+                            <p>OpenAI, Claude, Gemini, Mistral — or run Llama 3 free on a throwaway GitHub runner. You choose the brain.</p>
+                        </div>
+                        <div class="lp-card">
+                            <div class="lp-ico">🌐</div>
+                            <h3>Live portfolios</h3>
+                            <p>Publish a beautiful, role-specific portfolio site with one click. 25+ styles, dark/light, mobile-ready.</p>
+                        </div>
+                        <div class="lp-card">
+                            <div class="lp-ico">🔐</div>
+                            <h3>You own everything</h3>
+                            <p>Every résumé, profile and portfolio is stored in your GitHub. No lock-in, no hidden server, fully private.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===================== HOW IT WORKS ===================== -->
+                <section class="lp-section" id="lp-how">
+                    <h2 class="lp-h2">From blank page to “you're hired” — in 3 moves</h2>
+                    <p class="lp-h2-sub">No setup marathon. Sign in and you're building in under a minute.</p>
+                    <div class="lp-steps">
+                        <div class="lp-step">
+                            <span class="lp-step-n">1</span>
+                            <h3>Create your profile once</h3>
+                            <p>Upload your existing résumé (PDF / DOCX / TXT) or type it in. We parse it into a reusable profile.</p>
+                        </div>
+                        <div class="lp-step">
+                            <span class="lp-step-n">2</span>
+                            <h3>Paste a job, pick an AI</h3>
+                            <p>Drop the job description or link. Choose a free or paid engine. Watch it tailor a résumé to that role.</p>
+                        </div>
+                        <div class="lp-step">
+                            <span class="lp-step-n">3</span>
+                            <h3>Publish &amp; track</h3>
+                            <p>Ship a live portfolio, download the résumé, and keep every application organized in the built-in tracker.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===================== TOKEN CONFIDENCE / TRUST ===================== -->
+                <section class="lp-section">
+                    <div class="lp-trust">
+                        <div class="lp-trust-left">
+                            <span class="lp-eyebrow">The one thing people hesitate on</span>
+                            <h2 class="lp-h2 lp-h2--left">“Why does it want my GitHub? Is that safe?”</h2>
+                            <p class="lp-trust-copy">
+                                Fair question — and the honest answer is the whole reason this tool is different.
+                                Instead of parking your career data on some company's server, Resume Engine Pro saves it to
+                                <strong>your</strong> GitHub account. That's the vault. You hold the keys.
+                            </p>
+                            <a href="#" class="lp-link" onclick="openHelp();return false;">📘 Step-by-step token guide (2 min) →</a>
+                        </div>
+                        <ul class="lp-trust-list">
+                            <li><span>✅</span><div><strong>It's a token, not your password.</strong> GitHub gives you a scoped key you can revoke any second. We never see or store your password.</div></li>
+                            <li><span>✅</span><div><strong>Everything runs in your browser.</strong> There is no backend server of ours in the middle. Your résumé never touches our machines.</div></li>
+                            <li><span>✅</span><div><strong>You stay in control.</strong> Delete the token, delete the repo, sign out — your data leaves with you. Zero lock-in.</div></li>
+                            <li><span>✅</span><div><strong>Free forever to start.</strong> Free AI option, free hosting on GitHub Pages, no credit card, no trial clock.</div></li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- ===================== FINAL CTA ===================== -->
+                <section class="lp-final">
+                    <div class="lp-orb lp-orb-c" aria-hidden="true"></div>
+                    <h2>Your next role deserves a résumé built for it.</h2>
+                    <p>Stop retyping the same CV for every application. Let AI do the tailoring — you focus on landing the interview.</p>
+                    <button class="btn btn-primary large lp-cta" onclick="initiateGitHubLogin()">
+                        <span class="lp-gh">⎇</span> Sign in with GitHub &amp; start free
                     </button>
-                    <p class="privacy-note">We use GitHub OAuth. Data stored privately in your GitHub account.</p>
-                    
-                    <!-- DEBUG: Test button -->
-                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #444; font-size: 0.8rem; color: #888;">
-                        <button class="btn" onclick="alert('JavaScript is working!')" style="width: 100%; margin-bottom: 0.5rem; background: #333; border: 1px solid #555;">
-                            Test JavaScript
-                        </button>
-                        <button class="btn" onclick="console.table(window.modulesLoaded); alert('Check browser console (F12) for module status')" style="width: 100%; margin-bottom: 0.5rem; background: #333; border: 1px solid #555;">
-                            Check Module Status
-                        </button>
-                        <button class="btn" onclick="console.log(window.debugLog); alert('Debug log shown in console')" style="width: 100%; background: #333; border: 1px solid #555;">
-                            View Debug Log
-                        </button>
-                    </div>
-                </div>
+                    <p class="lp-trust-line">Takes 60 seconds. First résumé in minutes. Truly free to begin.</p>
+                </section>
+
             </div>
         </section>
 
