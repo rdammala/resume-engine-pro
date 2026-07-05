@@ -188,6 +188,37 @@
             .catch(function (err) { return { ok: false, company: { name: 'Big-tech feed' }, error: (err && err.message) || 'feed not built yet', jobs: [] }; });
     }
 
+    // The Muse public API is free, keyless and CORS-friendly. No server-side
+    // keyword search, so we pull the newest few pages and let the shared
+    // keyword/location/date filters narrow them client-side.
+    function fetchMuse() {
+        var pages = [1, 2, 3, 4, 5];
+        var reqs = pages.map(function (p) {
+            return fetch('https://www.themuse.com/api/public/jobs?page=' + p + '&descending=true')
+                .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+                .then(function (d) { return d.results || []; })
+                .catch(function () { return []; });
+        });
+        return Promise.all(reqs).then(function (arrs) {
+            var jobs = [];
+            arrs.forEach(function (arr) {
+                arr.forEach(function (j) {
+                    jobs.push({
+                        company: (j.company && j.company.name) || 'The Muse',
+                        title: j.name || '',
+                        location: (j.locations || []).map(function (l) { return l.name; }).join(', '),
+                        url: (j.refs && j.refs.landing_page) || '',
+                        postedMs: j.publication_date ? Date.parse(j.publication_date) : 0,
+                        source: 'The Muse'
+                    });
+                });
+            });
+            return { ok: true, company: { name: 'The Muse (global)' }, jobs: jobs };
+        }).catch(function (err) {
+            return { ok: false, company: { name: 'The Muse (global)' }, error: (err && err.message) || 'failed', jobs: [] };
+        });
+    }
+
     // ---- rendering ----
     function companyChips() {
         var list = loadCompanies();
@@ -201,6 +232,12 @@
     // Special chip for the daily Big-tech (Workday) feed committed by a GitHub Action.
     function scheduledChip() {
         return '<button type="button" class="js-chip js-selected js-chip-sched" data-sched="1" title="NVIDIA, Salesforce, Adobe, Workday — refreshed daily by a GitHub Action (these run on Workday, which browsers can’t read live)">🗓️ Big-tech feed <span class="js-chip-ats">Workday</span></button>';
+    }
+
+    // The Muse = free, keyless, GLOBAL board with real companies across many
+    // countries AND lots of non-tech roles (healthcare, finance, trades).
+    function museChip() {
+        return '<button type="button" class="js-chip js-chip-muse" data-muse="1" title="The Muse — a free global board: many countries + non-tech roles (nursing, finance, trades). Broader reach, but listings can be OLDER — turn it on and set the date to Any time. Off by default.">🌍 Global / non-tech <span class="js-chip-ats">The Muse · optional</span></button>';
     }
 
     function partnerCards() {
@@ -242,9 +279,9 @@
         + '    </select>'
         + '    <button id="jsSearchBtn" class="btn btn-primary">Search jobs</button>'
         + '  </div>'
-        + '  <div class="js-sources">📡 Live results come from <strong>Greenhouse</strong>, <strong>Ashby</strong> &amp; the daily <strong>Workday</strong> feed. This is <strong>not</strong> the whole web — it searches the companies below (thousands use these platforms; we ship a curated starter set you can add to). For any other employer, use the <strong>Big-tech portals</strong> &amp; <strong>partner directories</strong> further down.</div>'
+        + '  <div class="js-sources">📡 Live results come from <strong>Greenhouse</strong>, <strong>Ashby</strong> &amp; the daily <strong>Workday</strong> feed — fresh, direct from each company. Turn on the optional <strong>🌍 Global / non-tech</strong> chip (The Muse) to reach many more countries and non-tech roles (nursing, finance, trades), though those listings can be older — pair it with <strong>Any time</strong>. This is <strong>not</strong> the whole web; for any other employer, use the <strong>Big-tech portals</strong> &amp; <strong>partner directories</strong> below.</div>'
         + '  <div class="js-companies-head">Companies in the live feed <span class="js-muted">— we search every highlighted one <em>plus</em> the 🗓️ Big-tech feed. Click to toggle, or add your own by board token.</span></div>'
-        + '  <div id="jsChips" class="js-chips">' + scheduledChip() + companyChips() + '</div>'
+        + '  <div id="jsChips" class="js-chips">' + scheduledChip() + museChip() + companyChips() + '</div>'
         + '  <div class="js-row js-add">'
         + '    <input id="jsAddName" class="js-input" type="text" placeholder="Add company (display name)" />'
         + '    <select id="jsAddAts" class="js-input js-input-sm"><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option></select>'
@@ -319,11 +356,13 @@
                 if (all[idx]) selected.push(all[idx]);
             }
         });
-        if (!selected.length && !document.querySelector('#jsChips .js-chip-sched.js-selected')) selected = all.slice();
+        if (!selected.length && !document.querySelector('#jsChips .js-chip-sched.js-selected') && !document.querySelector('#jsChips .js-chip-muse.js-selected')) selected = all.slice();
 
         var schedOn = !!document.querySelector('#jsChips .js-chip-sched.js-selected');
+        var museOn = !!document.querySelector('#jsChips .js-chip-muse.js-selected');
         var tasks = selected.map(fetchCompany);
         if (schedOn) tasks.push(fetchScheduled());
+        if (museOn) tasks.push(fetchMuse());
 
         var statusEl = document.getElementById('jsStatus');
         var resultsEl = document.getElementById('jsResults');
@@ -377,12 +416,16 @@
             var msg = '<strong>' + filtered.length + '</strong> role' + (filtered.length === 1 ? '' : 's')
                 + ' from ' + reached + ' sources'
                 + (kw || locq || days ? ' (filtered)' : '')
-                + ' · <span class="js-muted">via Greenhouse · Ashby · Workday — for other employers use the portals below</span>';
+                + ' · <span class="js-muted">via Greenhouse · Ashby' + (schedOn ? ' · Workday' : '') + (museOn ? ' · The Muse' : '') + ' — for other employers use the portals below</span>';
             if (failed.length) msg += ' · <span class="js-muted">couldn\u2019t reach: ' + esc(failed.join(', ')) + '</span>';
             statusEl.innerHTML = msg;
 
             if (!filtered.length) {
-                resultsEl.innerHTML = '<div class="js-empty">No roles matched. Try widening the date range, clearing the keyword/location, or selecting more companies.</div>';
+                var pre = jobs.length;
+                var tip = pre
+                    ? 'Those sources returned <strong>' + pre + '</strong> roles, but none match your filters. The keyword matches the job <em>title</em> — so a narrow term like “Azure” can zero out companies that don’t use that word. Try a <strong>broader keyword</strong> (e.g. “engineer”, “nurse”, “sales”) or clear it; widen the date to <strong>Any time</strong>; or set the location to <strong>Whole country</strong>.'
+                    : 'No roles came back from these sources. Try selecting more companies, adding your own by board token, or the Big-tech portals below.';
+                resultsEl.innerHTML = '<div class="js-empty">' + tip + '</div>';
                 return;
             }
             resultsEl.innerHTML = filtered.map(function (j, i) { return resultCard(j, i); }).join('');
