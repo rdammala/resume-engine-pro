@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- Source for assets/social-preview.png (the LinkedIn/OG link-preview card).
+     Edit this file, then re-screenshot at 1200x627 to regenerate social-preview.png. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 627px; }
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .card {
+    position: relative; width: 1200px; height: 627px; overflow: hidden;
+    background:
+      radial-gradient(900px 500px at 12% 108%, rgba(28,201,169,0.42), transparent 60%),
+      radial-gradient(760px 520px at 92% -10%, rgba(60,120,255,0.30), transparent 58%),
+      linear-gradient(120deg, #07211f 0%, #0a1e3a 46%, #0a1226 100%);
+    color: #eaf2ff;
+  }
+  .frame {
+    position: absolute; inset: 26px; border-radius: 26px;
+    border: 1px solid rgba(120,200,220,0.22);
+    box-shadow: inset 0 0 120px rgba(28,201,169,0.06), 0 0 1px rgba(255,255,255,0.05);
+    padding: 52px 58px; display: flex; flex-direction: column;
+  }
+  .top { display: flex; align-items: center; gap: 18px; }
+  .logo {
+    width: 60px; height: 60px; border-radius: 14px; flex: none;
+    background: linear-gradient(135deg, #21c7d6, #3f7bff);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(31,123,255,0.35);
+  }
+  .logo svg { width: 32px; height: 32px; }
+  .badge {
+    font-size: 15px; font-weight: 800; letter-spacing: 2.5px; color: #7ff0dd;
+    border: 1px solid rgba(127,240,221,0.35); border-radius: 999px;
+    padding: 8px 16px; background: rgba(28,201,169,0.08);
+  }
+  h1 {
+    font-size: 88px; font-weight: 900; line-height: 1.02; margin-top: 40px; letter-spacing: -1.5px;
+  }
+  h1 .grad {
+    background: linear-gradient(100deg, #2fe0c6, #4aa8ff 70%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub {
+    margin-top: 22px; font-size: 25px; line-height: 1.5; font-weight: 500;
+    color: #b7c7de; max-width: 940px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; max-width: 1000px; }
+  .chip {
+    font-size: 18px; font-weight: 700; color: #dbe7f7;
+    border: 1px solid rgba(150,190,230,0.28); border-radius: 999px;
+    padding: 8px 16px; background: rgba(255,255,255,0.035);
+  }
+  .foot {
+    margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .url { font-size: 24px; font-weight: 800; color: #7ff0dd; letter-spacing: 0.3px; }
+  .who { text-align: right; }
+  .who .name { font-size: 24px; font-weight: 800; color: #ffffff; }
+  .who .role { font-size: 18px; font-weight: 600; color: #9fb2cc; margin-top: 3px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="frame">
+      <div class="top">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 2h8l4 4v16H6V2z" fill="#ffffff" opacity="0.95"/>
+            <path d="M14 2v4h4" fill="#dbe9ff"/>
+            <rect x="8.4" y="10" width="7.2" height="1.6" rx="0.8" fill="#3f7bff"/>
+            <rect x="8.4" y="13.2" width="7.2" height="1.6" rx="0.8" fill="#21c7d6"/>
+            <rect x="8.4" y="16.4" width="4.6" height="1.6" rx="0.8" fill="#3f7bff"/>
+          </svg>
+        </div>
+        <span class="badge">OPEN SOURCE &middot; AI-POWERED</span>
+      </div>
+
+      <h1>Resume <span class="grad">Engine Pro</span></h1>
+
+      <p class="sub">Tailor your resume to any job with multi-AI &mdash; then generate ATS-ready documents and a live portfolio site. Private and offline by design: nothing is stored on any server.</p>
+
+      <div class="chips">
+        <span class="chip">🤖 Multi-AI</span>
+        <span class="chip">📄 ATS-ready</span>
+        <span class="chip">🌐 Portfolio sites</span>
+        <span class="chip">🔒 Your GitHub</span>
+        <span class="chip">🆓 Free options</span>
+      </div>
+
+      <div class="foot">
+        <div class="url">rdammala.com</div>
+        <div class="who">
+          <div class="name">Rajesh Dammala</div>
+          <div class="role">Site Reliability Engineer</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
