@@ -6,6 +6,7 @@
 - **📚 Learning Hub:** https://rdammala.com/learning-hub/INDEX.html
 - **⚡ Quick Start:** [QUICK-START.md](QUICK-START.md)
 - **🗂️ Job Tracker Guide:** [JOB-TRACKER-GUIDE.md](JOB-TRACKER-GUIDE.md)
+- **🧭 Project history & AI context:** [RESUME-HERE.md](RESUME-HERE.md) — the full journey, architecture, gotchas, and the rules we hold ourselves to. **Any AI assistant helping with this repo should read it first.**
 
 > Tip: After deploying changes, open the Live App and hard-refresh with **Ctrl+Shift+R**.
 

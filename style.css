@@ -3480,6 +3480,20 @@ html[data-theme="light"] #themeToggleBtn { color: #1a2230; }
 .tour-fab-ico { font-size: 1.05rem; line-height: 1; }
 @media (max-width: 600px) { .tour-fab-label { display: none; } .tour-fab { padding: 0.6rem; bottom: 70px; } }
 
+/* "Learn from our mistakes" FAB — bottom-left, opens the public Learning Hub */
+.story-fab {
+    position: fixed; left: 20px; bottom: 20px; z-index: 1200;
+    display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none;
+    padding: 0.6rem 1rem 0.6rem 0.8rem; border: 1px solid rgba(255, 200, 120, 0.5);
+    border-radius: 999px;
+    background: rgba(20, 26, 43, 0.95);
+    color: #ffe6c2; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.15s ease, background 0.15s ease;
+}
+.story-fab:hover { background: rgba(255, 190, 110, 0.16); transform: translateY(-1px); }
+.story-fab-ico { font-size: 1.05rem; line-height: 1; }
+@media (max-width: 600px) { .story-fab-label { display: none; } .story-fab { padding: 0.6rem; } }
+
 .help-modal {
     position: fixed; inset: 0; z-index: 1300; background: rgba(0,0,0,0.6);
     display: flex; align-items: flex-start; justify-content: center;
