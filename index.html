@@ -1176,8 +1176,16 @@
             <h3>⑦ "It couldn't fetch the job link"</h3>
             <p>Most job portals (LinkedIn, Indeed…) block automated reading, so the <em>Fetch description</em> button may fail — that's expected. Just <strong>paste the job description text</strong>. The link itself is still saved to <code>job-details.md</code> in your published repo.</p>
 
-            <h3>⑧ Privacy</h3>
-            <p>There is <strong>no server</strong>. Profiles, history and keys live in your browser's local storage; published portfolios and backups go to <strong>your own</strong> GitHub. Use <strong>Settings → Data Backup</strong> before clearing browser data.</p>
+            <h3>⑧ Your privacy — and why there is no database</h3>
+            <p><strong>We are proud to run this with no backend database. We do not store your résumé, your profile, your keys, or anything about you on any server we control — because we never want to.</strong></p>
+            <ul>
+                <li><strong>Where your data actually lives:</strong> your profiles, history and API keys stay in <strong>your browser's local storage</strong>; anything you choose to publish or back up goes to <strong>your own GitHub account</strong>. You hold the keys, you can delete it all in one click, and it leaves with you.</li>
+                <li><strong>What we can see:</strong> nothing. There is no account on our side, no user table, no analytics profile of you, no tracking pixel. We could not sell or leak your data even if someone asked — we simply do not have it.</li>
+                <li><strong>The one server piece, explained honestly:</strong> the only server-side component is a thin proxy that forwards <em>public job-board searches</em> (so a key for a public jobs API is never exposed in your browser). It sees a search term and a city — never your résumé, your name, or your documents.</li>
+                <li><strong>No ads. No “free trial” that harvests you. No data broker.</strong> The free options are genuinely free because your own GitHub and your own browser do the work.</li>
+            </ul>
+            <p class="help-tip">🌏 <strong>Why we build it this way.</strong> Your career data is deeply personal, and trust should be the default, not a paid upgrade. This is a small attempt at a better, kinder web — the kind of world we would want our children to grow up in, long after we are gone. If you are a fellow builder: you <em>can</em> ship something genuinely useful without ever holding a stranger's private data. Keep <strong>user data with the user</strong> — reach for a database only for shared, non-personal things (like caching public listings), never for people's private lives. 🙏</p>
+            <p>Practical tip: use <strong>Settings → Data Backup</strong> to download or save your data to your GitHub before clearing browser data.</p>
 
             <p class="help-foot">Still stuck? Re-open this anytime via the <strong>?</strong> button (bottom-right).</p>
         </div>
