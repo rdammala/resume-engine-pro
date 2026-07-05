@@ -5,3 +5,4 @@
 .wrangler
 node_modules
 *.log
+worker.js

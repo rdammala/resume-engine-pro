@@ -3,6 +3,7 @@
   // Publishes the static site straight to the custom domains, so the CI
   // `npx wrangler deploy` no longer needs a workers.dev subdomain.
   "name": "resume-engine-pro",
+  "main": "worker.js",
   "compatibility_date": "2025-06-01",
   "workers_dev": false,
   "routes": [
@@ -10,6 +11,7 @@
     { "pattern": "www.rdammala.com", "custom_domain": true }
   ],
   "assets": {
-    "directory": "./"
+    "directory": "./",
+    "binding": "ASSETS"
   }
 }

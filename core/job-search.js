@@ -219,6 +219,31 @@
         });
     }
 
+    // Adzuna via the same-origin Cloudflare Worker proxy. The proxy already did
+    // the keyword/location/recency matching server-side, so these results skip
+    // the client-side filters (see runSearch).
+    function fetchAdzuna(what, where, country, days) {
+        var qs = 'country=' + encodeURIComponent(country || 'us');
+        if (what) qs += '&what=' + encodeURIComponent(what);
+        if (where) qs += '&where=' + encodeURIComponent(where);
+        if (days) qs += '&max_days_old=' + encodeURIComponent(days);
+        return fetch('/api/adzuna?' + qs)
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (d) {
+                var jobs = (d.results || []).map(function (j) {
+                    return {
+                        company: (j.company && j.company.display_name) || '',
+                        title: j.title || '',
+                        location: (j.location && j.location.display_name) || '',
+                        url: j.redirect_url || '',
+                        postedMs: j.created ? Date.parse(j.created) : 0,
+                        source: 'Adzuna'
+                    };
+                });
+                return { ok: true, company: { name: 'Adzuna' }, jobs: jobs };
+            }).catch(function (err) { return { ok: false, company: { name: 'Adzuna' }, error: (err && err.message) || 'not available here', jobs: [] }; });
+    }
+
     // ---- rendering ----
     function companyChips() {
         var list = loadCompanies();
@@ -239,7 +264,17 @@
     function museChip() {
         return '<button type="button" class="js-chip js-chip-muse" data-muse="1" title="The Muse — a free global board: many countries + non-tech roles (nursing, finance, trades). Broader reach, but listings can be OLDER — turn it on and set the date to Any time. Off by default.">🌍 Global / non-tech <span class="js-chip-ats">The Muse · optional</span></button>';
     }
+    // Adzuna = LIVE worldwide keyword+location+country search via the Cloudflare
+    // Worker proxy (/api/adzuna), which injects the API key server-side. Works on
+    // the deployed site; degrades gracefully anywhere the proxy is not present.
+    function adzunaChip() {
+        return '<button type="button" class="js-chip js-selected js-chip-adzuna" data-adzuna="1" title="Adzuna — live worldwide search (keyword + location + country) via a secure server-side proxy. Great for India, Australia, the UK and more. Fires when you enter a keyword or location.">🌐 Adzuna (live global) <span class="js-chip-ats">18 countries</span></button>';
+    }
 
+    function adzunaCountry(name) {
+        var m = { 'united states':'us','united states of america':'us','usa':'us','united kingdom':'gb','uk':'gb','england':'gb','scotland':'gb','india':'in','australia':'au','canada':'ca','germany':'de','france':'fr','spain':'es','italy':'it','netherlands':'nl','new zealand':'nz','singapore':'sg','south africa':'za','brazil':'br','mexico':'mx','poland':'pl','austria':'at','switzerland':'ch' };
+        return m[String(name || '').toLowerCase()] || '';
+    }
     function partnerCards() {
         return PARTNERS.map(function (p) {
             return '<a class="js-partner" href="' + esc(p.url) + '" target="_blank" rel="noopener">'
@@ -279,9 +314,9 @@
         + '    </select>'
         + '    <button id="jsSearchBtn" class="btn btn-primary">Search jobs</button>'
         + '  </div>'
-        + '  <div class="js-sources">📡 Live results come from <strong>Greenhouse</strong>, <strong>Ashby</strong> &amp; the daily <strong>Workday</strong> feed — fresh, direct from each company. Turn on the optional <strong>🌍 Global / non-tech</strong> chip (The Muse) to reach many more countries and non-tech roles (nursing, finance, trades), though those listings can be older — pair it with <strong>Any time</strong>. This is <strong>not</strong> the whole web; for any other employer, use the <strong>Big-tech portals</strong> &amp; <strong>partner directories</strong> below.</div>'
+        + '  <div class="js-sources">📡 Live results come from <strong>Greenhouse</strong>, <strong>Ashby</strong> &amp; the daily <strong>Workday</strong> feed — fresh, direct from each company — plus <strong>🌐 Adzuna</strong> for live worldwide search across 18 countries (great for India, Australia, the UK). Turn on the optional <strong>🌍 Global / non-tech</strong> chip (The Muse) for even more countries and non-tech roles (nursing, finance, trades), though those listings can be older — pair it with <strong>Any time</strong>. This is <strong>not</strong> the whole web; for any other employer, use the <strong>Big-tech portals</strong> &amp; <strong>partner directories</strong> below.</div>'
         + '  <div class="js-companies-head">Companies in the live feed <span class="js-muted">— we search every highlighted one <em>plus</em> the 🗓️ Big-tech feed. Click to toggle, or add your own by board token.</span></div>'
-        + '  <div id="jsChips" class="js-chips">' + scheduledChip() + museChip() + companyChips() + '</div>'
+        + '  <div id="jsChips" class="js-chips">' + scheduledChip() + adzunaChip() + museChip() + companyChips() + '</div>'
         + '  <div class="js-row js-add">'
         + '    <input id="jsAddName" class="js-input" type="text" placeholder="Add company (display name)" />'
         + '    <select id="jsAddAts" class="js-input js-input-sm"><option value="greenhouse">Greenhouse</option><option value="ashby">Ashby</option></select>'
@@ -356,13 +391,19 @@
                 if (all[idx]) selected.push(all[idx]);
             }
         });
-        if (!selected.length && !document.querySelector('#jsChips .js-chip-sched.js-selected') && !document.querySelector('#jsChips .js-chip-muse.js-selected')) selected = all.slice();
+        if (!selected.length && !document.querySelector('#jsChips .js-chip-sched.js-selected') && !document.querySelector('#jsChips .js-chip-muse.js-selected') && !document.querySelector('#jsChips .js-chip-adzuna.js-selected')) selected = all.slice();
 
         var schedOn = !!document.querySelector('#jsChips .js-chip-sched.js-selected');
         var museOn = !!document.querySelector('#jsChips .js-chip-muse.js-selected');
+        var adzunaOn = !!document.querySelector('#jsChips .js-chip-adzuna.js-selected');
         var tasks = selected.map(fetchCompany);
         if (schedOn) tasks.push(fetchScheduled());
         if (museOn) tasks.push(fetchMuse());
+        if (adzunaOn && (kw || locq)) {
+            var adzCountry = adzunaCountry(_locSel && _locSel.country) || adzunaCountry(locq) || 'us';
+            var adzWhere = (_locSel && _locSel.city) || locq || '';
+            tasks.push(fetchAdzuna(kw, adzWhere, adzCountry, days));
+        }
 
         var statusEl = document.getElementById('jsStatus');
         var resultsEl = document.getElementById('jsResults');
@@ -398,6 +439,7 @@
 
             // filters
             var filtered = jobs.filter(function (j) {
+                if (j.source === 'Adzuna') return true;   // already matched server-side (what/where/recency)
                 if (cutoff && (!j.postedMs || j.postedMs < cutoff)) return false;
                 if (kw && (j.title || '').toLowerCase().indexOf(kw) === -1) return false;
                 if (locTerms.length) {
@@ -416,7 +458,7 @@
             var msg = '<strong>' + filtered.length + '</strong> role' + (filtered.length === 1 ? '' : 's')
                 + ' from ' + reached + ' sources'
                 + (kw || locq || days ? ' (filtered)' : '')
-                + ' · <span class="js-muted">via Greenhouse · Ashby' + (schedOn ? ' · Workday' : '') + (museOn ? ' · The Muse' : '') + ' — for other employers use the portals below</span>';
+                + ' · <span class="js-muted">via Greenhouse · Ashby' + (schedOn ? ' · Workday' : '') + (adzunaOn ? ' · Adzuna' : '') + (museOn ? ' · The Muse' : '') + ' — for other employers use the portals below</span>';
             if (failed.length) msg += ' · <span class="js-muted">couldn\u2019t reach: ' + esc(failed.join(', ')) + '</span>';
             statusEl.innerHTML = msg;
 
