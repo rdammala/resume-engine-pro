@@ -42,6 +42,9 @@ test-data/
 Thumbs.db
 *.tmp
 
+# Cloudflare wrangler local cache (account id, build cache — not for the repo)
+.wrangler/
+
 # Don't commit resume data or generated files
 # (these should only exist in GitHub data repo)
 generated/
